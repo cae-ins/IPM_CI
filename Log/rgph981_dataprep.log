@@ -1,0 +1,142 @@
+------------------------------------------------------------------
+      name:  <unnamed>
+       log:  C:\Users\Dell\OneDrive - GOUVCI\CAE_INS\IPM\INPM\Data
+> _results\Log/rgph981_dataprep.log
+  log type:  text
+ opened on:   5 Feb 2024, 11:48:20
+
+. 
+. 
+. 
+. 
+. ***Création des bases régionales niveau "individus"
+. import spss using "$data_raw98\individu.sav"
+(36 vars, 15,366,298 obs)
+
+. save "$data_raw98\rgph98_ind.dta", replace
+file C:\Users\Dell\OneDrive -
+    GOUVCI\INS_JOB\DATABASES\Aboya_bis\rgph98\rgph98_ind.dta
+    saved
+
+. 
+. 
+. use "$data_raw98\rgph98_ind.dta", clear
+
+. forval k= 1 / 19 {
+  2.         preserve
+  3.         keep if I01_REGI==`k'
+  4.         save "C:\Users\Dell\OneDrive - GOUVCI\CAE_INS\IPM\INP
+> M\Data_results\Data\Data1998\bases_reg_ind98\rgph98_ind_R`k'.dta
+> ", replace
+  5.         restore
+  6. }
+(11,632,936 observations deleted)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\CAE_INS\IPM\INPM\Data_results\Data\Data1998\bases_reg
+    > _ind98\rgph98_ind_R1.dta saved
+(14,294,321 observations deleted)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\CAE_INS\IPM\INPM\Data_results\Data\Data1998\bases_reg
+    > _ind98\rgph98_ind_R2.dta saved
+(14,436,625 observations deleted)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\CAE_INS\IPM\INPM\Data_results\Data\Data1998\bases_reg
+    > _ind98\rgph98_ind_R3.dta saved
+(14,285,866 observations deleted)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\CAE_INS\IPM\INPM\Data_results\Data\Data1998\bases_reg
+    > _ind98\rgph98_ind_R4.dta saved
+(14,971,557 observations deleted)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\CAE_INS\IPM\INPM\Data_results\Data\Data1998\bases_reg
+    > _ind98\rgph98_ind_R5.dta saved
+(14,429,796 observations deleted)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\CAE_INS\IPM\INPM\Data_results\Data\Data1998\bases_reg
+    > _ind98\rgph98_ind_R6.dta saved
+(14,890,125 observations deleted)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\CAE_INS\IPM\INPM\Data_results\Data\Data1998\bases_reg
+    > _ind98\rgph98_ind_R7.dta saved
+(14,665,299 observations deleted)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\CAE_INS\IPM\INPM\Data_results\Data\Data1998\bases_reg
+    > _ind98\rgph98_ind_R8.dta saved
+(13,971,065 observations deleted)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\CAE_INS\IPM\INPM\Data_results\Data\Data1998\bases_reg
+    > _ind98\rgph98_ind_R9.dta saved
+(15,143,852 observations deleted)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\CAE_INS\IPM\INPM\Data_results\Data\Data1998\bases_reg
+    > _ind98\rgph98_ind_R10.dta saved
+(14,732,376 observations deleted)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\CAE_INS\IPM\INPM\Data_results\Data\Data1998\bases_reg
+    > _ind98\rgph98_ind_R11.dta saved
+(14,811,493 observations deleted)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\CAE_INS\IPM\INPM\Data_results\Data\Data1998\bases_reg
+    > _ind98\rgph98_ind_R12.dta saved
+(14,906,931 observations deleted)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\CAE_INS\IPM\INPM\Data_results\Data\Data1998\bases_reg
+    > _ind98\rgph98_ind_R13.dta saved
+(14,987,835 observations deleted)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\CAE_INS\IPM\INPM\Data_results\Data\Data1998\bases_reg
+    > _ind98\rgph98_ind_R14.dta saved
+(14,684,277 observations deleted)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\CAE_INS\IPM\INPM\Data_results\Data\Data1998\bases_reg
+    > _ind98\rgph98_ind_R15.dta saved
+(14,841,087 observations deleted)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\CAE_INS\IPM\INPM\Data_results\Data\Data1998\bases_reg
+    > _ind98\rgph98_ind_R16.dta saved
+(14,823,306 observations deleted)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\CAE_INS\IPM\INPM\Data_results\Data\Data1998\bases_reg
+    > _ind98\rgph98_ind_R17.dta saved
+(14,857,570 observations deleted)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\CAE_INS\IPM\INPM\Data_results\Data\Data1998\bases_reg
+    > _ind98\rgph98_ind_R18.dta saved
+(15,227,047 observations deleted)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\CAE_INS\IPM\INPM\Data_results\Data\Data1998\bases_reg
+    > _ind98\rgph98_ind_R19.dta saved
+
+. 
+. 
+. clear
+
+. import spss using "$data_raw98\menage.sav"
+(22 vars, 2,652,807 obs)
+
+. save "$data_raw98\rgph98_men.dta", replace
+(file C:\Users\Dell\OneDrive -
+    GOUVCI\INS_JOB\DATABASES\Aboya_bis\rgph98\rgph98_men.dta not
+    found)
+file C:\Users\Dell\OneDrive -
+    GOUVCI\INS_JOB\DATABASES\Aboya_bis\rgph98\rgph98_men.dta
+    saved
+
+. 
+. ***Identification des doublons
+. duplicates tag I01_REGI I02_DEPA I03_SPREF I05_MILIEU I09T_TYP I
+> 09N_NUM, gen (dup_all_temp1)
+
+Duplicates in terms of I01_REGI I02_DEPA I03_SPREF I05_MILIEU
+    I09T_TYP I09N_NUM
+
+. 
+. I01_REGI I02_DEPA I03_SPREF I05_MILIEU I09T_TYP I09N_NUM
+command I01_REGI is unrecognized
+r(199);
+
+end of do-file
+
+r(199);
+
+. exit, clear
