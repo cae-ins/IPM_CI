@@ -5,10 +5,13 @@
 ****** Définition des globals ******
 global projet "C:\Users\f.migone\Desktop\projects\cae_ipm"
 global root    "$projet\Data"
-global dofile  "$projet\Do file\IPM_Code\v2\VF"
+global dofile  "$projet\DofileRP21"
 **# Bookmark #1
 global sortie  "$projet\Sortie"
 
+******installation de ado******
+ssc install mpi
+ssc install unique
 ***** Gestion de l'exécution des Do *****
 * Calcul des privations
 

@@ -4,9 +4,9 @@
 clear all
 set more off
 
-global in  "D:\CAE_IPM\Data"
-global do  "D:\CAE_IPM\Do file\IPM_Code\v2\VF"
-global out "D:\CAE_IPM\Sortie"
+global in  "$projet\Data"
+global do  "$projet\DofileRP21"
+global out "$projet\Sortie"
 
 
 global list_var_menage "SOUSPREFID P04 P08 P05 P07 P09 P09A P09B P10 DEPART REGION P06" 

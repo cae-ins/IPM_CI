@@ -1,8 +1,8 @@
 // La base utilisée provient du bureau des demographes (Voir Aminata et Doyen Toure)
 clear all
-global in "D:\CAE_IPM\Data"
-global do "D:\CAE_IPM\Do file\IPM_Code\v2"
-global out "D:\CAE_IPM\Sortie"
+global in "$projet\Data"
+global do "$projet\DofileRP21"
+global out "$projet\Sortie"
 use "$in\IPM_Data_191125.dta", clear
 global list_var_menage "SOUSPREFID  P04 milieu P05 P07 P09 P09A P09B P10 DEPART REGION" 
 global list_var_menage1 "SOUSPREFID  P04 P08 P05 P07 P09 P09A P09B P10 DEPART REGION" 
@@ -15,11 +15,11 @@ global list_var_menage1 "SOUSPREFID  P04 P08 P05 P07 P09 P09A P09B P10 DEPART RE
 ********************************************************************************
 
 ******* Fréquentation scolaire : Le ménage a un enfant de 6-14 ans qui ne fréquente actuellement pas
-gen nonsco = inrange(P18A_AGE,6,14) & P30A != 1 
+gen nonsco = inrange(P18A_AGE,6,16) & P30A != 1 
 by $list_var_menage, sort : egen nbnsco1 = total(nonsco)
-gen desco = nbnsco !=0 
-drop nonsco nbnsco
-lab var desco "au moins un enfant de 6 a 14 ans hors du systeme educatif; 1=oui, 0=non"
+gen desco = nbnsco1 !=0 
+drop nonsco nbnsco1
+lab var desco "au moins un enfant de 6 a 16 ans hors du systeme educatif; 1=oui, 0=non"
 
 /*question RGPH: type d'activite
 Value=1;Oui, fréquente l'école actuellement
@@ -100,19 +100,19 @@ Value=23;Ne sait pas
 
 
 ******ALPHABETISATION : 
-*** Un  membre du ménage de 15 ans ou plus ne sait pas lire ou écrire en francais
+*** Un  membre du ménage de 16 ans ou plus ne sait pas lire ou écrire en francais
 
-gen alphab = 1 if (P29_BA == 1) & inrange(P18A_AGE, 15,49)
-replace alphab = 0 if !(P29_BA == 1)  & inrange(P18A_AGE, 15,49)
+gen alphab = 1 if (P29_BA == 1) & inrange(P18A_AGE, 16,49)
+replace alphab = 0 if !(P29_BA == 1)  & inrange(P18A_AGE, 16,49)
 replace alphab=. if P29_BA ==.
 by $list_var_menage, sort: egen total_analph = max(alphab)
-gen cas1 = inrange(P18A_AGE, 15,49)
+gen cas1 = inrange(P18A_AGE, 16,49)
 by $list_var_menage, sort: egen cas = total(cas1)
 drop cas1
 replace total_analph=1 if cas ==0
 drop cas
 recode total_analph (0=1) (1=0), gen(mfsa)
-lab var mfsa "Un  membre du ménage de 15 - 49 ans ne sait pas lire ou écrire (Français) ; 1=oui, 0=non"
+lab var mfsa "Un  membre du ménage de 16 - 49 ans ne sait pas lire ou écrire (Français) ; 1=oui, 0=non"
 /*
 Label=Peut-il/elle lire, écrire et comprendre dans cette langue/ces langues : En Français
 Value=1;Oui
@@ -120,11 +120,11 @@ Value=0;Non
 */
 
 
-*************************************************************** DIMENSION EMPLOI ****************************************************************************
+*************************************************************** DIMENSION EMPLOI A REVOIR VRAIMENT POUR ETRE SUR QU'ON MESURE L'EMPLOI****************************************************************************
 
 **** Chomage. Le ménage est privé si un des membres (ayant entre 15 et 24 ans) est chômeur ou est en quête d'emploi 
 codebook P34B, tab(100)
-gen chm= inlist(P34B,8,9,10,11,12, 13,18) & P34CNEWtbB == 1  & (P18A_AGE>=15 & P18A_AGE<=24)
+gen chm= inlist(P34B,8,9,10,11,12, 13,18) & P34CNEWtbB == 1  & (P18A_AGE>=16 & P18A_AGE<=35)
 by  $list_var_menage, sort : egen nchm = total(chm)
 gen chom = nchm !=0 
 drop chm nchm
@@ -152,9 +152,10 @@ Value=18;A la recherche d'emploi*
   
 Value=96;Autres raisons (à préciser)
 */
+ ///* Pourquoi on ne save pas la base ménage ici ?, j'ajoute pour avancer
 
 
-****************************BASES RGPH 14: DIMENSION IDENTIFICATION*****************************************************************************************
+***IDENTIFICATION*****************************************************************************************
 
 ********Déclaration de naissance à l'état civil
 
@@ -177,15 +178,14 @@ keep if P16 == 1
 // Chef de ménage (CM)
 drop _merge
 sort INDIV_ID
-save "$out\baseind.dta", replace
-
+save "$out\data_out_ind.dta", replace
 ***************DIMENSION NIVEAU DE VIE***************************************************************************************************
 
 use "$in\IPM_Data_110924_men.dta", clear
 *****ELECTRICITE
 gen paselec = !inlist(P51,1,2,3) 
 lab var paselec "Ne dispose pas d'electricite; 1=pas electricite, 0=electricite"
-/*question RGPH14: Mode d'éclairage
+/*question RGPH: Mode d'éclairage
 Value=1;Electricité (CIE)
 Value=2;Groupe électrogène
 Value=3;Panneau solaire
@@ -282,7 +282,9 @@ lab var logement "logement inadequat ; 1=oui, 0=non"
 
 *****EQUIPEMENT 
 	
-gen velo = .
+gen velo = . 
+///Problème ici, la variable P55A est tjrs vide soit vide, soit point.
+
 replace velo = 1 if P55A == 1
 replace velo = 0 if P55A == .
 ta velo , m
@@ -323,26 +325,25 @@ replace refrigerateur = 0 if P56B == .
 ta refrigerateur , m
 
 
-gen véhicule = .
-replace véhicule = 1 if P55C == 1
-replace véhicule = 0 if P55C == .
-ta véhicule , m
+gen vehicule = .
+replace vehicule = 1 if P55C == 1
+replace vehicule = 0 if P55C == .
+ta vehicule , m
 
 egen equi = rowtotal( velo televison radio telephone ordinateur charette refrigerateur motoetbycle ), missing
 lab var equi "Household Number of Small Assets Owned- National" 
-gen equipement = (véhicule==1 | equi > 1) 
-replace equipement = . if véhicule==. & equi==.
+gen equipement = (vehicule==1 | equi > 1) 
+replace equipement = . if vehicule==. & equi==.
 lab var equipement "Household Asset Ownership: HH has car or more than 1 small assets"
 
 recode equipement  (0=1)(1=0) , gen(pasequi)
+lab var pasequi "Household privated : HH has neither car neither more than 1 small assets"
 
-ren SOUSPREFID_NEW  SOUSPREFID
-ren DEPART_NEW  DEPART
-ren REGION_NEW REGION
 sort INDIV_ID
-merge 1:1 INDIV_ID using "$out\baseind.dta"
-
-
+cap drop _merge
+merge 1:1 INDIV_ID using "$out\data_out_ind.dta"
+keep if _merge==3
+cap drop _merge
 keep $list_var_menage EW milieu Milieu2 P08 desco educ mfsa  chom P16  Ident educ1 paselec paseaup paselec paseaup combsale pasta solterre toiture matmur logement pasequi TAILLE_MENAGE 
 
 save "$out\bf_13112025.dta", replace
@@ -359,7 +360,7 @@ save "$out\DECES8_RGPH2021.dta", replace
 use "$out\bf_13112025.dta"
 
 merge m:1 $list_var_menage1 using "$out\DECES8_RGPH2021.dta" ,keepusing(decs18)
-
+drop if _merge==2
 gen mjuv = decs18 > 0 if decs18 !=.
 replace mjuv = 0 if decs18==. 
 

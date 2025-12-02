@@ -1,10 +1,10 @@
-use "C:/CAE_IPM/Data/IPM_Data_110924.dta", clear
+use "$projet\Data\IPM_Data_110924.dta", clear
 global list_var_menage "SOUSPREFID P04 P08 P05 P07 P09 P09A P09B P10 DEPART REGION P06" 
 keep if P15D == 1
 // garder les résidents présents
 
 keep if P16 == 1
-save "C:\Users\Dell\OneDrive - GOUVCI\Bureau\IPM_Data_110924_men.dta", replace
+save "$projet\Sortie\IPM_Data_110924_men.dta", replace
 // Chef de ménage (CM)
 
 ********************  Calcul de privation   fréquentation scolaire  *************
@@ -103,15 +103,15 @@ Déclaration d'état civil
 
 
 
-use "C:\CAE_IPM\MORTALITE_RP2021_TRAITEMENT.dta", clear
+use "$projet\MORTALITE_RP2021_TRAITEMENT.dta", clear
 
 by SOUSPREFID,  sort : gen decs18 =  M61A2_AGE if  M61A2_AGE <18
 collapse (count) decs18, by (SOUSPREFID)
-save "C:\CAE_IPM\Sortie\DECESSP_RGPH2021.dta"
+save "$projet\Sortie\DECESSP_RGPH2021.dta"
 
-use "C:\CAE_IPM\Sortie\bf.dta", clear
+use "$projet\Sortie\bf.dta", clear
 
-merge m:1 SOUSPREFID using "C:\CAE_IPM\Sortie\DECESSP_RGPH2021.dta" ,keepusing(decs18)
+merge m:1 SOUSPREFID using "$projet\Sortie\DECESSP_RGPH2021.dta" ,keepusing(decs18)
 
 gen mjuv = decs18 > 0 if decs18 !=.
 replace mjuv = 0 if decs18==.

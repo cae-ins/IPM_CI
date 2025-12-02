@@ -1,8 +1,8 @@
 // La base utilisée provient du bureau des demographes (Voir Aminata et Doyen Toure)
 clear all
-global in "D:\CAE_IPM\Data"
-global do "D:\CAE_IPM\Do file\IPM_Code\v2"
-global out "D:\CAE_IPM\Sortie"
+global in "$projet\Data"
+global do "$projet\DofileRP21"
+global out "$projet\Sortie"
 
 use "$out\bf_13112025.dta", clear
 

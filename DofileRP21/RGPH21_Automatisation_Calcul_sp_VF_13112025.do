@@ -4,9 +4,9 @@
 clear all
 set more off
 
-global in  "D:\CAE_IPM\Data"
-global do  "D:\CAE_IPM\Do file\IPM_Code\v2\VF"
-global out "D:\CAE_IPM\Sortie"
+global in  "$projet\Data"
+global do  "$projet\DofileRP21"
+global out "$projet\Sortie"
 
 ************************************************************
 * 1. CHARGER LA BASE PRINCIPALE ET CREER LES 33 MINI-BASES
