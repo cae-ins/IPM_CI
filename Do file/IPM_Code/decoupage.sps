@@ -1,0 +1,6 @@
+﻿* Encoding: UTF-8.
+GET FILE="C:\Users\Dell\OneDrive\Bureau\PHAS\IPM-CI\RGPH\RGPH 2021\Bases brutes\INDIVIDUS SERVEUR NATIONAL.SAV".
+spssinc split dataset splitvar = REGION
+/OUTPUT DIRECTORY= "C:\Users\Dell\OneDrive\Bureau\PHAS\IPM-CI\RGPH\RGPH 2021\Bases brutes\Decoupage_REGIONRP21" DELETECONTENTS = NO
+FILENAME = "REGION_${REGION}"
+/OPTIONS NAMES =VALUES PRINTLIST=YES 

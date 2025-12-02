@@ -1,0 +1,368 @@
+/*cls
+args region_data
+*/
+use "C:/CAE_IPM/Data/IPM_Data_120924.dta", clear
+
+******************TRAITEMENT DES VARIABLES INDIVIDUELLES********************
+********************************************************************************
+
+******************DIMENSION EDUCATION********************
+********************************************************************************
+
+******* Fréquentation scolaire : Le ménage a un enfant de 6-14 ans qui ne fréquente actuellement pas
+gen nonsco = inrange(P18A_AGE,6,14) & P30A != 1 
+by $list_var_menage, sort : egen nbnsco1 = total(nonsco)
+gen desco = nbnsco !=0 
+drop nonsco nbnsco
+lab var desco "au moins un enfant de 6 a 14 ans hors du systeme educatif; 1=oui, 0=non"
+
+/*question RGPH: type d'activite
+Value=1;Oui, fréquente l'école actuellement
+Value=2;Non ne fréquente pas actuellement, mais a dejà fréquenté l'école
+Value=3;Non, n'a jamais fréquenté l'école
+Value=8;Ne sait pas
+*/
+
+******** Années de scolarité: Personne de 17 ans et plus n'ayant pas achevé au moins 10 annees d'etudes [Niveau 3ème] 
+
+gen nonedu = (P18A_AGE>=17 & P18A_AGE!=.) & !inlist(P32, .,23,1,2,3) 
+by  $list_var_menage, sort : egen nbedu = max(nonedu)
+gen educ = !nbedu  
+drop nonedu nbedu
+lab var educ "Au moins un individu de 17 ans et plus qui n'a pas achevé 10 annees d'etudes; 1=oui, 0=non"
+
+/*
+Value=1;Aucun diplôme
+Value=2;CEPE
+Value=3;Certificat de Qualification Professionnelle (CQP)
+Value=4;BEPC
+Value=5;CAP
+Value=6;BEP
+Value=7;BP
+Value=8;BT
+Value=9;BAC
+Value=10;BTS
+Value=11;DUT
+Value=12;DEUG1 / LICENCE 1
+Value=13;DEUG2 / LICENCE 2
+Value=14;LICENCE / LICENCE 3
+Value=15;MAITRISE / MASTER 1
+Value=16;DEA / MASTER 2
+Value=17;Ingénieur
+Value=18;MBA/Master
+Value=19;DESS
+Value=20;DOCTORAT
+Value=21;PHD
+Value=22;Autres à préciser
+Value=23;Ne sait pas
+*/
+
+***Destitution : PNUD 
+
+******** Années de scolarité: Personne de 10 ans et plus n'ayant pas achevé au moins 6 annees d'etudes
+
+gen nonedu1 = (P18A_AGE>=10 & P18A_AGE!=.) & !inlist(P32, ., 23,1) 
+by  $list_var_menage, sort : egen nbedu1 =  max(nonedu1)
+gen educ1 = !nbedu1 
+drop nonedu1 nbedu1
+lab var educ1 "Au moins un individu de 10 ans et plus qui n'a pas achevé 6 annees d'etudes; 1=oui, 0=non"
+
+/*
+Value=1;Aucun diplôme
+Value=2;CEPE
+Value=3;Certificat de Qualification Professionnelle (CQP)
+Value=4;BEPC
+Value=5;CAP
+Value=6;BEP
+Value=7;BP
+Value=8;BT
+Value=9;BAC
+Value=10;BTS
+Value=11;DUT
+Value=12;DEUG1 / LICENCE 1
+Value=13;DEUG2 / LICENCE 2
+Value=14;LICENCE / LICENCE 3
+Value=15;MAITRISE / MASTER 1
+Value=16;DEA / MASTER 2
+Value=17;Ingénieur
+Value=18;MBA/Master
+Value=19;DESS
+Value=20;DOCTORAT
+Value=21;PHD
+Value=22;Autres à préciser
+Value=23;Ne sait pas
+*/
+
+
+******ALPHABETISATION : 
+*** Un  membre du ménage de 15 ans ou plus ne sait pas lire ou écrire en francais
+
+gen alphab = 1 if (P29A == 1) & inrange(P18A_AGE, 15,49)
+replace alphab = 0 if !(P29A == 1)  & inrange(P18A_AGE, 15,49)
+replace alphab=. if P29A ==.
+by $list_var_menage, sort: egen total_analph = max(alphab)
+gen cas1 = inrange(P18A_AGE, 15,49)
+by $list_var_menage, sort: egen cas = total(cas1)
+drop cas1
+replace total_analph=1 if cas ==0
+drop cas
+recode total_analph (0=1) (1=0), gen(mfsa)
+lab var mfsa "Un  membre du ménage de 15 - 49 ans ne sait pas lire ou écrire (Français) ; 1=oui, 0=non"
+/*
+Label=Peut-il/elle lire, écrire et comprendre dans cette langue/ces langues : En Français
+Value=1;Oui
+Value=0;Non
+*/
+
+
+*************************************************************** DIMENSION EMPLOI ****************************************************************************
+
+**** Chomage. Le ménage est privé si un des membres (ayant entre 15 et 24 ans) est chômeur ou est en quête d'emploi 
+codebook P34B, tab(100)
+gen chm= inlist(P34B,8,9,10,11,12, 13,18) & p34C == 1  & (P18A_AGE>=15 & P18A_AGE<=24)
+by  $list_var_menage, sort : egen nchm = total(chm)
+gen chom = nchm !=0 
+drop chm nchm
+lab var chom "Chomeur; 1=oui, 0=non"
+/*Pourquoi n'a-t-il/elle pas travaillé pendant les 7 derniers jours
+Value=1;Congés/Vacances ou assimilés
+Value=2;Maladie ou Accident prise en charge par l'employeur
+Value=3;Grève
+Value=4;Fin de campagne/saison ou Travail saisonnier
+Value=5;Congé de maternité
+Value=6;Travail en rotation ou Arrêt provisoire du travail
+Value=7;En attente d'une prise de fonction/Vient d'être récruté
+Value=8;Réduction temporaire des effectifs
+Value=9;Mise à pied temporaire
+Value=10;Mauvaises conditions climatiques
+Value=11;Licenciement ou Fin de contrat
+Value=12;Handicap de longue durée
+Value=13;En quête du premier emploi
+Value=14;Travaux de domestiques non rémunérés
+Value=15;Etudiant ou Elève
+Value=16;Retraité/Vieillard
+Value=17;Rentier
+Value=18;A la recherche d'emploi*
+  
+  
+Value=96;Autres raisons (à préciser)
+*/
+
+****************************BASES RGPH 14: DIMENSION IDENTIFICATION*****************************************************************************************
+
+********Déclaration de naissance à l'état civil
+
+gen pasid = !inlist(P20 , 1, 2) & (P18A_AGE>=5 & P18A_AGE<=15)
+by $list_var_menage, sort : egen Ident = max(pasid)
+*replace Ident=. if P21A_ETATCIVIL==.
+lab var Ident "pas de déclaration; 1=oui, 0=non"
+/*question RGPH: Déclaration d'état civil à la naissance
+Value=1;Oui déclaré, avec extrait d'acte de naissance/jugement supplétif
+Value=2;Oui déclaré, sans acte de naissance
+Value=3;Non, pas déclaré à l'état civil
+Value=8;Ne sait pas
+*/
+
+
+
+***************DIMENSION NIVEAU DE VIE***************************************************************************************************
+
+*****ELECTRICITE
+gen pasele = !inlist( P51,1,2,3)
+by $list_var_menage, sort : egen paselec = max(pasele)
+lab var paselec "Ne dispose pas d'electricite; 1=pas electricite, 0=electricite"
+/*question RGPH14: Mode d'éclairage
+Value=1;Electricité (CIE)
+Value=2;Groupe électrogène
+Value=3;Panneau solaire
+Value=4;Lampe (à pétrole, à gaz, à huile)
+Value=5;Bois de chauffe
+Value=6;Torche
+Value=8;Autre à préciser
+*/
+
+*****EAU POTABLE  
+gen paseau = !inlist( P49,1,2,3,4,5,7,10)
+by $list_var_menage, sort : egen paseaup = max(paseau)
+lab var paseaup "Ne dispose pas d'acces a l'eau potable; 1=pas eau potable, 0=eau potable"
+/*question RGPH: Principale Source d'alimentation en eau de boisson
+Value=1;Eau de robinet dans le logement
+Value=2;Eau de robinet dans la cour
+Value=3;Robinet public / borne fontaine
+Value=4;Puit à pompe / forage
+Value=5;Puit creusé protégé
+Value=6;Puit creusé pas protégé
+Value=7;Source d'eau protégée
+Value=8;Source d'eau non protégée
+Value=9;Eau de surface
+Value=10;Eau conditionnée en bouteille ou en sachet
+Value=96;Autre à préciser
+  */
+
+*****COMBUSTIBLE 
+gen combsal = !inlist(P52, 2,4)
+by $list_var_menage, sort : egen combsale = max(combsal)
+lab var combsale "Utilise un combustible sale (bois, charbon, autres); 1=oui, 0=non"
+/*question RGPH: Mode de cuisson
+Value=1;Bois de chauffe
+Value=2;Gaz
+Value=3;Charbon
+Value=4;Electricité
+Value=8;Autre à préciser
+*/
+
+*******TOILETTES
+gen past = !inlist(P48, 1,2,3,4,5,7)
+by $list_var_menage, sort : egen pasta = max(past)
+lab var pasta "n'a pas de toilette privée améliorée"
+/*question RGPH: Principal lieu d'aisance
+Value=1;Chasse d'eau reliée à un système d'égouts
+Value=2;Chasse d'eau reliée à une fosse septique
+Value=3;Chasse d'eau reliée à l'air libre
+Value=4;Chasse d'eau reliée à un lieu inconnu
+Value=5;Latrine a fosse améliorée ventilée
+Value=6;Latrine a fosse non ventilée
+Value=7;Toilette a compostage
+Value=8;Toilettes suspendues / latrines suspendues
+Value=9;Pas de toilettes / nature / champs
+Value=96;Autre à préciser
+ */
+
+****ENSEMBLE LOGEMENT
+
+*****NATURE DU SOL 
+gen solterr = !inlist( P46, 2,3,4)
+by $list_var_menage, sort : egen solterre = max(solterr)
+lab var solterre "Sol en terre ou sable, bois, Moquette ou autre; 1=oui, 0=non"
+/*question RGPH: Nature du sol
+Value=1;Terre ou sable
+Value=2;Ciment
+Value=3;Carreau/marbre
+Value=4;Moquette/gerflex
+Value=5;Bois
+Value=8;Autre à préciser*/
+
+*****NATURE DU TOIT (TOIT EN FIBRE OU AUTRES)
+gen toitur = !inlist(P47, 2,3,4)
+by $list_var_menage, sort : egen toiture = max(toitur)
+lab var toiture "toit en fibre, toile plastique ou autre; 1=oui, 0=non"
+/*qustion RGPH: Nature du toit
+Value=1;Fibre végétale (paille, papot...)
+Value=2;Tôle
+Value=3;Béton (ciment, dale)
+Value=4;Tuile/éverite
+Value=5;Toit en plastique (bâche..)
+Value=8;Autre à préciser*/
+
+*****NATURE DU MUR (MUR NON EN DUR)
+gen matmu = !inlist( P45, 4,5,6)
+by $list_var_menage, sort : egen matmur = max(matmu)
+lab var matmur "mur en bois, tole, banco ou autre; 1=oui, 0=non"
+/*question RGPH: Nature du mur
+Value=1;Bois
+Value=2;Tôle
+Value=3;Banco ou terre battue
+Value=4;Sémi-dur
+Value=5;Géobéton
+Value=6;Dur (ciment, brique)
+Value=7;Plastique  (bâche..)
+Value=8;Autre à préciser*/
+
+gen logement=solterre| toiture | matmur
+lab var logement "logement inadequat ; 1=oui, 0=non"
+
+*****EQUIPEMENT 
+ta P55A,m
+replace P55A= 0 if P55A==.
+label define possede_velo 1  "oui" 0 "Non"
+label values P55A possede_velo
+gen velo = (P55A !=0)
+
+replace P57B= 0 if P57B==.
+label define possede_tele 1  "oui" 0 "Non"
+label values P57B possede_tele
+gen television = (P57B !=0)
+
+replace P57A= 0 if P57A==.
+label define possede_radio 1  "oui" 0 "Non"
+label values P57B possede_radio
+gen radio = (P57A !=0)
+
+replace P57D= 0 if P57D==.
+label define possede_teleph 1  "oui" 0 "Non"
+label values P57D possede_teleph
+gen telephone = (P57D !=0)
+
+replace P57E= 0 if P57E==.
+label define possede_ordi 1  "oui" 0 "Non"
+label values P57E possede_ordi
+gen ordinateur = (P57E !=0)
+
+replace P55F= 0 if P55F==.
+label define possede_char 1  "oui" 0 "Non"
+label values P55F possede_char
+gen charette = (P55F !=0)
+
+replace P55B= 0 if P55B==.
+label define possede_mobytr 1  "oui" 0 "Non"
+label values P55B possede_mobytr
+gen motoetbycle = (P55B !=0)
+
+replace P56B= 0 if P56B==.
+label define possede_ref 1  "oui" 0 "Non"
+label values P56B possede_ref
+gen refrigerateur = (P56B !=0)
+
+replace P55C= 0 if P55C==.
+label define possede_vehic 1  "oui" 0 "Non"
+label values P55C possede_vehic
+gen véhicule = (P55C !=0)
+
+egen equi = rowtotal(velo television radio telephone ordinateur charette refrigerateur motoetbycle ), missing
+by $list_var_menage, sort : egen equip = max(equi)
+lab var equi "Household Number of Small Assets Owned- National" 
+gen equipement = (véhicule==1 | equi > 1) 
+replace equipement = . if véhicule==. & equi ==.
+lab var equipement "Household Asset Ownership: HH has car or more than 1 small assets incl computer & animal cart"
+
+recode equipement  (0=1)(1=0) , gen(pasequi)
+lab var pasequi "Le ménage est souséquipé, 1= oui , 0=Non"
+
+
+******************CONSTRUCTION DE LA BASE MENAGE********************
+********************************************************************************
+
+
+keep if P15D == 1
+// garder les résidents présents
+
+keep if P16 == 1
+// Chef de ménage (CM)
+
+keep $list_var_menage desco educ mfsa  chom P16  Ident educ1 paselec paseaup  paselec paseaup combsale pasta solterre toiture matmur logement pasequi TAILLE_MENAGE 
+
+save "$sortie/bf.dta", replace
+
+********************************************************************************
+*********************DIMENSION SANTE************************
+********************************************************************************
+use "$data\MORTALITE_RP2021_TRAITEMENT.dta", clear
+
+by $list_var_menage,  sort : gen decs18 =  M61A2_AGE if  M61A2_AGE <18
+collapse (count) decs18, by ($list_var_menage)
+save "$sortie\DECES8_RGPH2021.dta", replace
+
+use "$sortie/bf.dta"
+
+merge m:1 $list_var_menage using "$sortie\DECES8_RGPH2021.dta" ,keepusing(decs18)
+
+gen mjuv = decs18 > 0 if decs18 !=.
+replace mjuv = 0 if decs18==. 
+
+lab var mjuv "Au moins un décès de moins de 18 ans; 1=oui, 0=non"
+drop _merge 
+save, replace
+***************
+
+*save "$sortie\Treated\\`region_data'_treated.dta", replace 
+

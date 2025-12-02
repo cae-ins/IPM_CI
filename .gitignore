@@ -1,1 +1,13 @@
-Data/
+**/*.csv
+**/*.tsv
+**/*.log
+**/*.dta
+**/*.sav
+**/*.sas7bdat
+**/*.rdata
+**/*.rds
+**/*.xlsx
+**/*.xls
+**/*.db
+*.xlsx
+**/*.txt

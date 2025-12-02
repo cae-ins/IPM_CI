@@ -1,0 +1,258 @@
+{smcl}
+{com}{sf}{ul off}{txt}{.-}
+      name:  {res}<unnamed>
+       {txt}log:  {res}C:/CAE_IPM/Sortie\IPM21_REGION.smcl
+  {txt}log type:  {res}smcl
+ {txt}opened on:  {res}20 Sep 2024, 11:16:37
+
+{com}. do "C:\Users\Dell\AppData\Local\Temp\STD1670_000000.tmp"
+{txt}
+{com}. mpi d1(desco educ mfsa) w1(0.066 0.066 0.066) d2(chom) w2(0.2) d3(paselec paseaup combsale  pasta logement pasequi) w3( 0.033 0.033 0.033 0.033 0.033 0.033) d4(mjuv) w4(0.2) d5(Ident) w5(0.2) [fw=TOTMEN],cutoff(0.3333) by(REGION)
+{txt}Note: Missing values encountered, excluding them.
+{res}Note: the total sum of weight was close to 1, the weights and the cutoff were rescaled to add up to exactly 1.
+
+
+Summary of {cmd:mpi} indicators
+{hline 26}
+{txt}Indicator{col 13}Type{col 22}Weight{col 32}Deprived
+{hline 39}
+{res}Domain 1
+{txt}{col 3}desco{col 13}Binary{res}{col 22}.07{col 32}30.104 %
+{txt}{col 3}educ{col 13}Binary{res}{col 22}.07{col 32}63.048 %
+{txt}{col 3}mfsa{col 13}Binary{res}{col 22}.07{col 32}30.096 %
+Domain 2
+{txt}{col 3}chom{col 13}Binary{res}{col 22}.2{col 32} 2.580 %
+Domain 3
+{txt}{col 3}paselec{col 13}Binary{res}{col 22}.03{col 32}11.594 %
+{txt}{col 3}paseaup{col 13}Binary{res}{col 22}.03{col 32}14.434 %
+{txt}{col 3}combsale{col 13}Binary{res}{col 22}.03{col 32}63.404 %
+{txt}{col 3}pasta{col 13}Binary{res}{col 22}.03{col 32}33.091 %
+{txt}{col 3}logement{col 13}Binary{res}{col 22}.03{col 32}25.250 %
+{txt}{col 3}pasequi{col 13}Binary{res}{col 22}.03{col 32}18.715 %
+Domain 4
+{txt}{col 3}mjuv{col 13}Binary{res}{col 22}.2{col 32} 1.121 %
+Domain 5
+{txt}{col 3}Ident{col 13}Binary{res}{col 22}.2{col 32} 9.652 %
+{txt}{hline 39}
+Deprived: Percentage of individuals whose indicator values are
+below the threshold.
+
+
+Main results{col 50}N = 27578720
+{res}{txt}{hline 13}{c TT}{hline 11}{hline 11}{hline 14}{hline 12}
+{col 14}{c |} Coefficient{col 26}  Std. err.{col 38}     [95% con{col 51}f. interval]
+{hline 13}{c +}{hline 11}{hline 11}{hline 14}{hline 12}
+{res}Main         {txt}{c |}
+{space 11}H {c |}{col 14}{res}{space 2}    0.100{col 26}{space 2}    0.000{col 37}{space 5}    0.100{col 51}{space 3}    0.100
+{txt}{space 10}M0 {c |}{col 14}{res}{space 2}    0.045{col 26}{space 2}    0.000{col 37}{space 5}    0.045{col 51}{space 3}    0.045
+{txt}{hline 13}{c +}{hline 11}{hline 11}{hline 14}{hline 12}
+{res}Additional   {txt}{c |}
+{space 11}A {c |}{col 14}{res}{space 2}    0.454{col 26}{space 2}    0.000{col 37}{space 5}    0.454{col 51}{space 3}    0.454
+{txt}{hline 13}{c BT}{hline 11}{hline 11}{hline 14}{hline 12}
+Note:{col 7}Adjusted Multidimensional Headcount{col 53}M0{col 56}= H*A
+
+{res}
+{txt}{space 0}{c TLC}{hline 17}{c  TT}{hline 11}{c TRC}
+{space 0}{c |}{space 1}{ralign 15:Indicator}{space 1}{c |}{space 1}{ralign 9:M0}{space 1}{c |}
+{space 0}{c  LT}{hline 17}{c   +}{hline 11}{c  RT}
+{space 0}{c |}{res:{lalign 17:domain 1}}{c |}{space 11}{c |}
+{space 0}{c |}{space 1}{ralign 15:desco}{space 1}{c |}{space 1}{ralign 9:{res:{sf:    0.108}}}{space 1}{c |}
+{space 0}{c |}{space 1}{ralign 15:educ}{space 1}{c |}{space 1}{ralign 9:{res:{sf:    0.141}}}{space 1}{c |}
+{space 0}{c |}{space 1}{ralign 15:mfsa}{space 1}{c |}{space 1}{ralign 9:{res:{sf:    0.092}}}{space 1}{c |}
+{space 0}{c |}{res:{lalign 17:domain 2}}{c |}{space 11}{c |}
+{space 0}{c |}{space 1}{ralign 15:chom}{space 1}{c |}{space 1}{ralign 9:{res:{sf:    0.038}}}{space 1}{c |}
+{space 0}{c |}{res:{lalign 17:domain 3}}{c |}{space 11}{c |}
+{space 0}{c |}{space 1}{ralign 15:paselec}{space 1}{c |}{space 1}{ralign 9:{res:{sf:    0.024}}}{space 1}{c |}
+{space 0}{c |}{space 1}{ralign 15:paseaup}{space 1}{c |}{space 1}{ralign 9:{res:{sf:    0.028}}}{space 1}{c |}
+{space 0}{c |}{space 1}{ralign 15:combsale}{space 1}{c |}{space 1}{ralign 9:{res:{sf:    0.071}}}{space 1}{c |}
+{space 0}{c |}{space 1}{ralign 15:pasta}{space 1}{c |}{space 1}{ralign 9:{res:{sf:    0.047}}}{space 1}{c |}
+{space 0}{c |}{space 1}{ralign 15:logement}{space 1}{c |}{space 1}{ralign 9:{res:{sf:    0.041}}}{space 1}{c |}
+{space 0}{c |}{space 1}{ralign 15:pasequi}{space 1}{c |}{space 1}{ralign 9:{res:{sf:    0.020}}}{space 1}{c |}
+{space 0}{c |}{res:{lalign 17:domain 4}}{c |}{space 11}{c |}
+{space 0}{c |}{space 1}{ralign 15:mjuv}{space 1}{c |}{space 1}{ralign 9:{res:{sf:    0.032}}}{space 1}{c |}
+{space 0}{c |}{res:{lalign 17:domain 5}}{c |}{space 11}{c |}
+{space 0}{c |}{space 1}{ralign 15:Ident}{space 1}{c |}{space 1}{ralign 9:{res:{sf:    0.358}}}{space 1}{c |}
+{space 0}{c  LT}{hline 17}{c   +}{hline 11}{c  RT}
+{space 0}{c |}{res:{lalign 17:}}{c |}{space 11}{c |}
+{space 0}{c |}{space 1}{ralign 15:Total}{space 1}{c |}{space 1}{ralign 9:{res:{sf:    1.000}}}{space 1}{c |}
+{space 0}{c BLC}{hline 17}{c  BT}{hline 11}{c BRC}
+Contribution of each indicator (%)
+
+{res}
+{txt}{space 0}{c TLC}{hline 14}{c  TT}{hline 11}{c TRC}
+{space 0}{c |}{space 1}{ralign 12:Domain}{space 1}{c |}{space 1}{ralign 9:M0}{space 1}{c |}
+{space 0}{c  LT}{hline 14}{c   +}{hline 11}{c  RT}
+{space 0}{c |}{space 1}{ralign 12:domain 1}{space 1}{c |}{space 1}{ralign 9:{res:{sf:    0.341}}}{space 1}{c |}
+{space 0}{c |}{space 1}{ralign 12:domain 2}{space 1}{c |}{space 1}{ralign 9:{res:{sf:    0.038}}}{space 1}{c |}
+{space 0}{c |}{space 1}{ralign 12:domain 3}{space 1}{c |}{space 1}{ralign 9:{res:{sf:    0.231}}}{space 1}{c |}
+{space 0}{c |}{space 1}{ralign 12:domain 4}{space 1}{c |}{space 1}{ralign 9:{res:{sf:    0.032}}}{space 1}{c |}
+{space 0}{c |}{space 1}{ralign 12:domain 5}{space 1}{c |}{space 1}{ralign 9:{res:{sf:    0.358}}}{space 1}{c |}
+{space 0}{c  LT}{hline 14}{c   +}{hline 11}{c  RT}
+{space 0}{c |}{space 1}{ralign 12:Total}{space 1}{c |}{space 1}{ralign 9:{res:{sf:    1.000}}}{space 1}{c |}
+{space 0}{c BLC}{hline 14}{c  BT}{hline 11}{c BRC}
+Contribution of each domain (%)
+
+
+
+{res}Decomposition by subgroups
+{hline 32}
+{txt}MPI by: {res}REGION
+{err}DISTRICT AUTONOME DE YAMOUSSOUKRO invalid name
+{txt}{search r(198), local:r(198);}
+
+end of do-file
+
+{search r(198), local:r(198);}
+
+{com}. tab REGION
+
+                  {txt}Region/District {c |}      Freq.     Percent        Cum.
+{hline 34}{c +}{hline 35}
+      DISTRICT AUTONOME D'ABIDJAN {c |}{res}  1,396,219       25.20       25.20
+{txt}                   HAUT-SASSANDRA {c |}{res}    283,578        5.12       30.31
+{txt}                             PORO {c |}{res}    176,787        3.19       33.50
+{txt}                            GBEKE {c |}{res}    234,774        4.24       37.74
+{txt}                 INDENIE-DJUABLIN {c |}{res}    143,413        2.59       40.33
+{txt}                           TONKPI {c |}{res}    263,747        4.76       45.09
+{txt}DISTRICT AUTONOME DE YAMOUSSOUKRO {c |}{res}     81,682        1.47       46.56
+{txt}                         GONTOUGO {c |}{res}    206,227        3.72       50.29
+{txt}                        SAN-PEDRO {c |}{res}    194,983        3.52       53.80
+{txt}                       KABADOUGOU {c |}{res}     47,460        0.86       54.66
+{txt}                             N'ZI {c |}{res}     48,089        0.87       55.53
+{txt}                         MARAHOUE {c |}{res}    176,451        3.18       58.71
+{txt}                        SUD-COMOE {c |}{res}    158,902        2.87       61.58
+{txt}                       WORODOUGOU {c |}{res}     80,826        1.46       63.04
+{txt}                      LOH-DJIBOUA {c |}{res}    196,670        3.55       66.59
+{txt}                    AGNEBY-TIASSA {c |}{res}    157,015        2.83       69.42
+{txt}                              GOH {c |}{res}    180,441        3.26       72.68
+{txt}                          CAVALLY {c |}{res}    137,467        2.48       75.16
+{txt}                           BAFING {c |}{res}     45,557        0.82       75.98
+{txt}                           BAGOUE {c |}{res}     67,223        1.21       77.19
+{txt}                           BELIER {c |}{res}     79,134        1.43       78.62
+{txt}                             BERE {c |}{res}     80,110        1.45       80.07
+{txt}                         BOUNKANI {c |}{res}     65,759        1.19       81.25
+{txt}                            FOLON {c |}{res}     18,223        0.33       81.58
+{txt}                           GBOKLE {c |}{res}     83,965        1.52       83.10
+{txt}                     GRANDS-PONTS {c |}{res}     91,890        1.66       84.76
+{txt}                           GUEMON {c |}{res}    161,750        2.92       87.68
+{txt}                           HAMBOL {c |}{res}    115,733        2.09       89.76
+{txt}                            IFFOU {c |}{res}     77,241        1.39       91.16
+{txt}                            LA ME {c |}{res}    110,351        1.99       93.15
+{txt}                             NAWA {c |}{res}    205,792        3.71       96.86
+{txt}                         TCHOLOGO {c |}{res}     88,325        1.59       98.46
+{txt}                          MORONOU {c |}{res}     85,452        1.54      100.00
+{txt}{hline 34}{c +}{hline 35}
+                            Total {c |}{res}  5,541,236      100.00
+
+{com}. codebook REGION, tab (100)
+
+{txt}{hline}
+{res}REGION{right:Region/District}
+{txt}{hline}
+
+{col 19}Type: Numeric ({res}byte{txt})
+{ralign 22:Label}: {res:labels0}
+
+{col 18}Range: [{res}1{txt},{res}33{txt}]{col 55}Units: {res}1
+{col 10}{txt}Unique values: {res}33{col 51}{txt}Missing .: {res}0{txt}/{res}5,541,236
+
+{txt}{col 13}Tabulation: Freq.   Numeric  Label
+{col 20}{res} 1,396,219{col 32}       1{col 42}{txt}DISTRICT AUTONOME D'ABIDJAN
+{col 20}{res}   283,578{col 32}       2{col 42}{txt}HAUT-SASSANDRA
+{col 20}{res}   176,787{col 32}       3{col 42}{txt}PORO
+{col 20}{res}   234,774{col 32}       4{col 42}{txt}GBEKE
+{col 20}{res}   143,413{col 32}       5{col 42}{txt}INDENIE-DJUABLIN
+{col 20}{res}   263,747{col 32}       6{col 42}{txt}TONKPI
+{col 20}{res}    81,682{col 32}       7{col 42}{txt}DISTRICT AUTONOME DE
+{col 42}YAMOUSSOUKRO
+{col 20}{res}   206,227{col 32}       8{col 42}{txt}GONTOUGO
+{col 20}{res}   194,983{col 32}       9{col 42}{txt}SAN-PEDRO
+{col 20}{res}    47,460{col 32}      10{col 42}{txt}KABADOUGOU
+{col 20}{res}    48,089{col 32}      11{col 42}{txt}N'ZI
+{col 20}{res}   176,451{col 32}      12{col 42}{txt}MARAHOUE
+{col 20}{res}   158,902{col 32}      13{col 42}{txt}SUD-COMOE
+{col 20}{res}    80,826{col 32}      14{col 42}{txt}WORODOUGOU
+{col 20}{res}   196,670{col 32}      15{col 42}{txt}LOH-DJIBOUA
+{col 20}{res}   157,015{col 32}      16{col 42}{txt}AGNEBY-TIASSA
+{col 20}{res}   180,441{col 32}      17{col 42}{txt}GOH
+{col 20}{res}   137,467{col 32}      18{col 42}{txt}CAVALLY
+{col 20}{res}    45,557{col 32}      19{col 42}{txt}BAFING
+{col 20}{res}    67,223{col 32}      20{col 42}{txt}BAGOUE
+{col 20}{res}    79,134{col 32}      21{col 42}{txt}BELIER
+{col 20}{res}    80,110{col 32}      22{col 42}{txt}BERE
+{col 20}{res}    65,759{col 32}      23{col 42}{txt}BOUNKANI
+{col 20}{res}    18,223{col 32}      24{col 42}{txt}FOLON
+{col 20}{res}    83,965{col 32}      25{col 42}{txt}GBOKLE
+{col 20}{res}    91,890{col 32}      26{col 42}{txt}GRANDS-PONTS
+{col 20}{res}   161,750{col 32}      27{col 42}{txt}GUEMON
+{col 20}{res}   115,733{col 32}      28{col 42}{txt}HAMBOL
+{col 20}{res}    77,241{col 32}      29{col 42}{txt}IFFOU
+{col 20}{res}   110,351{col 32}      30{col 42}{txt}LA ME
+{col 20}{res}   205,792{col 32}      31{col 42}{txt}NAWA
+{col 20}{res}    88,325{col 32}      32{col 42}{txt}TCHOLOGO
+{col 20}{res}    85,452{col 32}      33{col 42}{txt}MORONOU
+
+{com}. do "C:\Users\Dell\AppData\Local\Temp\STD1670_000000.tmp"
+{txt}
+{com}. label define labelregion 1"ABIDJAN" 2"HAUT-SASSANDRA"  3"PORO"  4"GBEKE" 5"INDENIE-DJUABLIN" 6"TONKPI" 7"YAMOUSSOUKRO" 8"GONTOUGO" 9"SAN-PEDRO" 10"KABADOUGOU" 11" N'ZI" 12"MARAHOUE" 13"SUD-COMOE" 14"WORODOUGOU" 15"LOH-DJIBOUA" 16"AGNEBY-TIASSA" 17"GOH" 18"CAVALLY" 19"BAFING" 20"BAGOUE" 21"BELIER" 22"BERE" 23"BOUNKANI" 24"FOLON" 25"GBOKLE" 26"GRANDS-PONTS" 27"GUEMON" 28"HAMBOL" 29"IFFOU" 30"LA ME" 31"NAWA" 32"TCHOLOGO" 33"MORONOU" 
+{txt}
+{com}. label values REGION labelregion
+{txt}
+{com}. codebook REGION, ta(33)
+
+{txt}{hline}
+{res}REGION{right:Region/District}
+{txt}{hline}
+
+{col 19}Type: Numeric ({res}byte{txt})
+{ralign 22:Label}: {res:labelregion}
+
+{col 18}Range: [{res}1{txt},{res}33{txt}]{col 55}Units: {res}1
+{col 10}{txt}Unique values: {res}33{col 51}{txt}Missing .: {res}0{txt}/{res}5,541,236
+
+{txt}{col 13}Tabulation: Freq.   Numeric  Label
+{col 20}{res} 1,396,219{col 32}       1{col 42}{txt}ABIDJAN
+{col 20}{res}   283,578{col 32}       2{col 42}{txt}HAUT-SASSANDRA
+{col 20}{res}   176,787{col 32}       3{col 42}{txt}PORO
+{col 20}{res}   234,774{col 32}       4{col 42}{txt}GBEKE
+{col 20}{res}   143,413{col 32}       5{col 42}{txt}INDENIE-DJUABLIN
+{col 20}{res}   263,747{col 32}       6{col 42}{txt}TONKPI
+{col 20}{res}    81,682{col 32}       7{col 42}{txt}YAMOUSSOUKRO
+{col 20}{res}   206,227{col 32}       8{col 42}{txt}GONTOUGO
+{col 20}{res}   194,983{col 32}       9{col 42}{txt}SAN-PEDRO
+{col 20}{res}    47,460{col 32}      10{col 42}{txt}KABADOUGOU
+{col 20}{res}    48,089{col 32}      11{col 42}{txt}N'ZI
+{col 20}{res}   176,451{col 32}      12{col 42}{txt}MARAHOUE
+{col 20}{res}   158,902{col 32}      13{col 42}{txt}SUD-COMOE
+{col 20}{res}    80,826{col 32}      14{col 42}{txt}WORODOUGOU
+{col 20}{res}   196,670{col 32}      15{col 42}{txt}LOH-DJIBOUA
+{col 20}{res}   157,015{col 32}      16{col 42}{txt}AGNEBY-TIASSA
+{col 20}{res}   180,441{col 32}      17{col 42}{txt}GOH
+{col 20}{res}   137,467{col 32}      18{col 42}{txt}CAVALLY
+{col 20}{res}    45,557{col 32}      19{col 42}{txt}BAFING
+{col 20}{res}    67,223{col 32}      20{col 42}{txt}BAGOUE
+{col 20}{res}    79,134{col 32}      21{col 42}{txt}BELIER
+{col 20}{res}    80,110{col 32}      22{col 42}{txt}BERE
+{col 20}{res}    65,759{col 32}      23{col 42}{txt}BOUNKANI
+{col 20}{res}    18,223{col 32}      24{col 42}{txt}FOLON
+{col 20}{res}    83,965{col 32}      25{col 42}{txt}GBOKLE
+{col 20}{res}    91,890{col 32}      26{col 42}{txt}GRANDS-PONTS
+{col 20}{res}   161,750{col 32}      27{col 42}{txt}GUEMON
+{col 20}{res}   115,733{col 32}      28{col 42}{txt}HAMBOL
+{col 20}{res}    77,241{col 32}      29{col 42}{txt}IFFOU
+{col 20}{res}   110,351{col 32}      30{col 42}{txt}LA ME
+{col 20}{res}   205,792{col 32}      31{col 42}{txt}NAWA
+{col 20}{res}    88,325{col 32}      32{col 42}{txt}TCHOLOGO
+{col 20}{res}    85,452{col 32}      33{col 42}{txt}MORONOU
+
+{com}. 
+{txt}end of do-file
+
+{com}. log close
+      {txt}name:  {res}<unnamed>
+       {txt}log:  {res}C:/CAE_IPM/Sortie\IPM21_REGION.smcl
+  {txt}log type:  {res}smcl
+ {txt}closed on:  {res}20 Sep 2024, 11:33:05
+{txt}{.-}
+{smcl}
+{txt}{sf}{ul off}
