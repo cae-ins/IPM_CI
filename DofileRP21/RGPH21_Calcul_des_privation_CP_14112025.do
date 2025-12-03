@@ -152,7 +152,51 @@ Value=18;A la recherche d'emploi*
   
 Value=96;Autres raisons (à préciser)
 */
- ///* Pourquoi on ne save pas la base ménage ici ?, j'ajoute pour avancer
+
+**********************************************DIMENSION EMPLOI MODIFIE***************************************
+*--- Recode des variables ---
+recode P34ANEWtb (0/10 = 1) (11 = 2), gen(p34aa)
+recode P34B (1 2 3 4 5 6 7 96 = 1) (8/18 = 2) (else = .), gen(p34bb)
+recode P34CNEWtbB (1 = 1) (2 8 = 2) (else = .), gen(p34cc)
+recode P34DNEWtbB (1 = 1) (2 8 = 2) (else = .), gen(p34dd)
+recode P34ENEWtbB (1 = 1) (2 8 = 2) (else = .), gen(p34ee)
+
+  
+*--- Variable Statut_OQP ---
+gen Statut_OQP = .
+
+replace Statut_OQP = 0 if p34aa == 1 | (p34aa == 2 & p34bb == 1)
+
+replace Statut_OQP = 1 if p34aa == 2 ///
+    & p34bb == 2 ///
+    & p34cc == 1 ///
+    & p34dd == 1
+
+replace Statut_OQP = 2 if p34aa == 2 ///
+    & p34bb == 2 ///
+    & p34cc == 2 ///
+    & p34dd == 2 ///
+    & p34ee == 2
+
+replace Statut_OQP = 3 if p34aa == 2 & ( ///
+      (p34cc == 2 & p34dd == 1) ///
+   |  (p34cc == 1 & p34dd == 2) ///
+   |  (p34cc == 2 & p34dd == 2 & p34ee == 1) )
+
+*--- Labels ---
+label variable Statut_OQP "Statut d'occupation"
+
+label define statut_lbl ///
+    0 "En emploi" ///
+    1 "En chômage" ///
+    2 "Autre HMO" ///
+    3 "Main d'oeuvre potentielle"
+
+label values Statut_OQP statut_lbl
+
+gen chm2= (Statut_OQP== 1)  & (P18A_AGE>=16 & P18A_AGE<=35)
+by  $list_var_menage, sort : egen nchm2 = total(chm2)
+gen chom2 = nchm2 !=0 
 
 
 ***IDENTIFICATION*****************************************************************************************
@@ -344,7 +388,7 @@ cap drop _merge
 merge 1:1 INDIV_ID using "$out\data_out_ind.dta"
 keep if _merge==3
 cap drop _merge
-keep $list_var_menage EW milieu Milieu2 P08 desco educ mfsa  chom P16  Ident educ1 paselec paseaup paselec paseaup combsale pasta solterre toiture matmur logement pasequi TAILLE_MENAGE 
+keep $list_var_menage EW milieu Milieu2 P08 desco educ mfsa  chom chom2 P16  Ident educ1 paselec paseaup paselec paseaup combsale pasta solterre toiture matmur logement pasequi TAILLE_MENAGE 
 
 save "$out\bf_13112025.dta", replace
 

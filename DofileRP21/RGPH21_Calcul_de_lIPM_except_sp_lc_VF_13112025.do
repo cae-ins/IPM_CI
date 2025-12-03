@@ -15,7 +15,7 @@ capture drop si si_mpi poor poor_mpi vulnerable sev_pauvre
 ** privé les personnes ou les infos sont manquantes
 
 * Remplacer les manquants par privation = 1
-foreach var in desco educ mfsa chom paselec paseaup combsale pasta logement pasequi mjuv Ident {
+foreach var in desco educ mfsa chom chom2 paselec paseaup combsale pasta logement pasequi mjuv Ident {
     replace `var' = 1 if missing(`var')
 }
  save, replace
@@ -89,7 +89,7 @@ Ordre attendu des colonnes de Indicateur_mil :
  1  = desco   : Fréquentation scolaire
  2  = educ    : Année de scolarité
  3  = mfsa    : Alphabétisation
- 4  = chom    : Chômage
+ 4  = chom2    : Chômage
  5  = paselec : Electricité
  6  = paseaup : Eau potable
  7  = combsale :  Energie de cuisson
@@ -197,17 +197,10 @@ replace NAME_milieu = subinstr(MIL, "-", "_", .)
 sort NAME_milieu
 
 * 3. Construire la liste des rownames dans l'ordre
-local names ""
-quietly {
-    forvalues i = 1/`=_N' {
-        local names `names' `=MIL[`i']'
-    }
-}
+levelsof MIL, local(names)
 
-* 4. Appliquer à la matrice A
-mat rownames A = `names'
-
-
+*4. Appliquer les rownames à la matrice A
+matrix rownames A = `names'
 
 ***********************************************************************
 * 7. Export vers Excel – Feuille MILIEU
@@ -478,8 +471,6 @@ quietly {
         local names `names' `=REG[`i']'
     }
 }
-
-
 
 * 4. Appliquer à la matrice A
 mat rownames A = `names'
