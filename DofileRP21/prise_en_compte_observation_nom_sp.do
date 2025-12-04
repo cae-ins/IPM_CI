@@ -1,4 +1,4 @@
-use "$projet\Sortie\bf_13112025.dta", clear
+use "$out\final_data.dta", clear
 
 * Décoder pour avoir les noms réels (texte)
 decode SOUSPREFID, gen(Nom_SP)

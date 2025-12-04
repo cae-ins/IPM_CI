@@ -4,14 +4,14 @@
 clear all
 set more off
 
-global in  "$projet\Data"
-global do  "$projet\DofileRP21"
-global out "$projet\Sortie"
+global in "$projet\data\data_in"
+global do "$projet\dofilerp21"
+global out "$projet\data\data_out"
 
 ************************************************************
 * 1. CHARGER LA BASE PRINCIPALE ET CREER LES 33 MINI-BASES
 ************************************************************
-use "$out\bf_13112025.dta", clear
+use "$out\final_data.dta", clear
 
 forvalues r = 1/33 {
     preserve
@@ -87,7 +87,7 @@ quietly {
 * 5. EXPORT EXCEL (SOUS-PREFECTURES)
 ************************************************************
 putexcel clear
-putexcel set "$out\IPM-CI_2021_vf_13112025.xlsx", ///
+putexcel set "$output\ipm_rp21.xlsx", ///
     sheet("SP") modify
 
 * Écriture de la matrice globale

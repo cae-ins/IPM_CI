@@ -1,6 +1,6 @@
 # TODO - Projet TO IPM
 
-*Date de création : 2025-12-03* 
+*Date de création : 2025-12-04* 
  
 *Commit de création : Refactor data processing scripts: update variable handling and add new calculations for employment status and R code for privation by sous-prefecture and milieu*
 
@@ -8,10 +8,10 @@
 
 | Tâche | Date d'ajout | Date de finalisation prévue | Statut |
 |-------|--------------|----------------------------|--------|
-| [ ] Changer la variable de chômage de `chom` à `chom2` | 2025-12-03 | 2025-12-04 | En cours |
+| [X] Changer la variable de chômage de `chom` à `chom2` | 2025-12-03 | 2025-12-04 | Done |
 | [ ] Vérifier une dernière fois la variable analphabétisation | 2025-12-03 | 2025-12-04 | En cours |
-| [ ] Mettre tous les résultats dans un même fichier Excel | 2025-12-03 | 2025-12-04 | En cours |
-| [ ] Ouvrir les fichiers générés et vérifier les traitements manuellement | 2025-12-03 | 2025-12-04 | En cours |
+| [X] Mettre tous les résultats dans un même fichier Excel | 2025-12-03 | 2025-12-04 | En cours |
+| [X] Ouvrir les fichiers générés et vérifier les traitements manuellement | 2025-12-03 | 2025-12-04 | Problème avec la mortalité Juvénile dans la Me, le IFFOU et une partie de la Marahoué|
 
 ---
 

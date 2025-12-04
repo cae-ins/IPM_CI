@@ -1,8 +1,8 @@
 // La base utilisée provient du bureau des demographes (Voir Aminata et Doyen Toure)
 clear all
-global in "$projet\Data"
-global do "$projet\DofileRP21"
-global out "$projet\Sortie"
+global in "$projet\data\data_in"
+global do "$projet\dofilerp21"
+global out "$projet\data\data_out"
 use "$in\IPM_Data_191125.dta", clear
 global list_var_menage "SOUSPREFID  P04 milieu P05 P07 P09 P09A P09B P10 DEPART REGION" 
 global list_var_menage1 "SOUSPREFID  P04 P08 P05 P07 P09 P09A P09B P10 DEPART REGION" 
@@ -197,7 +197,9 @@ label values Statut_OQP statut_lbl
 gen chm2= (Statut_OQP== 1)  & (P18A_AGE>=16 & P18A_AGE<=35)
 by  $list_var_menage, sort : egen nchm2 = total(chm2)
 gen chom2 = nchm2 !=0 
-
+drop chom
+gen chom = chom2
+drop chm2 nchm2 chom2
 
 ***IDENTIFICATION*****************************************************************************************
 
@@ -222,7 +224,7 @@ keep if P16 == 1
 // Chef de ménage (CM)
 drop _merge
 sort INDIV_ID
-save "$out\data_out_ind.dta", replace
+save "$out\data_out_ind_men.dta", replace
 ***************DIMENSION NIVEAU DE VIE***************************************************************************************************
 
 use "$in\IPM_Data_110924_men.dta", clear
@@ -385,12 +387,12 @@ lab var pasequi "Household privated : HH has neither car neither more than 1 sma
 
 sort INDIV_ID
 cap drop _merge
-merge 1:1 INDIV_ID using "$out\data_out_ind.dta"
+merge 1:1 INDIV_ID using "$out\data_out_ind_men.dta"
 keep if _merge==3
 cap drop _merge
-keep $list_var_menage EW milieu Milieu2 P08 desco educ mfsa  chom chom2 P16  Ident educ1 paselec paseaup paselec paseaup combsale pasta solterre toiture matmur logement pasequi TAILLE_MENAGE 
+keep $list_var_menage EW milieu Milieu2 P08 desco educ mfsa  chom  P16  Ident educ1 paselec paseaup paselec paseaup combsale pasta solterre toiture matmur logement pasequi TAILLE_MENAGE 
 
-save "$out\bf_13112025.dta", replace
+save "$out\final_data.dta", replace
 
 ********************************************************************************
 *********************DIMENSION SANTE************************
@@ -401,7 +403,7 @@ by $list_var_menage1,  sort : gen decs18 =  M61A2_AGE if  M61A2_AGE <18
 collapse (count) decs18, by ($list_var_menage1)
 save "$out\DECES8_RGPH2021.dta", replace
 
-use "$out\bf_13112025.dta"
+use "$out\final_data.dta"
 
 merge m:1 $list_var_menage1 using "$out\DECES8_RGPH2021.dta" ,keepusing(decs18)
 drop if _merge==2
@@ -411,7 +413,7 @@ replace mjuv = 0 if decs18==.
 lab var mjuv "Au moins un décès de moins de 18 ans; 1=oui, 0=non"
 drop _merge 
 ren TAILLE_MENAGE TOTMEN
-save "$out\bf_13112025.dta", replace
+save "$out\final_data.dta", replace
 
 
 

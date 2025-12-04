@@ -1,9 +1,9 @@
 library(haven)
 library(data.table)
-library(writexl)
+library(openxlsx)  # Remplace writexl pour plus de flexibilité
 
 # 1. Lire les données et convertir en data.table
-df <- setDT(read_dta("Sortie/bf_13112025.dta"))
+df <- setDT(read_dta("data/data_out/final_data.dta"))
 
 # 2. Créer la variable de poids
 df[, poids := TOTMEN * EW]
@@ -53,7 +53,7 @@ if (!is.null(milieu_labels)) {
 binary_vars <- c(
   "paselec", "paseaup", "combsale", "pasta", "solterre", "toiture",
   "matmur", "logement", "pasequi", "desco", "educ", "educ1", "mfsa",
-  "chom", "chom2", "Ident", "decs18", "mjuv"
+  "chom", "Ident", "decs18", "mjuv"
 )
 
 # Vérifier que toutes les variables existent
@@ -98,10 +98,20 @@ by = .(code_region = REGION,
 # 9. Combiner les deux résultats
 results <- rbindlist(list(results_sp, results_sp_milieu), use.names = TRUE)
 
-# 10. Arrondir les proportions
+# 10. Formatter les codes avec zero-leading
+# Code région: 2 positions
+results[, code_region := sprintf("%02d", as.numeric(code_region))]
+
+# Code département: 3 positions
+results[, code_departement := sprintf("%03d", as.numeric(code_departement))]
+
+# Code sous-préfecture: extraire les 2 derniers chiffres du code existant
+results[, code_sousprefecture := sprintf("%02d", as.numeric(code_sousprefecture) %% 100)]
+
+# 11. Arrondir les proportions
 results[, (binary_vars) := lapply(.SD, round, digits = 4), .SDcols = binary_vars]
 
-# 11. Trier les résultats
+# 12. Trier les résultats
 results[, milieu_order := fcase(
   milieu == "Ensemble", 0,
   milieu == "Abidjan", 1,
@@ -112,10 +122,39 @@ results[, milieu_order := fcase(
 setorder(results, code_region, code_departement, code_sousprefecture, milieu_order)
 results[, milieu_order := NULL]
 
-# 12. Export Excel
-write_xlsx(results, "Sortie/binary_proportions_weighted.xlsx")
+# 13. Export Excel - Ajouter dans un fichier existant
+fichier_excel <- "output/ipm_rp21.xlsx"
+nom_feuille <- "Privation_Sous_Prefectures"  # Nom de la nouvelle feuille
 
-# 13. Afficher un aperçu
+# Vérifier si le fichier existe
+if (file.exists(fichier_excel)) {
+  # Charger le fichier existant
+  wb <- loadWorkbook(fichier_excel)
+  
+  # Supprimer la feuille si elle existe déjà (pour éviter les doublons)
+  if (nom_feuille %in% names(wb)) {
+    removeWorksheet(wb, nom_feuille)
+    cat("Feuille existante '", nom_feuille, "' supprimée et remplacée.\n", sep = "")
+  }
+  
+  # Ajouter la nouvelle feuille
+  addWorksheet(wb, nom_feuille)
+  writeData(wb, nom_feuille, results)
+  
+  # Sauvegarder
+  saveWorkbook(wb, fichier_excel, overwrite = TRUE)
+  cat("Nouvelle feuille '", nom_feuille, "' ajoutée au fichier existant.\n", sep = "")
+  
+} else {
+  # Si le fichier n'existe pas, le créer
+  wb <- createWorkbook()
+  addWorksheet(wb, nom_feuille)
+  writeData(wb, nom_feuille, results)
+  saveWorkbook(wb, fichier_excel)
+  cat("Nouveau fichier créé avec la feuille '", nom_feuille, "'.\n", sep = "")
+}
+
+# 14. Afficher un aperçu
 print(head(results, 20))
 cat("\n=== Résumé ===\n")
 cat("Nombre total de lignes :", nrow(results), "\n")
@@ -124,4 +163,4 @@ cat("Nombre de départements :", uniqueN(results$code_departement), "\n")
 cat("Nombre de sous-préfectures :", uniqueN(results$code_sousprefecture), "\n")
 cat("\nRépartition par niveau :\n")
 print(results[, .N, by = milieu])
-cat("\nFichier exporté avec succès : binary_proportions_weighted.xlsx\n")
+cat("\nFichier exporté avec succès : ", fichier_excel, "\n", sep = "")

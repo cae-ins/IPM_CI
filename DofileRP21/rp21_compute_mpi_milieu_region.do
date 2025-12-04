@@ -1,10 +1,10 @@
 // La base utilisée provient du bureau des demographes (Voir Aminata et Doyen Toure)
 clear all
-global in "$projet\Data"
-global do "$projet\DofileRP21"
-global out "$projet\Sortie"
+global in "$projet\data\data_in"
+global do "$projet\dofilerp21"
+global out "$projet\data\data_out"
 
-use "$out\bf_13112025.dta", clear
+use "$out\final_data.dta", clear
 
 di"**********************TRAITEMENT DE LA ZONE MILIEU**************************"
 di"****************************************************************************"
@@ -15,7 +15,7 @@ capture drop si si_mpi poor poor_mpi vulnerable sev_pauvre
 ** privé les personnes ou les infos sont manquantes
 
 * Remplacer les manquants par privation = 1
-foreach var in desco educ mfsa chom chom2 paselec paseaup combsale pasta logement pasequi mjuv Ident {
+foreach var in desco educ mfsa chom paselec paseaup combsale pasta logement pasequi mjuv Ident {
     replace `var' = 1 if missing(`var')
 }
  save, replace
@@ -89,7 +89,7 @@ Ordre attendu des colonnes de Indicateur_mil :
  1  = desco   : Fréquentation scolaire
  2  = educ    : Année de scolarité
  3  = mfsa    : Alphabétisation
- 4  = chom2    : Chômage
+ 4  = chom    : Chômage
  5  = paselec : Electricité
  6  = paseaup : Eau potable
  7  = combsale :  Energie de cuisson
@@ -180,7 +180,7 @@ mat list A
 	
 * Rownames = codes de milieu (ex : 1 = Urbain, 2 = Rural)
 
-use "$out\bf_13112025.dta", clear
+use "$out\final_data.dta", clear
 
 keep milieu 
 duplicates drop milieu , force
@@ -207,7 +207,7 @@ matrix rownames A = `names'
 ***********************************************************************
 putexcel clear
 putexcel set ///
-    "$out\IPM-CI_2021_vf_13112025", ///
+    "$output\ipm_rp21", ///
     sheet("MILIEU") replace
 
 * Export avec noms de colonnes en ligne 6, données à partir de C6
@@ -219,7 +219,7 @@ putexcel A7 = matrix(A), rownames
 
 di"**********************TRAITEMENT DE LA ZONE REGION**************************"
 di"****************************************************************************"
-use "$out\bf_13112025.dta", clear
+use "$out\final_data.dta", clear
 
 label define region_lbll ///
 1 "Abidjan" ///
@@ -414,7 +414,7 @@ mat colnames A = ///
     "Population sévère"
 
 
-use "$out\bf_13112025.dta", clear
+use "$out\final_data.dta", clear
 label define region_lbll ///
 1 "Abidjan" ///
 2 "Haut-Sassandra" ///
@@ -482,7 +482,7 @@ mat rownames A = `names'
 ***********************************************************************
 putexcel clear
 putexcel set ///
-    "$out\IPM-CI_2021_vf_13112025", ///
+    "$output\ipm_rp21", ///
     sheet("REGION") modify
 
 * Export avec noms de colonnes en ligne 6, données à partir de C6
