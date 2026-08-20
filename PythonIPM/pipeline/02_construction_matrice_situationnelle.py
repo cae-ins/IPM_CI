@@ -11,6 +11,7 @@ porté par la constante INDICATEURS et détaillé dans METHODOLOGIE.md :
                             état civil, assurance maladie, électricité, énergie de cuisson,
                             emploi
     PNUD                  : logement, eau potable, toilettes, biens d'équipement
+    FAO (ODD 2.1.2)       : insécurité alimentaire (échelle FIES)
 
 Convention : 1 = privé. Un ménage non concerné (aucun enfant de 6-16 ans, aucun membre de
 17-40 ans...) n'est pas privé ; une situation manquante après application du seuil vaut 0.
@@ -36,6 +37,7 @@ JOURNAL = LOGS / "02_construction_matrice_situationnelle.log"
 
 NATIONALE = "proposition nationale"
 PNUD = "application PNUD"
+FAO = "échelle FIES (FAO, ODD 2.1.2)"
 
 Indicateur = namedtuple("Indicateur",
                         "dimension libelle source definition colonne situation eligibilite regle")
@@ -51,6 +53,7 @@ COMBUSTIBLE_PROPRE = ["gaz", "electricite"]
 ANNEES_ETUDES_MINIMUM = 10                          # niveau 3e (proposition nationale)
 MINUTES_ALLER_MAXIMUM = 15                          # 30 minutes aller-retour (PNUD)
 BIENS_MAXIMUM = 1                                   # « ne possède qu'un seul de ces biens » (PNUD)
+SCORE_FIES_MINIMUM = 4                              # insécurité modérée ou sévère (FAO)
 
 # Lecture de l'indicateur alphabétisation. L'énoncé national dit « UN membre de 17-49 ans ne
 # sait pas lire ou écrire » ; le RGPH 2021 codait « AUCUN membre alphabétisé ». L'écart est
@@ -91,6 +94,15 @@ INDICATEURS = [
                "Aucun membre du ménage n'est couvert par une assurance maladie",
                "assurance_maladie", ["membres_assures"], "taille_menage",
                lambda X: X.membres_assures == 0),
+    # Second indicateur de la dimension Santé. Il remplace la nutrition de l'IPM mondial, que
+    # l'EHCVM ne permet pas de mesurer (aucun module anthropométrique), et rétablit le pouvoir
+    # discriminant de la dimension : l'assurance maladie seule prive 93,4 % des ménages et
+    # portait à elle seule la moitié du score (voir documentation/note_dimension_sante.md).
+    Indicateur("Sante", "Insécurité alimentaire", FAO,
+               "Le ménage est en insécurité alimentaire modérée ou sévère "
+               "(score FIES >= 4 sur 8)",
+               "insecurite_alimentaire", ["score_fies"], None,
+               lambda X: X.score_fies >= SCORE_FIES_MINIMUM),
 
     Indicateur("Emploi", "Chômage", NATIONALE,
                "Un membre du ménage âgé de 17-40 ans est au chômage",
@@ -143,6 +155,7 @@ PARAMETRES_Z = {
     "alphabetisation": ("au moins un membre 17-49 ans non alphabétisé", 1),
     "etat_civil": ("au moins un enfant 5-15 ans sans acte", 1),
     "assurance_maladie": ("nombre de membres assurés", 1),
+    "insecurite_alimentaire": ("score FIES (0-8), nombre de « oui »", SCORE_FIES_MINIMUM),
     "chomage": ("au moins un chômeur BIT de 17-40 ans", 1),
     "electricite": ("codes d'éclairage adéquats", ECLAIRAGE_ADEQUAT),
     "logement": ("codes de matériaux précaires (sol/toit/mur)",
@@ -270,12 +283,16 @@ def verifier():
         "membres_17_40": [1, 1], "chomeurs_17_40": [1, 0],
         "enfants_5_15": [1, 1], "enfants_5_15_sans_acte": [1, 0],
         "membres_assures": [0, 1],
+        "score_fies": [8.0, 0.0],
         "ponderation_menage": [1.0, 1.0], "taille_menage": [4, 4],
     }, index=["A", "B"])
 
     X = calculer_indicateurs(P)
-    assert X.loc["A", COLONNES_INDICATEURS].tolist() == [1] * 12, X.loc["A"]
-    assert X.loc["B", COLONNES_INDICATEURS].tolist() == [0] * 12, X.loc["B"]
+    assert X.loc["A", COLONNES_INDICATEURS].tolist() == [1] * len(INDICATEURS), X.loc["A"]
+    assert X.loc["B", COLONNES_INDICATEURS].tolist() == [0] * len(INDICATEURS), X.loc["B"]
+    # un score FIES manquant ne rend pas privé : la convention est « non privé »
+    sans_fies = P.assign(score_fies=[float("nan")] * 2)
+    assert calculer_indicateurs(sans_fies).insecurite_alimentaire.tolist() == [0, 0]
     # le ménage sans toilettes (11.55 non posée) est bien privé malgré le manquant
     assert X.loc["A", "toilette"] == 1
     # eau améliorée mais à plus de 15 minutes aller = privé
