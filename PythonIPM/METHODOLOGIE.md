@@ -107,8 +107,17 @@ sévère : score ≥ 0,5.
   - `sanitaire_partage` (11.55) n'est pas posée aux ménages sans toilettes → 24,6 % de vides ;
     ces ménages sont déjà privés par le type de sanitaire, la règle les compte donc correctement ;
   - `temps_aller_source_seche` (11.28a) n'est posée que si la distance est > 0 → 49,5 % de vides,
-    qui valent **temps nul** (eau sur place). La question mesure le trajet **aller** : le seuil
-    PNUD de 30 minutes aller-retour correspond donc à plus de 15 minutes.
+    qui valent **temps nul** (eau sur place ; les 6 423 ménages concernés ont tous une distance
+    11.27 exactement nulle). La **norme PNUD est de 30 minutes aller-retour** ; la question mesure
+    le trajet **aller seul** (libellé : « Tps (min) aller [se] rendre [à la] principale source »),
+    donc le seuil appliqué à la colonne est de **15 minutes**. 6,9 % des ménages dépassent 15 min
+    à l'aller.
+
+  ⚠️ **Point ouvert — inclusivité du seuil eau.** La définition PNUD dit « 30 minutes **ou plus** »,
+  donc un aller-retour d'exactement 30 min (15 à l'aller) est privé et la règle devrait être
+  `>= 15`. Le code applique `> 15`. L'écart porte sur les **402 ménages** qui déclarent exactement
+  15 minutes (3,1 % de l'échantillon, 2,71 % de la population — effet d'arrondi aux multiples de
+  5) : la privation en eau passerait de 24,6 % à ≈ 27,7 % des ménages.
 - **Valeurs manquantes résiduelles** : une situation encore manquante après application du seuil
   vaut « non privé ». Ne concerne que 6 ménages (`annees_etudes_max`, ménages sans membre de
   17-95 ans), qui sont de toute façon hors champ de l'indicateur.
