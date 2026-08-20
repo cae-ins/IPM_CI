@@ -1,0 +1,308 @@
+\documentclass[11pt,a4paper]{article}
+\input{preambule}
+
+\title{\bfseries Dictionnaire des sorties\\[4pt]
+\large Le classeur \col{indices\_ipm.xlsx}, colonne par colonne}
+\author{Pipeline \col{PythonIPM} --- IPM Côte d'Ivoire, EHCVM 2021}
+\date{Août 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent Ce document décrit chaque feuille et chaque colonne du classeur de restitution produit
+par l'étape 05 du pipeline. Pour chaque colonne : sa définition, sa formule, son unité, et une
+phrase de lecture sur un cas réel. Il s'adresse autant à celui qui doit citer un chiffre dans un
+rapport qu'à celui qui doit le recalculer.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+\section{Les notations}
+
+Toutes les formules de ce document utilisent trois symboles.
+
+\begin{description}
+  \item[$n_i$ --- le poids en personnes du ménage $i$.] $n_i = \col{taille\_menage}_i \times
+  \col{ponderation\_menage}_i$. C'est le nombre de personnes réelles que le ménage enquêté
+  représente dans la population ivoirienne. Toutes les moyennes de ce classeur sont pondérées par
+  $n_i$ : elles décrivent la \textbf{population}, jamais l'échantillon.
+
+  \item[$c_i$ --- le score de privation du ménage $i$.] La somme pondérée de ses privations,
+  entre 0 (aucune privation) et 1 (privé sur les treize indicateurs).
+
+  \item[$k$ --- le seuil de pauvreté multidimensionnelle.] Fixé à $1/3$. Un ménage est pauvre si
+  $c_i \ge k$.
+\end{description}
+
+Le score censuré $c_i(k)$ vaut $c_i$ si le ménage est pauvre, et $0$ sinon.
+
+\section{Structure du classeur}
+
+Six feuilles. Les quatre feuilles de désagrégation et la feuille \textsf{Ensemble} ont exactement
+les mêmes colonnes ; seule la feuille \textsf{Contributions} a une structure propre.
+
+\begin{center}
+\begin{tabular}{@{}llr@{}}
+\toprule
+\textbf{Feuille} & \textbf{Une ligne =} & \textbf{Lignes} \\
+\midrule
+\textsf{Ensemble} & la Côte d'Ivoire entière & 1 \\
+\textsf{Contributions} & un indicateur & 13 \\
+\textsf{Milieu de résidence} & urbain ou rural & 2 \\
+\textsf{Région} & une des 33 régions & 33 \\
+\textsf{Sexe du chef de ménage} & masculin ou féminin & 2 \\
+\textsf{Taille du ménage} & une classe de taille & 5 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Les feuilles d'indices}
+
+\emph{(\textsf{Ensemble} et les quatre désagrégations.)}
+
+\subsection{Identification de la ligne}
+
+\begin{description}
+  \item[\col{variable}] Le découpage auquel appartient la ligne : \textsf{Ensemble},
+  \textsf{Milieu de résidence}, \textsf{Région}, \textsf{Sexe du chef de ménage} ou
+  \textsf{Taille du ménage}. Utile quand plusieurs feuilles sont empilées.
+
+  \item[\col{modalite}] Le groupe décrit, en clair : \textsf{Rural}, \textsf{Bounkani},
+  \textsf{Féminin}, \textsf{7-9}. Les libellés proviennent des étiquettes de valeur des fichiers
+  Stata d'origine, pas d'une saisie manuelle.
+
+  \item[\col{code}] Le code numérique de la modalité dans l'EHCVM (1 = Urbain, 23 = Bounkani\ldots),
+  conservé pour pouvoir rapprocher ces résultats d'autres sources. Vaut \textbf{0} pour les
+  découpages construits par le pipeline, comme les classes de taille de ménage, qui n'ont pas de
+  code d'enquête.
+\end{description}
+
+\subsection{Effectifs}
+
+\begin{description}
+  \item[\col{menages}] Le nombre de ménages \emph{enquêtés} dans le groupe. C'est un effectif
+  d'échantillon, \textbf{non pondéré}. Il ne sert pas à décrire la population : il sert à juger de
+  la robustesse du chiffre. Une région à 120 ménages donne un $H$ nettement moins précis qu'une
+  région à 900.
+
+  \item[\col{population}] Le nombre de personnes représentées : $\sum_i n_i$ sur le groupe. Cette
+  fois, c'est bien une grandeur de population. La feuille \textsf{Ensemble} affiche 29\,809\,416.
+
+  \item[\col{part\_population}] La part du groupe dans la population totale, entre 0 et 1. Somme à
+  1 sur chaque feuille de désagrégation --- un contrôle automatique le vérifie.
+\end{description}
+
+\section{Les cinq indices}
+
+Ce sont les colonnes que l'on cite. Chacune est une proportion comprise entre 0 et 1, à multiplier
+par 100 pour l'exprimer en pourcentage.
+
+\subsection*{\col{H\_incidence} --- l'incidence}
+
+\[
+H = \frac{\sum_i n_i \, \mathbf{1}(c_i \ge k)}{\sum_i n_i}
+\]
+
+\textbf{Ce que c'est.} La part de la population qui vit dans un ménage
+multidimensionnellement pauvre. C'est un simple dénombrement de \emph{têtes} : le ménage compte ou
+ne compte pas, l'ampleur de ses privations n'intervient pas.
+
+\textbf{Interprétation.} $H$ répond à la question « \emph{combien} de pauvres ? ». C'est le chiffre
+le plus intuitif, et donc celui qu'il faut manier avec le plus de prudence : un ménage à $c_i =
+0{,}34$ et un ménage à $c_i = 0{,}95$ y pèsent identiquement.
+
+\textbf{Lecture.} $H = 0{,}6584$ pour l'ensemble : \textbf{65,8~\% de la population ivoirienne},
+soit 19,6 millions de personnes, vit dans un ménage pauvre. En rural, $H = 0{,}857$.
+
+\subsection*{\col{A\_intensite} --- l'intensité}
+
+\[
+A = \frac{\sum_i n_i \, c_i(k)}{\sum_i n_i \, \mathbf{1}(c_i \ge k)}
+\]
+
+\textbf{Ce que c'est.} Le score de privation \emph{moyen des seuls pauvres}. Le numérateur ne
+somme que les scores censurés, donc uniquement ceux des pauvres ; le dénominateur ne compte que
+les pauvres. Les non-pauvres n'entrent ni en haut ni en bas.
+
+\textbf{Interprétation.} $A$ répond à « \emph{à quel point} sont-ils pauvres ? ». Comme un ménage
+pauvre a par définition $c_i \ge 1/3$, $A$ ne peut jamais descendre sous $0{,}333$ : c'est une
+moyenne sur une population déjà sélectionnée. Il faut donc lire $A$ par rapport à ce plancher, pas
+par rapport à zéro.
+
+\textbf{Lecture.} $A = 0{,}4742$ : les personnes pauvres cumulent en moyenne \textbf{47,4~\% des
+privations pondérées possibles}, contre un minimum concevable de 33,3~\%. La variation de $A$
+entre groupes est faible (de 0,432 à 0,519 selon les régions) : en Côte d'Ivoire, c'est surtout le
+\emph{nombre} de pauvres qui varie d'une région à l'autre, pas la gravité de leur situation.
+
+\subsection*{\col{M0\_ipm} --- l'indice de pauvreté multidimensionnelle}
+
+\[
+\ipm = H \times A = \frac{\sum_i n_i \, c_i(k)}{\sum_i n_i}
+\]
+
+\textbf{Ce que c'est.} Le produit de l'incidence et de l'intensité --- ou, de façon équivalente,
+la moyenne du score censuré sur \emph{toute} la population. Les deux écritures donnent le même
+nombre ; le pipeline calcule les deux et vérifie leur égalité à chaque exécution.
+
+\textbf{Interprétation.} \ipm{} est la « part des privations totales que subit effectivement la
+population pauvre ». Sa qualité première est de bouger quand $H$ ne bouge pas : si une politique
+améliore la situation de ménages qui restent pauvres, $H$ est inchangé mais $A$ baisse, donc \ipm{}
+baisse. C'est pour cela que c'est \emph{lui}, et non $H$, qui constitue l'indice.
+
+\textbf{Lecture.} $\ipm = 0{,}3122$. Un \ipm{} n'a pas d'unité parlante en soi : il se lit par
+comparaison. Entre 0,132 à Abidjan et 0,468 dans le Bounkani, le rapport est de un à trois et demi.
+
+\subsection*{\col{vulnerables} --- la population vulnérable}
+
+\[
+\text{vulnerables} = \frac{\sum_i n_i \, \mathbf{1}\!\left(0{,}2 \le c_i < 1/3\right)}{\sum_i n_i}
+\]
+
+\textbf{Ce que c'est.} La part de la population dont le score est \emph{en dessous} du seuil de
+pauvreté, mais pas de beaucoup. Ces ménages ne sont pas comptés dans $H$, ni dans $A$, ni dans
+\ipm{} : la censure les a remis à zéro.
+
+\textbf{Interprétation.} C'est une mesure de \emph{risque}, pas de pauvreté. Elle indique combien
+de personnes basculeraient dans la pauvreté multidimensionnelle si une seule privation
+supplémentaire survenait --- une école qui ferme, une source qui tarit. Un pays où $H$ baisse
+pendant que la vulnérabilité augmente n'a pas nécessairement progressé : il a peut-être seulement
+déplacé des ménages juste sous le seuil.
+
+\textbf{Lecture.} 19,1~\% pour l'ensemble. À noter, un effet mécanique intéressant : la
+vulnérabilité est plus forte là où la pauvreté est plus faible (26,3~\% en urbain contre 11,2~\%
+en rural), simplement parce qu'en rural la plupart des ménages ont déjà franchi le seuil.
+
+\subsection*{\col{pauvrete\_severe} --- la pauvreté sévère}
+
+\[
+\text{pauvrete\_severe} = \frac{\sum_i n_i \, \mathbf{1}(c_i \ge 0{,}5)}{\sum_i n_i}
+\]
+
+\textbf{Ce que c'est.} La part de la population dont le score atteint la moitié des privations
+pondérées possibles.
+
+\textbf{Interprétation.} Contrairement à la vulnérabilité, la pauvreté sévère est un
+\textbf{sous-ensemble} de $H$ : tout ménage sévèrement pauvre est pauvre. Le rapport
+$\text{pauvrete\_severe} / H$ indique la profondeur du problème : plus il est proche de 1, plus les
+pauvres sont concentrés dans le bas de la distribution.
+
+\textbf{Lecture.} 26,8~\% de la population, soit 41~\% des pauvres. En rural, 39,5~\% de la
+population est sévèrement pauvre contre 15,4~\% en urbain --- un écart de un à deux et demi, plus
+marqué que celui de $H$.
+
+\begin{retenir}[Comment se recoupent les cinq indices]
+Les trois statuts sont exclusifs deux à deux pour \col{vulnerables} et $H$ (on ne peut pas être à
+la fois vulnérable et pauvre), tandis que \col{pauvrete\_severe} est inclus dans $H$.
+Numériquement : 65,8~\% de pauvres, dont 26,8~\% de sévèrement pauvres ; plus 19,1~\% de
+vulnérables ; le reste, 15,1~\%, n'est ni pauvre ni vulnérable.
+\end{retenir}
+
+\subsection*{\col{contribution\_M0} --- la part du groupe dans l'IPM national}
+
+\[
+\text{contribution\_M0} = \frac{\ipm^{(g)} \times \text{part\_population}^{(g)}}{\ipm^{\text{national}}}
+\]
+
+\textbf{Ce que c'est.} La part de l'IPM national imputable au groupe $g$. Elle repose sur la
+\emph{décomposabilité} de \ipm{} : la somme des \ipm{} de groupe, pondérée par leur part de
+population, redonne exactement l'\ipm{} national. Les contributions somment donc à 1 sur chaque
+feuille --- vérifié automatiquement.
+
+\textbf{Interprétation.} À comparer systématiquement avec \col{part\_population}. Un groupe qui
+contribue plus que son poids démographique concentre la pauvreté ; l'inverse signale un groupe
+relativement épargné.
+
+\textbf{Lecture.} Le rural pèse 47,3~\% de la population et \textbf{63,3~\%} de l'IPM. Abidjan
+pèse 21,5~\% de la population et seulement \textbf{9,1~\%} de l'IPM. Sur la feuille
+\textsf{Ensemble}, la valeur est 1 par construction.
+
+\section{La feuille \textsf{Contributions}}
+
+Une ligne par indicateur, treize lignes. Elle répond à une question différente des précédentes :
+non plus « \emph{qui} est pauvre ? » mais « \emph{de quoi} la pauvreté est-elle faite ? ».
+
+\begin{description}
+  \item[\col{dimension}, \col{indicateur}, \col{colonne}] La dimension d'appartenance, le libellé
+  publiable, et le nom technique de la colonne dans les fichiers intermédiaires.
+
+  \item[\col{poids\_w}] Le poids $w_j$ de l'indicateur dans le score. Somme à 1 sur les treize
+  lignes. Il vaut 0,0625 en Éducation, 0,125 en Santé, 0,25 pour le chômage et 0,0417 en
+  conditions de vie.
+
+  \item[\col{taux\_privation\_censure}] Le taux de privation \textbf{censuré} $CH_j$ : la part de
+  la population qui est \emph{à la fois} pauvre \emph{et} privée sur cet indicateur.
+  \[
+  CH_j = \frac{\sum_i n_i \, g^0_{ij} \, \mathbf{1}(c_i \ge k)}{\sum_i n_i}
+  \]
+  À ne pas confondre avec le taux de privation brut du tableau des définitions : l'assurance
+  maladie prive 90,2~\% de la population au sens brut, mais son taux censuré est de 64,9~\% ---
+  la différence, ce sont les ménages non assurés qui ne sont pas pauvres par ailleurs.
+
+  \item[\col{apport\_a\_M0}] Le produit $w_j \times CH_j$, c'est-à-dire ce que l'indicateur ajoute
+  en points d'\ipm{}. La somme des treize apports vaut exactement \ipm{} $= 0{,}3122$.
+
+  \item[\col{contribution\_M0}] $C_j = w_j \, CH_j / \ipm$, la part de l'indicateur dans l'IPM.
+  Somme à 1. L'assurance maladie en explique 26,0~\% à elle seule ; l'électricité, 1,2~\%.
+
+  \item[\col{contribution\_dimension}] La somme des contributions des indicateurs de la même
+  dimension, répétée sur chaque ligne de cette dimension pour permettre un tri direct.
+\end{description}
+
+\begin{attention}[Poids nominal et poids réel]
+Les quatre dimensions sont équipondérées à 25~\%, mais leurs contributions réelles vont de 4,6~\%
+(Emploi) à 40,5~\% (Santé). Le poids $w_j$ fixe ce qu'un indicateur \emph{peut} apporter au
+maximum ; ce qu'il apporte réellement dépend de la fréquence de la privation. Un indicateur rare
+--- le chômage ne touche que 5,7~\% des pauvres --- ne peut pas porter une dimension entière,
+quel que soit son poids.
+\end{attention}
+
+\section{Les autres sorties}
+
+Le classeur est la restitution ; le pipeline produit aussi les tables de travail, dans
+\col{sorties/dta/} (format Stata, types conservés) et \col{sorties/csv/} (texte).
+
+\begin{center}
+\small
+\begin{tabular}{@{}l>{\RaggedRight}p{8.4cm}r@{}}
+\toprule
+\textbf{Table} & \textbf{Contenu} & \textbf{Dimensions} \\
+\midrule
+\col{preconstruction\_...} & situations brutes : effectifs concernés et défavorables, codes de
+modalité, aucune valeur seuillée & 12\,965 $\times$ 29 \\
+\col{vecteur\_z} & les treize seuils, avec leur source et leur énoncé & 13 $\times$ 7 \\
+\col{matrice\_situationnelle\_...} & la matrice de privation $g^0$ : treize colonnes 0/1 &
+12\,965 $\times$ 19 \\
+\col{vecteur\_w} & les treize poids et leur dimension & 13 $\times$ 6 \\
+\col{matrice\_privations\_ponderees} & $w_j\,g^0_{ij}$ et le score $c_i$, sans censure &
+12\,965 $\times$ 20 \\
+\col{matrice\_privations\_censuree} & $w_j\,g^0_{ij}\mathbf{1}(c_i \ge k)$, le score $c_i(k)$ et
+les statuts & 12\,965 $\times$ 24 \\
+\col{indices\_ipm}, \col{contributions\_ipm} & les mêmes données que le classeur & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Dans les deux matrices de ménages, chaque ligne est identifiée par la clé \col{grappe} +
+\col{menage} + \col{vague}, et porte les colonnes de pondération et de désagrégation. Les suffixes
+sont systématiques : \col{\_ponderee} pour la matrice pondérée non censurée,
+\col{\_censuree} pour la matrice pondérée censurée.
+
+\begin{retenir}[Trois vérifications que l'on peut refaire soi-même]
+\begin{enumerate}
+  \item La somme d'une ligne de \col{matrice\_privations\_ponderees} redonne \col{score}.
+  \item La somme d'une ligne de \col{matrice\_privations\_censuree} redonne \col{score\_censure}.
+  \item La moyenne pondérée population de \col{score\_censure} redonne \ipm{} $= 0{,}3122$.
+\end{enumerate}
+Ces trois égalités sont contrôlées automatiquement, mais elles restent le moyen le plus rapide de
+s'assurer qu'un fichier n'a pas été altéré.
+\end{retenir}
+
+\vfill
+\noindent\rule{\linewidth}{0.4pt}\\[2pt]
+\small
+Documents associés : \emph{Méthodologie de calcul} (la construction complète) et \emph{Note sur la
+dimension Santé} (le choix de l'insécurité alimentaire).
+
+\end{document}

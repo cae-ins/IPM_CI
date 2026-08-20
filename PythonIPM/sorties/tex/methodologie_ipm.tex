@@ -1,0 +1,470 @@
+\documentclass[11pt,a4paper]{article}
+\input{preambule}
+
+\title{\bfseries L'indice de pauvreté multidimensionnelle de la Côte d'Ivoire\\[4pt]
+\large Méthodologie de calcul sur l'EHCVM 2021}
+\author{Pipeline \col{PythonIPM}}
+\date{Août 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent Ce document décrit, de bout en bout, la construction de l'indice de pauvreté
+multidimensionnelle (IPM) de la Côte d'Ivoire à partir de l'Enquête harmonisée sur les conditions
+de vie des ménages (EHCVM) 2021. Il est écrit pour être lu à deux niveaux : le fil du texte
+n'exige aucune connaissance préalable, tandis que les formules et les tableaux donnent au lecteur
+averti tout ce qu'il faut pour reproduire ou contester le calcul. Chaque choix de définition, chaque
+écart à la norme internationale et chaque convention de traitement y sont explicités.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+\section{Ce que mesure un IPM}
+
+La pauvreté monétaire se mesure avec une seule question : combien un ménage dépense-t-il par
+rapport à un seuil ? C'est simple, mais incomplet. Un ménage peut dépasser le seuil monétaire et
+n'avoir ni eau potable, ni électricité, ni enfant scolarisé. Inversement, un ménage modeste peut
+bénéficier d'une école et d'un dispensaire proches.
+
+L'indice de pauvreté multidimensionnelle répond à cette limite en observant simultanément
+plusieurs conditions de vie --- l'éducation, la santé, l'emploi, le logement --- et en comptant
+comme pauvre le ménage qui cumule suffisamment de privations.
+
+\begin{retenir}[En une phrase]
+L'IPM compte les gens qui cumulent des manques, et mesure à quel point ils en cumulent.
+\end{retenir}
+
+La méthode employée est celle d'Alkire et Foster, adoptée par le PNUD et l'OPHI, et reprise dans
+le guide « L'indice de pauvreté multidimensionnelle au service des ODD » (chapitre 4). Elle repose
+sur une idée simple, dite du \emph{double seuil} :
+
+\begin{enumerate}
+  \item un premier seuil, propre à chaque indicateur, dit si le ménage est privé sur ce point
+        précis (par exemple : moins de dix années d'études pour le membre le plus instruit) ;
+  \item un second seuil, appliqué au total pondéré des privations, dit si le ménage est
+        \emph{multidimensionnellement pauvre}.
+\end{enumerate}
+
+Le second seuil est ce qui distingue l'IPM d'un simple tableau de bord d'indicateurs : il produit
+un chiffre unique, décomposable, dont on peut suivre l'évolution et attribuer les variations à
+telle région ou tel indicateur.
+
+\section{Les données}
+
+L'EHCVM 2021 de la Côte d'Ivoire couvre \textbf{12\,965 ménages}, soit
+\textbf{29\,809\,416 personnes} une fois les pondérations appliquées. Elle a été collectée en deux
+vagues, la première fin 2021, la seconde début 2022. Quatre bases sur les vingt-et-une du dossier
+d'enquête portent des indicateurs utiles à l'IPM.
+
+\begin{center}
+\begin{tabular}{@{}llr>{\RaggedRight}p{6.2cm}@{}}
+\toprule
+\textbf{Base} & \textbf{Une ligne =} & \textbf{Lignes} & \textbf{Ce qu'on y prend} \\
+\midrule
+\col{Base\_Individus} & un membre du ménage & 64\,491 & éducation, emploi, état civil, santé \\
+\col{Base\_Menage} & un ménage & 12\,965 & conditions de vie, pondération, désagrégation \\
+\col{Base\_avoirs\_du\_menage} & un bien proposé & 583\,425 & biens d'équipement \\
+\col{Base\_securite\_alimentaire} & un ménage & 13\,693 & insécurité alimentaire (FIES) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Les quatre bases se raccordent par la clé \col{grappe} + \col{menage} + \col{vague} et couvrent
+exactement les mêmes ménages : la fusion se fait sans perte. La \col{grappe} est la zone de
+dénombrement tirée au premier degré du sondage (un quartier, un village) ; \col{menage} est le
+numéro d'ordre du ménage dans sa grappe ; \col{vague} distingue les deux passages.
+
+\subsection{La pondération, et pourquoi elle est indispensable}
+
+L'échantillon est volontairement déséquilibré : on interroge proportionnellement plus de ménages
+dans les régions peu peuplées, afin d'y disposer d'assez d'observations. La variable
+\col{ponderation\_menage} (\col{hhweight} dans le fichier d'origine) corrige ce déséquilibre : elle
+indique combien de ménages réels chaque ménage enquêté représente.
+
+L'ordre de grandeur de la correction n'a rien d'anecdotique : le milieu urbain représente
+\textbf{40,4~\%} des lignes du fichier mais \textbf{52,7~\%} de la population une fois pondéré.
+Sans pondération, tous les indices seraient biaisés vers le rural, donc l'IPM surestimé.
+
+\begin{retenir}[Deux « pondérations » à ne pas confondre]
+\begin{itemize}
+  \item la \textbf{pondération d'enquête} (\col{ponderation\_menage}) sert à passer de
+        l'échantillon à la population ivoirienne ;
+  \item les \textbf{poids $w_j$} de la méthode Alkire-Foster disent l'importance relative de
+        chaque indicateur dans le score d'un ménage.
+\end{itemize}
+Elles portent le même nom courant et n'ont rien à voir.
+\end{retenir}
+
+\subsection{Unité de construction et unité de comptage}
+
+Le score de privation se calcule \textbf{une fois par ménage} : c'est le ménage qui a un toit, une
+source d'eau, des toilettes. Mais l'indice se lit \textbf{en personnes} : un ménage de huit
+personnes qui cumule les privations pèse davantage qu'un ménage d'une personne.
+
+Chaque ménage $i$ compte donc pour
+\[
+n_i \;=\; \col{taille\_menage}_i \times \col{ponderation\_menage}_i .
+\]
+
+\section{Les treize indicateurs}
+
+Quatre dimensions, équipondérées à 0,25 chacune. Le poids d'une dimension se partage à parts
+égales entre ses indicateurs : un indicateur seul dans sa dimension porte 0,25 à lui seul, quatre
+indicateurs se partagent 0,0625 chacun.
+
+\begin{center}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Dimension} & \textbf{Indicateurs} & \textbf{Poids $w_j$} & \textbf{Total} \\
+\midrule
+Éducation & 4 & 0,0625 & 0,25 \\
+Santé & 2 & 0,1250 & 0,25 \\
+Emploi & 1 & 0,2500 & 0,25 \\
+Conditions de vie & 6 & 0,0417 & 0,25 \\
+\midrule
+\textbf{Ensemble} & \textbf{13} & & \textbf{1,00} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Chaque indicateur suit \emph{soit} la proposition nationale, \emph{soit} l'application du PNUD.
+Ce choix a été arrêté indicateur par indicateur ; il figure dans le code et dans le fichier
+\col{vecteur\_z.csv} produit à chaque exécution.
+
+\begin{center}
+\small
+\begin{longtable}{@{}>{\RaggedRight}p{2.1cm}>{\RaggedRight}p{2.5cm}l>{\RaggedRight}p{5.4cm}r@{}}
+\toprule
+\textbf{Dimension} & \textbf{Indicateur} & \textbf{Source} & \textbf{Un ménage est privé si\ldots} &
+\textbf{Privés} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Dimension} & \textbf{Indicateur} & \textbf{Source} & \textbf{Un ménage est privé si\ldots} &
+\textbf{Privés} \\
+\midrule
+\endhead
+Éducation & Fréquentation scolaire & nationale & un enfant de 6--16 ans n'est pas scolarisé
+& 27,9~\% \\
+Éducation & Année de scolarité & nationale & aucun membre de 17--95 ans n'a atteint 10 années
+d'études & 72,5~\% \\
+Éducation & Alphabétisation & nationale & un membre de 17--49 ans ne sait ni lire ni écrire le
+français & 61,7~\% \\
+Éducation & État civil & nationale & un enfant de 5--15 ans n'a pas d'acte de naissance
+& 23,5~\% \\
+\midrule
+Santé & Assurance maladie & nationale & aucun membre n'est couvert par une assurance maladie
+& 93,4~\% \\
+Santé & Insécurité alimentaire & FAO & le score FIES atteint 4 sur 8 (insécurité modérée ou
+sévère) & 42,7~\% \\
+\midrule
+Emploi & Chômage & nationale & un membre de 17--40 ans est au chômage au sens du BIT & 3,7~\% \\
+\midrule
+Cadre de vie & Électricité & nationale & l'éclairage n'est ni le réseau, ni un groupe
+électrogène, ni le solaire & 13,3~\% \\
+Cadre de vie & Logement & PNUD & le sol, le toit ou les murs sont en matériaux naturels ou
+rudimentaires & 22,3~\% \\
+Cadre de vie & Eau potable & PNUD & la source n'est pas améliorée, ou est à plus de 15 minutes
+à l'aller & 24,6~\% \\
+Cadre de vie & Énergie de cuisson & nationale & le combustible principal n'est ni le gaz ni
+l'électricité & 76,8~\% \\
+Cadre de vie & Toilettes & PNUD & les sanitaires ne sont pas améliorés, ou sont partagés
+& 77,3~\% \\
+Cadre de vie & Biens d'équipement & PNUD & le ménage possède au plus un bien sur sept et pas de
+voiture & 29,2~\% \\
+\bottomrule
+\end{longtable}
+\end{center}
+
+\begin{retenir}[« Non concerné » n'est pas « privé »]
+Un ménage sans enfant de 6 à 16 ans n'est pas privé de fréquentation scolaire : la question ne le
+concerne pas. C'est la convention retenue, appliquée uniformément. Le pipeline conserve, à côté de
+chaque effectif privé, l'effectif \emph{concerné}, de sorte que cette convention peut être
+renversée sans revenir aux données individuelles.
+\end{retenir}
+
+\section{Le calcul, étape par étape}
+
+\subsection{La matrice situationnelle et le vecteur de seuils}
+
+On part d'un tableau $X$ à 12\,965 lignes (les ménages) et 13 colonnes (les indicateurs), qui
+décrit la \emph{situation} de chaque ménage : combien d'enfants non scolarisés, quel type de
+sanitaires, combien d'années d'études pour le plus instruit.
+
+Le vecteur $z = (z_1, \dots, z_{13})$ donne le seuil de chaque indicateur. Il ne prend pas
+toujours la forme d'un nombre : selon l'indicateur, le seuil est une valeur numérique (10 années
+d'études), un effectif (« au moins une personne »), ou un ensemble de modalités jugées adéquates
+(les codes des sources d'eau améliorées au sens des ODD). Ces trois formes coexistent dans
+\col{vecteur\_z.csv}.
+
+\subsection{La matrice de privation $g^0$}
+
+Appliquer $z$ à $X$ donne une matrice de $0$ et de $1$ :
+\[
+g^0_{ij} =
+\begin{cases}
+1 & \text{si le ménage } i \text{ est privé sur l'indicateur } j,\\
+0 & \text{sinon.}
+\end{cases}
+\]
+
+\subsection{La pondération et le score $c_i$}
+
+Chaque colonne est multipliée par son poids, puis la ligne est sommée :
+\[
+c_i \;=\; \sum_{j=1}^{13} w_j \, g^0_{ij}, \qquad 0 \le c_i \le 1 .
+\]
+
+Le score $c_i$ est la \emph{part pondérée de privations} du ménage $i$. Un ménage privé partout a
+$c_i = 1$ ; un ménage sans aucune privation a $c_i = 0$. Sur l'EHCVM 2021, le score moyen est de
+\textbf{0,3968} et le maximum observé de 0,9583 : aucun ménage n'est privé sur les treize
+indicateurs à la fois.
+
+\subsection{La censure au seuil \texorpdfstring{$k$}{k}}
+
+Un ménage est déclaré multidimensionnellement pauvre si son score atteint $k = 1/3$, c'est-à-dire
+s'il cumule l'équivalent d'une dimension et un tiers de privations. On définit alors le
+\emph{score censuré} :
+\[
+c_i(k) =
+\begin{cases}
+c_i & \text{si } c_i \ge k,\\
+0 & \text{sinon.}
+\end{cases}
+\]
+
+La censure est le cœur de la méthode. Les privations des ménages \emph{non} pauvres ne
+disparaissent pas des données --- elles restent lisibles dans la matrice pondérée --- mais elles
+ne comptent pas dans l'indice. Sur l'EHCVM 2021, la censure efface \textbf{14,8~\%} des privations
+pondérées, celles de 3\,386 ménages.
+
+\begin{retenir}[Pourquoi censurer ?]
+Sans censure, une amélioration chez un ménage déjà très peu privé ferait baisser l'indice autant
+qu'une amélioration chez un ménage très pauvre. La censure garantit que l'IPM ne parle que des
+pauvres, et donc qu'une politique qui les cible fait bouger l'indice.
+\end{retenir}
+
+Deux seuils complémentaires sont publiés à côté : la \textbf{vulnérabilité}
+($0{,}2 \le c_i < 1/3$) et la \textbf{pauvreté sévère} ($c_i \ge 0{,}5$).
+
+\subsection{Les trois indices}
+
+\begin{align}
+H  &= \frac{\sum_i n_i \, \mathbf{1}(c_i \ge k)}{\sum_i n_i}
+   && \text{\emph{incidence} : la part de la population pauvre} \\[4pt]
+A  &= \frac{\sum_i n_i \, c_i(k)}{\sum_i n_i \, \mathbf{1}(c_i \ge k)}
+   && \text{\emph{intensité} : les privations moyennes des pauvres} \\[4pt]
+\ipm &= H \times A \;=\; \frac{\sum_i n_i \, c_i(k)}{\sum_i n_i}
+   && \text{l'IPM}
+\end{align}
+
+$H$ répond à « combien de pauvres ? », $A$ à « à quel point sont-ils pauvres ? », et \ipm{} combine
+les deux. Un pays peut faire baisser $H$ en sortant de la pauvreté les ménages qui en étaient les
+plus proches, sans rien changer pour les plus démunis : \ipm{} le détecte, $H$ seul non.
+
+\subsection{Les contributions}
+
+L'IPM est \emph{décomposable} par indicateur. La contribution de l'indicateur $j$ est
+\[
+C_j = \frac{w_j \, CH_j}{\ipm}, \qquad \sum_j C_j = 1,
+\]
+où $CH_j$ est le \emph{taux de privation censuré} : la proportion de la population qui est à la
+fois pauvre et privée sur l'indicateur $j$. Il est également décomposable par sous-population :
+la somme des \ipm{} de groupe, pondérée par leur part de population, redonne exactement l'\ipm{}
+national. Cette propriété est vérifiée automatiquement à chaque exécution du pipeline.
+
+\section{Résultats}
+
+\begin{center}
+\begin{tabular}{@{}lrl@{}}
+\toprule
+\textbf{Indice} & \textbf{Valeur} & \textbf{Lecture} \\
+\midrule
+$H$ --- incidence & 0,6584 & 65,8~\% de la population est pauvre, soit 19,6 millions de personnes \\
+$A$ --- intensité & 0,4742 & les pauvres cumulent en moyenne 47,4~\% des privations pondérées \\
+\ipm{} & 0,3122 & $= H \times A$ \\
+Vulnérables & 19,1~\% & score entre 0,2 et 1/3 \\
+Pauvreté sévère & 26,8~\% & score d'au moins 0,5 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Où se concentre la pauvreté}
+
+\begin{center}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+& \textbf{Part de la population} & \textbf{$H$} & \textbf{$A$} & \textbf{\ipm{}} \\
+\midrule
+Urbain & 52,7~\% & 48,0~\% & 0,4531 & 0,2175 \\
+Rural  & 47,3~\% & 85,7~\% & 0,4874 & 0,4178 \\
+\midrule
+Chef de ménage homme & 83,6~\% & 67,0~\% & 0,4751 & 0,3183 \\
+Chef de ménage femme & 16,4~\% & 59,9~\% & 0,4693 & 0,2810 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Le rural concentre \textbf{63,3~\%} de la pauvreté multidimensionnelle avec 47,3~\% de la
+population ; son \ipm{} est presque le double de l'urbain. Entre régions, l'écart va de 0,132
+(Abidjan) à 0,468 (Bounkani). Quatre régions --- Béré, Folon, Worodougou, Bounkani --- dépassent
+90~\% d'incidence.
+
+Le résultat apparemment contre-intuitif --- les ménages dirigés par une femme sont \emph{moins}
+pauvres --- est classique en IPM : ces ménages sont en moyenne plus petits et plus urbains. Il ne
+dit rien du niveau de vie individuel des femmes, que l'IPM ménage ne mesure pas.
+
+\subsection{Ce que pèse réellement chaque dimension}
+
+\begin{center}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Dimension} & \textbf{Poids nominal} & \textbf{Contribution réelle à \ipm{}} \\
+\midrule
+Santé & 25,0~\% & 40,5~\% \\
+Éducation & 25,0~\% & 31,8~\% \\
+Conditions de vie & 25,0~\% & 23,1~\% \\
+Emploi & 25,0~\% & 4,6~\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{attention}[Un résultat qui mérite l'attention du lecteur]
+Les quatre dimensions sont équipondérées \emph{en droit}, mais elles pèsent en fait de 4,6~\% à
+40,5~\% --- un facteur neuf. Le poids $w_j$ fixe le maximum qu'une dimension \emph{peut}
+apporter ; ce qu'elle apporte \emph{vraiment} dépend de la fréquence de la privation. Le chômage
+détient le poids individuel le plus élevé du système (0,25, seul dans sa dimension) et la
+contribution la plus faible, parce qu'il ne touche que 5,7~\% des pauvres. Une dimension à un seul
+indicateur est toujours à la merci de la fréquence de cet indicateur : trop fréquent, il domine ;
+trop rare, il disparaît. Les deux dimensions à indicateur unique sont précisément celles qui
+s'écartent le plus de leur poids nominal.
+\end{attention}
+
+\section{Écarts assumés et limites}
+
+L'EHCVM n'a pas été conçue pour calculer un IPM. Plusieurs indicateurs de la norme internationale
+ont dû être adaptés. Ces écarts sont documentés ici plutôt que dissimulés : ils conditionnent
+l'interprétation des résultats et la comparabilité internationale.
+
+\begin{description}
+  \item[Mortalité juvénile --- indicateur abandonné.] L'enquête n'a ni module décès ni historique
+  des naissances. La base des chocs enregistre bien un décès dans le ménage (1\,328 ménages sur
+  trois ans) mais sans l'âge du défunt : impossible d'isoler les moins de 18 ans. La dimension
+  Santé repose donc sur l'assurance maladie et l'insécurité alimentaire. Ce dernier indicateur
+  remplace la nutrition de l'IPM mondial, que l'EHCVM ne permet pas non plus de mesurer faute de
+  module anthropométrique. Cette substitution fait l'objet d'un document séparé.
+
+  \item[Années d'études --- reconstruites.] L'EHCVM ne demande pas le nombre d'années d'études.
+  Il est reconstitué comme « années accomplies avant le niveau + classe atteinte », en trois
+  branches : niveau achevé, niveau en cours (moins l'année non terminée), et zéro pour ceux qui
+  n'ont jamais fréquenté l'école. Restent 8,5~\% d'individus indéterminés, qui ne concernent que
+  six ménages une fois l'agrégation faite par le maximum.
+
+  \item[Charrette --- absente.] Les 45 biens de la section 12 de l'EHCVM ne comprennent ni
+  charrette ni camion. Le décompte des biens d'équipement porte donc sur \emph{sept} biens au lieu
+  de huit, ce qui rend le ménage marginalement moins souvent privé.
+
+  \item[Chômage --- reconstitué.] Aucune variable de statut d'activité au sens du BIT n'existe
+  telle quelle. Les trois critères sont recomposés à partir de six questions : sans emploi, en
+  recherche, et disponible.
+
+  \item[Fréquentation scolaire --- deux années scolaires.] La question portant sur 2021/22 n'est
+  posée qu'en seconde vague. Un enfant est réputé scolarisé s'il l'était sur l'année la plus
+  récente disponible pour sa vague.
+
+  \item[Électricité --- source d'éclairage, pas raccordement.] La variable « connecté au réseau »
+  ignore le groupe électrogène et le solaire : elle classerait 2\,597 ménages de plus comme privés
+  (33,3~\% contre 13,3~\%). L'indicateur repose sur la source d'éclairage effective.
+\end{description}
+
+\begin{attention}[Deux points restés ouverts]
+\textbf{Alphabétisation.} L'énoncé national dit qu'un ménage est privé si \emph{un} membre de
+17--49 ans ne sait ni lire ni écrire (61,7~\% des ménages). Le recensement de 2021 codait
+l'inverse : privé si \emph{aucun} membre n'est alphabétisé (35,0~\%). Le code suit l'énoncé
+littéral ; la bascule tient à une constante.
+
+\medskip
+\textbf{Seuil de l'eau.} La norme du PNUD dit « 30 minutes ou plus » aller-retour, ce qui
+correspond à 15 minutes ou plus à l'aller, la question de l'EHCVM mesurant le trajet aller seul.
+Le code applique un seuil strict (\emph{plus de} 15 minutes). L'écart porte sur 402 ménages qui
+déclarent exactement 15 minutes --- un effet d'arrondi aux multiples de cinq --- et ferait passer
+la privation en eau de 24,6~\% à environ 27,7~\%.
+\end{attention}
+
+\subsection{Comparabilité internationale}
+
+Ces adaptations, et surtout le choix des dimensions, interdisent une comparaison directe avec
+l'IPM mondial publié par l'OPHI, qui repose sur trois dimensions et dix indicateurs. Les
+grandeurs restent du même ordre, mais un écart de niveau doit s'interpréter comme une différence
+de construction avant d'être lu comme une différence de réalité.
+
+\section{Le traitement des valeurs manquantes}
+
+Le pipeline distingue deux moments, et c'est délibéré.
+
+\textbf{En amont}, la table de préconstruction conserve les valeurs manquantes telles qu'elles
+sont dans l'enquête. Quatre colonnes en portent : le temps de trajet vers la source d'eau
+(6\,423), le partage des sanitaires (3\,194), le score FIES (195) et les années d'études (18).
+
+\textbf{Au moment d'appliquer le seuil}, une situation restée indéterminée devient « non privé ».
+La matrice de privation ne contient donc aucune valeur manquante, ce que deux contrôles
+automatiques vérifient à chaque exécution.
+
+Sur les 9\,830 valeurs manquantes, \textbf{9\,617 sont des filtres du questionnaire} où « non
+privé » se déduit du filtre lui-même : si l'on n'a pas demandé le temps de trajet, c'est que l'eau
+est sur place. Seules \textbf{195} --- les scores FIES incomplets pour cause de non-réponse ---
+relèvent d'un véritable choix : celui de ne pas pénaliser un refus de répondre.
+
+\begin{retenir}[Le garde-fou]
+Pour chaque indicateur mesuré sur les personnes, la préconstruction conserve deux colonnes :
+l'effectif \emph{concerné} et l'effectif \emph{défavorable}. Un zéro dans la seconde ne dit pas
+s'il signifie « personne n'est privé » ou « personne n'est concerné » ; la première le dit. Toute
+convention peut ainsi être révisée sans repartir des données individuelles.
+\end{retenir}
+
+\section{Le pipeline}
+
+Le calcul est découpé en cinq étapes indépendantes, chacune lisant la sortie de la précédente.
+Chacune écrit un journal détaillé et dispose d'un auto-contrôle (\col{-{}-check}) qui rejoue sa
+logique sur un jeu de données construit à la main, aux résultats connus d'avance.
+
+\begin{center}
+\small
+\begin{tabular}{@{}l>{\RaggedRight}p{5.1cm}>{\RaggedRight}p{5.4cm}@{}}
+\toprule
+\textbf{Étape} & \textbf{Ce qu'elle fait} & \textbf{Ce qu'elle produit} \\
+\midrule
+01 & lit les quatre bases, calcule âge, scolarité, chômage, agrège au ménage &
+\col{preconstruction\_...} (12\,965 $\times$ 29) \\
+02 & applique le vecteur $z$ &
+\col{vecteur\_z}, \col{matrice\_situationnelle\_...} (13 indicateurs 0/1) \\
+03 & construit $w$, pondère, calcule $c_i$ &
+\col{vecteur\_w}, \col{matrice\_privations\_ponderees} \\
+04 & censure à $k$, calcule $c_i(k)$ &
+\col{matrice\_privations\_censuree} \\
+05 & calcule $H$, $A$, \ipm{}, contributions, désagrégations &
+\col{indices\_ipm}, \col{contributions\_ipm}, le classeur \col{.xlsx} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{verbatim}
+python pipeline/orchestrateur.py            # les cinq étapes, environ 4 secondes
+python pipeline/orchestrateur.py --check    # les auto-contrôles seuls
+\end{verbatim}
+
+Une étape en échec interrompt la chaîne : mieux vaut aucune sortie qu'une sortie partielle. Toutes
+les tables sont écrites simultanément au format Stata (\col{sorties/dta/}) et texte
+(\col{sorties/csv/}) ; le classeur de restitution est dans \col{sorties/xlsx/}. Le contenu de ce
+classeur, colonne par colonne, fait l'objet d'un document séparé.
+
+\vfill
+\noindent\rule{\linewidth}{0.4pt}\\[2pt]
+\small
+Documents associés : \emph{Dictionnaire des sorties} (chaque colonne du classeur) et
+\emph{Note sur la dimension Santé} (le choix de l'insécurité alimentaire). Sources du pipeline
+dans \col{PythonIPM/pipeline/}.
+
+\end{document}

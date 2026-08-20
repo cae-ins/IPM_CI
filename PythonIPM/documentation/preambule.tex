@@ -1,0 +1,50 @@
+% Préambule commun aux documents de PythonIPM/documentation.
+% Compilation : tectonic <fichier>.tex
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[a4paper,margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{ragged2e}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{encadre}{HTML}{F4F6F8}
+\definecolor{bordure}{HTML}{4A6FA5}
+\definecolor{alerte}{HTML}{B03A2E}
+
+% Encadré « à retenir » : la lecture non technique du passage qui précède
+\newtcolorbox{retenir}[1][]{
+  colback=encadre, colframe=bordure, boxrule=0.6pt, arc=2pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+  fonttitle=\bfseries, title={#1}
+}
+
+% Encadré d'avertissement : un point ouvert, un écart assumé
+\newtcolorbox{attention}[1][]{
+  colback=white, colframe=alerte, boxrule=0.6pt, arc=2pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+  fonttitle=\bfseries, coltitle=alerte, title={#1}
+}
+
+\newcommand{\col}[1]{\texttt{#1}}
+\newcommand{\ipm}{M\textsubscript{0}}
+
+\setlist[itemize]{itemsep=2pt, topsep=4pt}
+\setlist[description]{style=nextline, leftmargin=1.2cm, itemsep=5pt}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\itshape IPM Côte d'Ivoire --- EHCVM 2021}
+\fancyhead[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+
+\renewcommand{\arraystretch}{1.15}
