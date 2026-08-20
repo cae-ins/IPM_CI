@@ -144,3 +144,47 @@ BASES = {
     "Base_avoirs_du_menage.dta": AVOIRS,
     "Base_securite_alimentaire.dta": SECURITE_ALIMENTAIRE,
 }
+
+# Étiquettes des modalités, reprises des value labels des .dta (EHCVM 2021).
+# Servent aux désagrégations : la matrice porte les codes, les tableaux publiés
+# portent les libellés.
+MILIEU = {1: "Urbain", 2: "Rural"}
+SEXE = {1: "Masculin", 2: "Féminin"}
+REGION = {
+    1: "Autonome D'Abidjan",
+    2: "Haut-Sassandra",
+    3: "Poro",
+    4: "Gbeke",
+    5: "Indenie-Djuablin",
+    6: "Tonkpi",
+    7: "Yamoussoukro",
+    8: "Gontougo",
+    9: "San-Pedro",
+    10: "Kabadougou",
+    11: "N'Zi",
+    12: "Marahoue",
+    13: "Sud-Comoe",
+    14: "Worodougou",
+    15: "Lôh-Djiboua",
+    16: "Agneby-Tiassa",
+    17: "Gôh",
+    18: "Cavally",
+    19: "Bafing",
+    20: "Bagoue",
+    21: "Belier",
+    22: "Bere",
+    23: "Bounkani",
+    24: "Folon",
+    25: "Gbôkle",
+    26: "Grands-Ponts",
+    27: "Guemon",
+    28: "Hambol",
+    29: "Iffou",
+    30: "La Me",
+    31: "Nawa",
+    32: "Tchologo",
+    33: "Moronou",
+}
+
+# désagrégation -> table de correspondance
+MODALITES = {"milieu": MILIEU, "region": REGION, "sexe_cm": SEXE}

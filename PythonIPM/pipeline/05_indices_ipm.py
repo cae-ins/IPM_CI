@@ -31,6 +31,7 @@ import time
 
 import pandas as pd
 
+import dictionnaire_ehcvm as dico
 from orchestrateur import (CLE, LOGS, SORTIES_CSV, SORTIES_DTA, SORTIES_XLSX,
                            configurer_logs, exporter_table, part)
 
@@ -52,7 +53,8 @@ DESAGREGATIONS = {
 BORNES_TAILLE = [0, 2, 4, 6, 9, 100]
 LIBELLES_TAILLE = ["1-2 personnes", "3-4", "5-6", "7-9", "10 et plus"]
 
-COLONNES_PUBLIEES = ["variable", "modalite", "menages", "population", "part_population",
+COLONNES_PUBLIEES = ["variable", "modalite", "code", "menages", "population",
+                     "part_population",
                      "H_incidence", "A_intensite", "M0_ipm", "contribution_M0",
                      "vulnerables", "pauvrete_severe"]
 
@@ -130,7 +132,14 @@ def desagregations(X, M0_national, population_totale):
         table.insert(0, "variable", libelle)
         table.index.name = "modalite"
         table = table.reset_index()
-        table["modalite"] = table.modalite.astype(str)
+        # les tableaux publiés portent les libellés, pas les codes de l'enquête
+        etiquettes = dico.MODALITES.get(colonne)
+        table["code"] = table.modalite
+        table["modalite"] = (table.modalite.map(etiquettes) if etiquettes
+                             else table.modalite).astype(str)
+        if etiquettes:
+            inconnues = table.modalite.isna().sum()
+            assert not inconnues, f"{inconnues} modalités sans libellé pour {colonne}"
         morceaux.append(table)
 
         logger.info("%s :", libelle)
@@ -203,9 +212,11 @@ def contributions(X, M0):
 def assembler(national, D):
     """Une seule table : la ligne Ensemble puis les désagrégations, colonnes ordonnées."""
     logger.info("--- 5. assemblage de la table publiée ---")
-    national = national.assign(part_population=1.0, contribution_M0=1.0)
+    national = national.assign(code=0, part_population=1.0, contribution_M0=1.0)
     table = pd.concat([national, D], ignore_index=True)[COLONNES_PUBLIEES]
 
+    # `code` reste vide (0) pour les découpages construits, comme la classe de taille
+    table.code = pd.to_numeric(table.code, errors="coerce").fillna(0).astype(int)
     table.menages = table.menages.astype(int)
     table.population = table.population.round(0).astype(int)
     for colonne in ["part_population", "H_incidence", "A_intensite", "M0_ipm",
@@ -229,7 +240,6 @@ def exporter_classeur(table, C, nom=NOM_SORTIE):
         if not morceau.empty:
             # un nom de feuille Excel fait au plus 31 caractères
             feuilles[libelle[:31]] = morceau
-    feuilles["Tout"] = table
 
     with pd.ExcelWriter(chemin, engine="openpyxl") as classeur:
         for feuille, morceau in feuilles.items():
@@ -275,12 +285,14 @@ def verifier():
     national = indices_nationaux(X)
     assert national.modalite.iloc[0] == "Côte d'Ivoire"
 
-    # désagrégation : le milieu 1 porte toute la pauvreté
+    # désagrégation : le milieu 1 porte toute la pauvreté, et le code 1 devient « Urbain »
     D = desagregations(X, resultat.M0_ipm, resultat.population)
     milieu = D.set_index("modalite")
-    assert abs(milieu.loc["1", "H_incidence"] - 1.0) < TOLERANCE
-    assert abs(milieu.loc["2", "M0_ipm"]) < TOLERANCE
-    assert abs(milieu.loc["1", "contribution_M0"] - 1.0) < TOLERANCE
+    assert milieu.index.tolist() == ["Urbain", "Rural"], milieu.index.tolist()
+    assert milieu.loc["Urbain", "code"] == 1
+    assert abs(milieu.loc["Urbain", "H_incidence"] - 1.0) < TOLERANCE
+    assert abs(milieu.loc["Rural", "M0_ipm"]) < TOLERANCE
+    assert abs(milieu.loc["Urbain", "contribution_M0"] - 1.0) < TOLERANCE
     # décomposabilité : 0,5 x 0,9 x (10/20) + 0 = 0,225... redonne M0 x part
     assert abs((D.M0_ipm * D.part_population).sum() - resultat.M0_ipm) < TOLERANCE
 
