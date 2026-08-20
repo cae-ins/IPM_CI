@@ -1,8 +1,12 @@
 """Étape 05 du pipeline IPM — indices H, A, M0 et désagrégations.
 
 Entrée  : matrice_privations_censuree.dta (étape 04)
-Sorties : indices_ipm — une ligne « Ensemble » puis une ligne par modalité de désagrégation,
-          en .dta, .csv et **.xlsx (une seule feuille)**
+Sorties : indices_ipm       — une ligne « Ensemble » puis une ligne par modalité de
+                              désagrégation (.dta, .csv)
+          contributions_ipm — la part de chaque indicateur et de chaque dimension dans M0
+                              (.dta, .csv)
+          indices_ipm.xlsx  — le classeur de restitution : une feuille par objet
+                              (Ensemble, Contributions, une par désagrégation, Tout)
 
 Formules (méthode Alkire-Foster, document méthodologique national) :
 
@@ -27,12 +31,13 @@ import time
 
 import pandas as pd
 
-from orchestrateur import (CLE, LOGS, SORTIES_XLSX, SORTIES_DTA, configurer_logs,
-                           exporter_table, part)
+from orchestrateur import (CLE, LOGS, SORTIES_CSV, SORTIES_DTA, SORTIES_XLSX,
+                           configurer_logs, exporter_table, part)
 
 ENTREE = SORTIES_DTA / "matrice_privations_censuree.dta"
+ENTREE_W = SORTIES_CSV / "vecteur_w.csv"
 NOM_SORTIE = "indices_ipm"
-FEUILLE = "IPM"
+NOM_CONTRIBUTIONS = "contributions_ipm"
 JOURNAL = LOGS / "05_indices_ipm.log"
 
 TOLERANCE = 1e-9
@@ -147,9 +152,57 @@ def desagregations(X, M0_national, population_totale):
     return D
 
 
+def contributions(X, M0):
+    """Cⱼ = wⱼ · CHⱼ / M0 — la part de chaque indicateur dans l'IPM.
+
+    CHⱼ est le taux de privation CENSURÉ : la privation des seuls ménages pauvres. Comme les
+    colonnes `_censuree` de l'étape 04 portent déjà wⱼ · g0ᵢⱼ · 1(pauvre), leur moyenne pondérée
+    population vaut directement wⱼ · CHⱼ. Les Cⱼ somment à 1 par construction.
+    """
+    logger.info("--- 4. contributions des indicateurs à M0 ---")
+    w = pd.read_csv(ENTREE_W)
+    n = X.poids_population
+
+    lignes = []
+    for _, ind in w.iterrows():
+        colonne = f"{ind.colonne}_censuree"
+        assert colonne in X.columns, f"colonne censurée absente : {colonne}"
+
+        apport = (n * X[colonne]).sum() / n.sum()          # = wⱼ · CHⱼ
+        brut = (n * (X[colonne] > 0)).sum() / n.sum()      # privation censurée, en effectif
+        lignes.append({
+            "dimension": ind.dimension,
+            "indicateur": ind.indicateur,
+            "colonne": ind.colonne,
+            "poids_w": ind.poids_indicateur,
+            "taux_privation_censure": brut,
+            "apport_a_M0": apport,
+            "contribution_M0": apport / M0,
+        })
+
+    C = pd.DataFrame(lignes).sort_values("contribution_M0", ascending=False)
+    total = C.contribution_M0.sum()
+    assert abs(total - 1) < 1e-9, f"les contributions doivent sommer à 1, obtenu {total}"
+
+    for _, ligne in C.iterrows():
+        logger.info("  %-24s w = %.4f | privation censurée %5.1f %% | contribution %5.1f %%",
+                    ligne.colonne, ligne.poids_w,
+                    100 * ligne.taux_privation_censure, 100 * ligne.contribution_M0)
+    logger.info("somme des contributions = %.6f", total)
+
+    par_dimension = C.groupby("dimension").contribution_M0.sum().sort_values(ascending=False)
+    logger.info("par dimension (poids nominal : 25,0 %% chacune) :")
+    for dimension, contribution in par_dimension.items():
+        logger.info("  %-18s %.1f %%", dimension, 100 * contribution)
+
+    # une dimension qui contribue bien plus que son poids nominal domine l'indice
+    C["contribution_dimension"] = C.dimension.map(par_dimension)
+    return C
+
+
 def assembler(national, D):
     """Une seule table : la ligne Ensemble puis les désagrégations, colonnes ordonnées."""
-    logger.info("--- 4. assemblage de la feuille ---")
+    logger.info("--- 5. assemblage de la table publiée ---")
     national = national.assign(part_population=1.0, contribution_M0=1.0)
     table = pd.concat([national, D], ignore_index=True)[COLONNES_PUBLIEES]
 
@@ -164,12 +217,26 @@ def assembler(national, D):
     return table
 
 
-def exporter_feuille(table, nom=NOM_SORTIE, feuille=FEUILLE):
-    """Le .xlsx demandé : un seul classeur, une seule feuille."""
+def exporter_classeur(table, C, nom=NOM_SORTIE):
+    """Un classeur, une feuille par objet : l'ensemble, les contributions, puis une feuille
+    par variable de désagrégation."""
     chemin = SORTIES_XLSX / f"{nom}.xlsx"
-    table.to_excel(chemin, sheet_name=feuille, index=False, freeze_panes=(1, 2))
-    logger.info("%-42s -> xlsx %.2f Mo  (feuille « %s », %d lignes x %d colonnes)",
-                nom, chemin.stat().st_size / 1e6, feuille, *table.shape)
+
+    feuilles = {"Ensemble": table[table.variable == "Ensemble"],
+                "Contributions": C}
+    for libelle in DESAGREGATIONS.values():
+        morceau = table[table.variable == libelle]
+        if not morceau.empty:
+            # un nom de feuille Excel fait au plus 31 caractères
+            feuilles[libelle[:31]] = morceau
+    feuilles["Tout"] = table
+
+    with pd.ExcelWriter(chemin, engine="openpyxl") as classeur:
+        for feuille, morceau in feuilles.items():
+            morceau.to_excel(classeur, sheet_name=feuille, index=False, freeze_panes=(1, 2))
+
+    logger.info("%-42s -> xlsx %.2f Mo  (%d feuilles : %s)", nom,
+                chemin.stat().st_size / 1e6, len(feuilles), ", ".join(feuilles))
     return chemin
 
 
@@ -231,12 +298,15 @@ def main():
 
     X = charger()
     national = indices_nationaux(X)
-    D = desagregations(X, national.M0_ipm.iloc[0], national.population.iloc[0])
+    M0 = national.M0_ipm.iloc[0]
+    D = desagregations(X, M0, national.population.iloc[0])
+    C = contributions(X, M0)
     table = assembler(national, D)
 
-    logger.info("--- 5. export (Stata + CSV + XLSX) ---")
+    logger.info("--- 6. export (Stata + CSV + XLSX) ---")
     exporter_table(table, NOM_SORTIE, logger, index=False)
-    exporter_feuille(table)
+    exporter_table(C, NOM_CONTRIBUTIONS, logger, index=False)
+    exporter_classeur(table, C)
 
     logger.info("=== terminé en %.1f s ===", time.perf_counter() - debut)
     return table
