@@ -26,10 +26,11 @@ RACINE = Path(__file__).resolve().parent.parent   # PythonIPM/
 DATA = RACINE / "EHCVM"                           # bases .dta d'origine, en lecture seule
 SORTIES = RACINE / "sorties"                      # tables produites par le pipeline
 SORTIES_DTA = SORTIES / "dta"                     #   format Stata : ce que lit l'étape suivante
-SORTIES_CSV = SORTIES / "csv"                     #   format texte : lecture humaine, Excel, R
+SORTIES_CSV = SORTIES / "csv"                     #   format texte : lecture humaine, R
+SORTIES_XLSX = SORTIES / "xlsx"                   #   classeurs de restitution
 LOGS = RACINE / "logs"                            # un journal par étape
 PIPELINE = Path(__file__).resolve().parent        # les scripts d'étape
-for dossier in (SORTIES_DTA, SORTIES_CSV, LOGS):
+for dossier in (SORTIES_DTA, SORTIES_CSV, SORTIES_XLSX, LOGS):
     dossier.mkdir(parents=True, exist_ok=True)
 
 JOURNAL_PIPELINE = LOGS / "00_pipeline.log"
@@ -38,6 +39,9 @@ JOURNAL_PIPELINE = LOGS / "00_pipeline.log"
 ETAPES = [
     "01_preconstruction_matrice_situationnelle.py",
     "02_construction_matrice_situationnelle.py",
+    "03_matrice_privations_ponderees.py",
+    "04_matrice_privations_censuree.py",
+    "05_indices_ipm.py",
 ]
 
 # clé d'un ménage EHCVM

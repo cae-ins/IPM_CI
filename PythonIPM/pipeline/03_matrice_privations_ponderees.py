@@ -1,9 +1,9 @@
-"""Étape 03 du pipeline IPM — pondérations w, score de privation et censure.
+"""Étape 03 du pipeline IPM — pondérations w, matrice pondérée et score cᵢ.
 
 Entrée  : matrice_situationnelle_ehcvm2021.dta (étape 02) = la matrice de privation g0,
-          12 965 ménages x 12 indicateurs en 0/1.
+          12 965 ménages x 13 indicateurs en 0/1.
 Sorties : vecteur_w                     — le poids de chaque indicateur
-          matrice_privations_ponderees  — g0 pondérée, g0 censurée, score, statuts
+          matrice_privations_ponderees  — g0 pondérée (wⱼ · g0ᵢⱼ) et le score cᵢ
 
 Méthode Alkire-Foster (chapitre 4 du guide ODD), dans l'ordre :
 
@@ -12,9 +12,9 @@ Méthode Alkire-Foster (chapitre 4 du guide ODD), dans l'ordre :
     2. g0 pondérée  : chaque colonne de privation multipliée par son poids (wⱼ · g0ᵢⱼ).
     3. score cᵢ     : la somme de la ligne — la part de privations pondérées du ménage i,
                       entre 0 (aucune privation) et 1 (privé partout).
-    4. censure      : cᵢ(k) = cᵢ si cᵢ ≥ k, sinon 0, avec k = 1/3. La censure met à zéro les
-                      ménages non pauvres : leurs privations existent mais ne comptent pas
-                      dans l'IPM. C'est ce qui distingue la méthode d'un simple comptage.
+
+AUCUNE censure ici : cᵢ est le score brut, tous ménages confondus. La censure au seuil k et le
+score censuré cᵢ(k) font l'objet de l'étape 04.
 
 Le vecteur w est déduit de `vecteur_z.csv` (colonne `dimension`) : la liste des indicateurs et
 leur dimension n'est donc écrite qu'une fois, dans l'étape 02.
@@ -37,12 +37,6 @@ ENTREE_Z = SORTIES_CSV / "vecteur_z.csv"
 NOM_W = "vecteur_w"
 NOM_SORTIE = "matrice_privations_ponderees"
 JOURNAL = LOGS / "03_matrice_privations_ponderees.log"
-
-# Seuils de censure. k = 1/3 est le seuil de pauvreté multidimensionnelle de l'IPM ;
-# les deux autres servent aux indicateurs complémentaires publiés à côté de M0.
-K_PAUVRETE = 1 / 3
-K_VULNERABILITE = 0.2    # 0,2 <= c < 1/3 : vulnérable à la pauvreté multidimensionnelle
-K_SEVERE = 0.5           # c >= 0,5       : pauvreté multidimensionnelle sévère
 
 # Comparaison de flottants : avec 4 dimensions à 0,25 le score peut valoir EXACTEMENT 1/3
 # (0,25 + 2 x 0,041666...), et 0,3333333 < 0,33333333 selon les erreurs d'arrondi.
@@ -116,44 +110,6 @@ def calculer_score(ponderee):
     return score
 
 
-def censurer(g0, ponderee, score, poids_population):
-    """Censure à k : les ménages non pauvres sont remis à zéro.
-
-    Renvoie les statuts (pauvre, vulnérable, sévère), le score censuré et la matrice de
-    privation censurée — cette dernière sert aux contributions par indicateur de l'étape 04.
-    """
-    logger.info("--- 4. censure au seuil k = %.4f ---", K_PAUVRETE)
-    pauvre = score >= K_PAUVRETE - TOLERANCE
-    vulnerable = (score >= K_VULNERABILITE - TOLERANCE) & ~pauvre
-    severe = score >= K_SEVERE - TOLERANCE
-
-    X = pd.DataFrame(index=g0.index)
-    X["score"] = score
-    X["score_censure"] = score.where(pauvre, 0.0)
-    X["pauvre"] = pauvre.astype(int)
-    X["vulnerable"] = vulnerable.astype(int)
-    X["pauvrete_severe"] = severe.astype(int)
-
-    censuree = g0[[c.replace("_ponderee", "") for c in ponderee.columns]].mul(pauvre, axis=0)
-    censuree.columns = [f"{c}_censuree" for c in censuree.columns]
-
-    for libelle, statut in [("pauvres (c >= 1/3)", pauvre),
-                            ("vulnérables (0,2 <= c < 1/3)", vulnerable),
-                            ("pauvreté sévère (c >= 0,5)", severe)]:
-        logger.info("  %-30s %-16s | pondéré population : %.1f %%", libelle,
-                    part(int(statut.sum()), len(X)),
-                    100 * (statut * poids_population).sum() / poids_population.sum())
-
-    # le seuil strict change le résultat : avec ces poids, cᵢ peut valoir exactement 1/3
-    a_la_limite = (score - K_PAUVRETE).abs() < TOLERANCE
-    logger.info("ménages au score exactement égal à k : %s — comptés comme PAUVRES "
-                "(convention OPHI « c >= k »)", part(int(a_la_limite.sum()), len(X)))
-
-    logger.info("score censuré : moyenne %.4f (= M0 non pondéré), part de ménages remis à "
-                "zéro : %s", X.score_censure.mean(), part(int((~pauvre).sum()), len(X)))
-    return X, censuree
-
-
 def construire():
     logger.info("--- 0. lecture de la matrice de privation g0 (étape 02) ---")
     g0 = pd.read_stata(ENTREE).set_index(CLE)
@@ -162,18 +118,16 @@ def construire():
     w = vecteur_w()
     ponderee = ponderer(g0, w)
     score = calculer_score(ponderee)
-    poids_population = g0.ponderation_menage * g0.taille_menage
-    statuts, censuree = censurer(g0, ponderee, score, poids_population)
 
-    logger.info("--- 5. assemblage ---")
-    X = pd.concat([statuts, ponderee, censuree,
+    logger.info("--- 4. assemblage ---")
+    X = pd.concat([score.rename("score"), ponderee,
                    g0[[c for c in COLONNES_TECHNIQUES if c in g0.columns]]], axis=1)
-    logger.info("matrice pondérée et censurée : %d ménages x %d colonnes", *X.shape)
+    logger.info("matrice pondérée : %d ménages x %d colonnes", *X.shape)
     return w, X
 
 
 def exporter(w, X):
-    logger.info("--- 6. export (Stata + CSV) ---")
+    logger.info("--- 5. export (Stata + CSV) ---")
     exporter_table(w, NOM_W, logger, index=False)
     exporter_table(X, NOM_SORTIE, logger)
 
@@ -216,23 +170,13 @@ def verifier():
     assert score["B"] == 0
     assert abs(score["C"] - 1 / 3) < TOLERANCE, score["C"]
 
-    statuts, censuree = censurer(g0, ponderee, score, g0.ponderation_menage * g0.taille_menage)
-    # le ménage C est exactement à k : pauvre selon la convention « c >= k »
-    assert statuts.pauvre.tolist() == [1, 0, 1], statuts.pauvre.tolist()
-    assert statuts.pauvrete_severe.tolist() == [1, 0, 0]
-    assert statuts.vulnerable.tolist() == [0, 0, 0]
-    # la censure remet B à zéro et laisse A et C intacts
-    assert statuts.score_censure.tolist() == [score["A"], 0.0, score["C"]]
-    assert censuree.loc["B"].sum() == 0
-    assert censuree.loc["C"].sum() == 3
-
     print("auto-contrôle 03 : OK")
 
 
 def main():
     configurer_logs(logger, JOURNAL)
     debut = time.perf_counter()
-    logger.info("=== étape 03 : pondérations w, score de privation et censure ===")
+    logger.info("=== étape 03 : pondérations w, matrice pondérée et score cᵢ ===")
 
     w, X = construire()
     exporter(w, X)
