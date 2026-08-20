@@ -26,7 +26,7 @@ from collections import namedtuple
 
 import pandas as pd
 
-from commun import CLE, COLONNES_TECHNIQUES, LOGS, SORTIES, configurer_logs, part
+from orchestrateur import CLE, COLONNES_TECHNIQUES, LOGS, SORTIES, configurer_logs, part
 
 ENTREE = SORTIES / "preconstruction_matrice_situationnelle.dta"
 SORTIE = SORTIES / "matrice_situationnelle_ehcvm2021.dta"

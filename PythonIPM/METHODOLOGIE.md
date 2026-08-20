@@ -125,9 +125,31 @@ sévère : score ≥ 0,5.
 | 04 — H, A, M₀ et contributions | `04_…` (à venir) | score | indices et désagrégations | — |
 
 Chaque étape s'exécute seule et dispose d'un auto-contrôle (`--check`) qui rejoue la logique sur un
-mini-jeu de données aux résultats connus. Ce qui est commun aux étapes (clé de fusion, colonnes
-techniques, journalisation) vit dans `commun.py` — les modules commençant par un chiffre ne peuvent
-pas s'importer entre eux.
+mini-jeu de données aux résultats connus. `pipeline/orchestrateur.py` tient les deux rôles de socle
+commun (chemins, clé de fusion, colonnes techniques, journalisation — les modules commençant par un
+chiffre ne peuvent pas s'importer entre eux) et de chef d'orchestre :
+
+```
+python pipeline/orchestrateur.py            # enchaîne les étapes -> logs/00_pipeline.log
+python pipeline/orchestrateur.py --check    # les auto-contrôles de chaque étape
+python pipeline/02_construction_matrice_situationnelle.py   # une étape seule
+```
+
+Les étapes sont lancées en sous-processus : une étape en échec arrête la chaîne et les suivantes ne
+tournent pas, plutôt que de produire une sortie incomplète.
+
+### Organisation du dossier
+
+```
+PythonIPM/
+├── METHODOLOGIE.md
+├── EHCVM/          les 21 bases .dta d'origine, jamais écrites
+├── pipeline/       orchestrateur.py, dictionnaire_ehcvm.py, les étapes numérotées
+├── sorties/        les tables produites (.dta)
+├── logs/           00_pipeline.log + un journal détaillé par étape
+├── notebooks/      exploration et prise en main
+└── documentation/  codebooks des bases
+```
 
 ### Contenu de la préconstruction (étape 01)
 

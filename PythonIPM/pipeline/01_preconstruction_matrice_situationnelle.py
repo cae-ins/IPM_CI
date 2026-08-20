@@ -27,7 +27,7 @@ import numpy as np
 import pandas as pd
 
 import dictionnaire_ehcvm as dico
-from commun import CLE, COLONNES_TECHNIQUES, DATA, LOGS, SORTIES, configurer_logs, part
+from orchestrateur import CLE, COLONNES_TECHNIQUES, DATA, LOGS, SORTIES, configurer_logs, part
 
 SORTIE = SORTIES / "preconstruction_matrice_situationnelle.dta"
 JOURNAL = LOGS / "01_preconstruction_matrice_situationnelle.log"
