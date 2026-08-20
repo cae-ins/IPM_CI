@@ -26,10 +26,12 @@ from collections import namedtuple
 
 import pandas as pd
 
-from orchestrateur import CLE, COLONNES_TECHNIQUES, LOGS, SORTIES, configurer_logs, part
+from orchestrateur import (CLE, COLONNES_TECHNIQUES, LOGS, SORTIES_DTA, configurer_logs,
+                           exporter_table, part)
 
-ENTREE = SORTIES / "preconstruction_matrice_situationnelle.dta"
-SORTIE = SORTIES / "matrice_situationnelle_ehcvm2021.dta"
+ENTREE = SORTIES_DTA / "preconstruction_matrice_situationnelle.dta"
+NOM_SORTIE = "matrice_situationnelle_ehcvm2021"
+NOM_Z = "vecteur_z"
 JOURNAL = LOGS / "02_construction_matrice_situationnelle.log"
 
 NATIONALE = "proposition nationale"
@@ -130,6 +132,42 @@ INDICATEURS = [
 # les 12 colonnes indicateurs, dans l'ordre du tableau de référence
 COLONNES_INDICATEURS = [i.colonne for i in INDICATEURS]
 
+# Vecteur z de la méthode Alkire-Foster : la valeur de coupure de chaque indicateur.
+# Les seuils sont APPLIQUÉS par les `regle` ci-dessus — ce dictionnaire ne les redéfinit pas,
+# il donne leur valeur sous forme lisible pour l'export et la documentation. Un seuil peut
+# être un nombre (10 années d'études), un ensemble de modalités adéquates (codes ODD de l'eau)
+# ou un effectif (« au moins un membre dans telle situation »).
+PARAMETRES_Z = {
+    "frequentation_scolaire": ("au moins un enfant 6-16 ans non scolarisé", 1),
+    "annee_scolarite": ("années d'études du membre le plus instruit", ANNEES_ETUDES_MINIMUM),
+    "alphabetisation": ("au moins un membre 17-49 ans non alphabétisé", 1),
+    "etat_civil": ("au moins un enfant 5-15 ans sans acte", 1),
+    "assurance_maladie": ("nombre de membres assurés", 1),
+    "chomage": ("au moins un chômeur BIT de 17-40 ans", 1),
+    "electricite": ("codes d'éclairage adéquats", ECLAIRAGE_ADEQUAT),
+    "logement": ("codes de matériaux précaires (sol/toit/mur)",
+                 [SOL_NATUREL, TOIT_PRECAIRE, MUR_PRECAIRE]),
+    "eau_potable": ("codes d'eau améliorée (ODD) et minutes à l'aller",
+                    [EAU_AMELIOREE, MINUTES_ALLER_MAXIMUM]),
+    "energie_cuisson": ("combustibles propres", COMBUSTIBLE_PROPRE),
+    "toilette": ("codes de sanitaires améliorés (ODD), non partagés", SANITAIRE_AMELIORE),
+    "biens_equipement": ("nombre de biens possédés, sans voiture", BIENS_MAXIMUM),
+}
+
+
+def vecteur_z():
+    """Le vecteur z sous forme de table : un seuil par indicateur, avec sa source."""
+    return pd.DataFrame([{
+        "dimension": i.dimension,
+        "indicateur": i.libelle,
+        "colonne": i.colonne,
+        "source_definition": i.source,
+        "enonce": i.definition,
+        "grandeur_mesuree": PARAMETRES_Z[i.colonne][0],
+        # en texte : un seuil peut être un nombre, un ensemble de codes ou une liste d'ensembles
+        "seuil_z": str(PARAMETRES_Z[i.colonne][1]),
+    } for i in INDICATEURS])
+
 logger = logging.getLogger("ipm.matrice_situationnelle")
 
 
@@ -140,9 +178,24 @@ def charger_preconstruction(chemin=ENTREE):
     return P
 
 
+def journaliser_vecteur_z(nom=NOM_Z):
+    """Écrit et journalise le vecteur z avant de l'appliquer."""
+    logger.info("--- 2. vecteur z des seuils de privation ---")
+    z = vecteur_z()
+    assert len(z) == len(INDICATEURS), "un indicateur n'a pas de seuil dans PARAMETRES_Z"
+
+    for _, ligne in z.iterrows():
+        logger.info("  %-18s %-24s %s = %s",
+                    ligne.dimension, ligne.colonne, ligne.grandeur_mesuree, ligne.seuil_z)
+        logger.debug("      %s (%s)", ligne.enonce, ligne.source_definition)
+
+    exporter_table(z, nom, logger, index=False)
+    return z
+
+
 def calculer_indicateurs(P):
-    """Applique le seuil de chaque indicateur : une colonne 0/1 par ligne du tableau."""
-    logger.info("--- 2. calcul des indicateurs (seuils appliqués) ---")
+    """Applique le vecteur z : une colonne 0/1 par indicateur (g0 de Alkire-Foster)."""
+    logger.info("--- 3. application de z : matrice de privation g0 ---")
     poids = P.ponderation_menage * P.taille_menage
     X = pd.DataFrame(index=P.index)
 
@@ -174,7 +227,7 @@ def calculer_indicateurs(P):
 
 
 def controler_matrice(X):
-    logger.info("--- 3. contrôles de la matrice X ---")
+    logger.info("--- 4. contrôles de la matrice X ---")
     assert X.index.is_unique, "la clé grappe/menage/vague doit être unique"
     assert not X[COLONNES_INDICATEURS].isna().any().any(), "un indicateur contient des manquants"
     assert X[COLONNES_INDICATEURS].isin([0, 1]).all().all(), "un indicateur n'est pas en 0/1"
@@ -194,10 +247,9 @@ def controler_matrice(X):
     return X
 
 
-def exporter(X, chemin=SORTIE):
-    X.to_stata(chemin, write_index=True, version=118)
-    logger.info("matrice écrite : %s (%.1f Mo) — %d ménages x %d colonnes",
-                chemin, chemin.stat().st_size / 1e6, *X.shape)
+def exporter(X, nom=NOM_SORTIE):
+    logger.info("--- 5. export (Stata + CSV) ---")
+    exporter_table(X, nom, logger)
 
 
 def verifier():
@@ -238,7 +290,9 @@ def main():
     debut = time.perf_counter()
     logger.info("=== étape 02 : matrice situationnelle X (12 indicateurs) ===")
 
-    X = calculer_indicateurs(charger_preconstruction())
+    P = charger_preconstruction()
+    journaliser_vecteur_z()
+    X = calculer_indicateurs(P)
     controler_matrice(X)
     exporter(X)
 

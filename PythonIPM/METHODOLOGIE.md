@@ -145,7 +145,9 @@ PythonIPM/
 ├── METHODOLOGIE.md
 ├── EHCVM/          les 21 bases .dta d'origine, jamais écrites
 ├── pipeline/       orchestrateur.py, dictionnaire_ehcvm.py, les étapes numérotées
-├── sorties/        les tables produites (.dta)
+├── sorties/
+│   ├── dta/        tables produites au format Stata (relues par l'étape suivante)
+│   └── csv/        les mêmes tables en texte (lecture, Excel, R)
 ├── logs/           00_pipeline.log + un journal détaillé par étape
 ├── notebooks/      exploration et prise en main
 └── documentation/  codebooks des bases

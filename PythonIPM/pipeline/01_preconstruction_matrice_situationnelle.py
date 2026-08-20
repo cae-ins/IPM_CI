@@ -27,9 +27,10 @@ import numpy as np
 import pandas as pd
 
 import dictionnaire_ehcvm as dico
-from orchestrateur import CLE, COLONNES_TECHNIQUES, DATA, LOGS, SORTIES, configurer_logs, part
+from orchestrateur import (CLE, COLONNES_TECHNIQUES, DATA, LOGS, configurer_logs,
+                           exporter_table, part)
 
-SORTIE = SORTIES / "preconstruction_matrice_situationnelle.dta"
+NOM_SORTIE = "preconstruction_matrice_situationnelle"
 JOURNAL = LOGS / "01_preconstruction_matrice_situationnelle.log"
 
 # tranches d'âge, telles que définies dans le tableau de référence (proposition nationale)
@@ -405,9 +406,9 @@ def controler(X):
     return X
 
 
-def exporter(X, chemin=SORTIE):
-    X.to_stata(chemin, write_index=True, version=118)
-    logger.info("table écrite : %s (%.1f Mo)", chemin, chemin.stat().st_size / 1e6)
+def exporter(X, nom=NOM_SORTIE):
+    logger.info("--- 7. export (Stata + CSV) ---")
+    exporter_table(X, nom, logger)
 
 
 # --------------------------------------------------------------------------- #

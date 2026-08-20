@@ -25,10 +25,12 @@ from pathlib import Path
 RACINE = Path(__file__).resolve().parent.parent   # PythonIPM/
 DATA = RACINE / "EHCVM"                           # bases .dta d'origine, en lecture seule
 SORTIES = RACINE / "sorties"                      # tables produites par le pipeline
+SORTIES_DTA = SORTIES / "dta"                     #   format Stata : ce que lit l'étape suivante
+SORTIES_CSV = SORTIES / "csv"                     #   format texte : lecture humaine, Excel, R
 LOGS = RACINE / "logs"                            # un journal par étape
 PIPELINE = Path(__file__).resolve().parent        # les scripts d'étape
-SORTIES.mkdir(exist_ok=True)
-LOGS.mkdir(exist_ok=True)
+for dossier in (SORTIES_DTA, SORTIES_CSV, LOGS):
+    dossier.mkdir(parents=True, exist_ok=True)
 
 JOURNAL_PIPELINE = LOGS / "00_pipeline.log"
 
@@ -63,6 +65,22 @@ def configurer_logs(logger, fichier=None, niveau=logging.INFO):
         logger.addHandler(journal)
         logger.debug("journal ouvert : %s", fichier)
     return logger
+
+
+def exporter_table(table, nom, logger, index=True):
+    """Écrit une table dans les deux formats : sorties/dta/<nom>.dta et sorties/csv/<nom>.csv.
+
+    Le .dta est la sortie de travail (types conservés, relu par l'étape suivante) ; le .csv est
+    la sortie de lecture. `nom` est donné SANS extension.
+    """
+    dta = SORTIES_DTA / f"{nom}.dta"
+    csv = SORTIES_CSV / f"{nom}.csv"
+    table.to_stata(dta, write_index=index, version=118)
+    table.to_csv(csv, index=index, encoding="utf8")
+
+    logger.info("%-42s -> dta %.1f Mo | csv %.1f Mo  (%d lignes x %d colonnes)",
+                nom, dta.stat().st_size / 1e6, csv.stat().st_size / 1e6, *table.shape)
+    return dta, csv
 
 
 def part(effectif, total):
@@ -125,7 +143,7 @@ def main(arguments=()):
     logger.info("")
     logger.info("=== pipeline terminé : %d étapes en %.1f s ===", len(ETAPES),
                 time.perf_counter() - debut)
-    logger.info("sorties : %s", ", ".join(sorted(f.name for f in SORTIES.glob("*.dta"))))
+    logger.info("sorties : %s", ", ".join(sorted(f.stem for f in SORTIES_DTA.glob("*.dta"))))
     logger.info("journal d'ensemble : %s", JOURNAL_PIPELINE)
     return 0
 
