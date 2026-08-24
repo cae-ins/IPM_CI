@@ -75,6 +75,9 @@ EQUIPEMENTS_PNUD = {
 }
 VOITURE = 28                     # le camion n'existe pas non plus dans la section 12
 
+# question 3.06 : raison principale de la non-consultation. 2 « Trop cher », 8 « Manque d'argent »
+RAISONS_COUT = [2, 8]
+
 ITEMS_FIES = ["fies_inquietude", "fies_pas_sain", "fies_peu_varie", "fies_saute_repas",
               "fies_mange_moins", "fies_plus_de_nourriture", "fies_faim",
               "fies_journee_sans_manger"]
@@ -83,7 +86,7 @@ COLONNES_MENAGE = [
     # conditions de vie
     "source_eclairage", "materiau_toit", "materiau_mur", "materiau_sol",
     "source_eau_boisson_seche", "temps_aller_source_seche",
-    "combustible_principal", "type_sanitaire", "sanitaire_partage",
+    "combustible_principal", "type_sanitaire", "sanitaire_partage", "nb_pieces",
 ] + COLONNES_TECHNIQUES
 
 logger = logging.getLogger("ipm.preconstruction")
@@ -218,6 +221,30 @@ def calculer_situations_individuelles(ind):
     cible = ind.age.between(a, b)
     logger.info("chômeurs parmi les %d-%d ans : %s", a, b,
                 part((cible & ind.chomeur_bit).sum(), cible.sum()))
+
+    # renoncement aux soins : malade (3.01), non consulté (3.05), pour raison de coût (3.06)
+    malade = ind.probleme_sante_30j == 1
+    ind["renonce_aux_soins"] = (malade & (ind.consultation_sante_30j != 1)
+                               & ind.raison_non_consultation.isin(RAISONS_COUT))
+    logger.info("problème de santé sur 30 jours (3.01) : %s, dont non consulté %s, "
+                "dont pour raison de coût (3.06 = 2 ou 8) : %s",
+                part(malade.sum(), len(ind)),
+                part((malade & (ind.consultation_sante_30j != 1)).sum(), malade.sum()),
+                part(ind.renonce_aux_soins.sum(), malade.sum()))
+
+    # emploi agricole de subsistance : occupé (4.10), uniquement son propre champ (4.06),
+    # sans salariat (4.08), apprentissage (4.09) ni commerce (4.07).
+    # Codage EHCVM des questions 4.06-4.09 : 1 = oui, 2 = non (il n'y a pas de 0) — le test
+    # porte donc sur « pas oui » et non sur « = 0 ».
+    ind["agriculture_subsistance"] = ((ind.a_travaille_7j == 1)
+                                      & (ind.travail_champ_7j == 1)
+                                      & (ind.travail_salarie_7j != 1)
+                                      & (ind.travail_apprenti_7j != 1)
+                                      & (ind.travail_commerce_7j != 1))
+    occupes = ind.a_travaille_7j == 1
+    logger.info("occupés (4.10) : %s, dont agriculture de subsistance seule : %s",
+                part(occupes.sum(), len(ind)),
+                part(ind.agriculture_subsistance.sum(), occupes.sum()))
     return ind
 
 
@@ -249,6 +276,11 @@ def agreger_par_menage(ind):
     situations[f"enfants_{a_act}_{b_act}_sans_acte"] = (
         situations[f"enfants_{a_act}_{b_act}"] & (ind.acte_naissance != 1))
     situations["membres_assures"] = ind.assurance_maladie == 1
+    situations["membres_malades_30j"] = ind.probleme_sante_30j == 1
+    situations["membres_renoncement_soins"] = ind.renonce_aux_soins
+    # un seul chef par ménage : la somme vaut 0 ou 1
+    situations["cm_agriculture_subsistance"] = (
+        (ind.lien_parente_cm == 1) & ind.agriculture_subsistance)
 
     colonnes = list(situations.columns)
     situations[CLE] = ind[CLE]
@@ -274,6 +306,13 @@ def agreger_par_menage(ind):
                 f"membres_{a_etu}_{b_etu}", part((X[f"membres_{a_etu}_{b_etu}"] == 0).sum(), len(X)))
     logger.info("  %-16s ménages sans aucun membre assuré : %s",
                 "membres_assures", part((X.membres_assures == 0).sum(), len(X)))
+    logger.info("  %-16s ménages sans malade sur 30 jours : %-14s | au moins un renoncement "
+                "aux soins pour raison de coût : %s", "membres_malades_30j",
+                part((X.membres_malades_30j == 0).sum(), len(X)),
+                part((X.membres_renoncement_soins > 0).sum(), len(X)))
+    logger.info("  %-16s chef en agriculture de subsistance seule : %s",
+                "cm_agriculture_subsistance",
+                part((X.cm_agriculture_subsistance > 0).sum(), len(X)))
     return X
 
 
@@ -435,7 +474,7 @@ def verifier():
         "ecrit_francais": [0.0, 1.0, 0.0, 0.0],
         # emploi : P2 chômeur BIT à 38 ans (hors de l'ancienne tranche 16-35, dans 17-40),
         # P3 sans emploi mais sans recherche
-        "a_travaille_7j": [0.0, 0.0, 0.0, 0.0],
+        "a_travaille_7j": [1.0, 0.0, 1.0, 0.0],
         "emploi_mais_absent_7j": [2.0, 2.0, 2.0, 2.0],
         "recherche_emploi_30j_a": [np.nan, 1.0, 2.0, np.nan],
         "recherche_emploi_30j_b": [np.nan, np.nan, np.nan, np.nan],
@@ -443,6 +482,17 @@ def verifier():
         "delai_disponibilite": [np.nan, 1.0, np.nan, np.nan],
         "acte_naissance": [2.0, 1.0, 1.0, 1.0],
         "assurance_maladie": [2.0, 2.0, 1.0, 2.0],
+        # santé : P1 malade et renonce faute d'argent, P2 malade mais a consulté,
+        # P3 malade et renonce mais pour une autre raison, P4 pas malade
+        "probleme_sante_30j": [1.0, 1.0, 1.0, 2.0],
+        "consultation_sante_30j": [2.0, 1.0, 2.0, np.nan],
+        "raison_non_consultation": [8.0, np.nan, 4.0, np.nan],
+        # emploi : P1 chef, agriculture seule ; P3 chef, champ + commerce
+        "lien_parente_cm": [1.0, 3.0, 1.0, 3.0],
+        "travail_champ_7j": [1.0, 2.0, 1.0, np.nan],
+        "travail_commerce_7j": [2.0, 2.0, 1.0, np.nan],
+        "travail_salarie_7j": [2.0, 2.0, 2.0, np.nan],
+        "travail_apprenti_7j": [2.0, 2.0, 2.0, np.nan],
     })
 
     ind = calculer_age(ind)
@@ -457,6 +507,8 @@ def verifier():
     assert ind.scolarise.tolist() == [False, False, False, True]
     assert ind.alphabetise.tolist() == [False, True, False, False]
     assert ind.chomeur_bit.tolist() == [False, True, False, False]
+    assert ind.renonce_aux_soins.tolist() == [True, False, False, False]
+    assert ind.agriculture_subsistance.tolist() == [True, False, False, False]
 
     X = agreger_par_menage(ind)
     m1, m2 = X.loc[(1, 1.0, 1.0)], X.loc[(2, 1.0, 1.0)]
@@ -470,6 +522,10 @@ def verifier():
     assert m2.chomeurs_17_40 == 0
     assert m1.enfants_5_15_sans_acte == 1 and m2.enfants_5_15_sans_acte == 0
     assert m1.membres_assures == 0 and m2.membres_assures == 1
+    assert m1.membres_malades_30j == 2 and m1.membres_renoncement_soins == 1
+    assert m2.membres_malades_30j == 1 and m2.membres_renoncement_soins == 0
+    # P1 est chef et en agriculture de subsistance ; P3, chef du ménage 2, fait aussi du commerce
+    assert m1.cm_agriculture_subsistance == 1 and m2.cm_agriculture_subsistance == 0
 
     # équipement PNUD : ménage 1 = radio + téléphone fixe + téléphone portable -> 2 biens
     # (le téléphone ne compte qu'une fois) ; ménage 2 = réfrigérateur + voiture -> 1 bien

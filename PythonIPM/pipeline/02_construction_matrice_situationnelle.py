@@ -1,15 +1,15 @@
 """Étape 02 du pipeline IPM — matrice situationnelle X (EHCVM 2021).
 
 Entrée  : preconstruction_matrice_situationnelle.dta (étape 01)
-Sortie  : matrice_situationnelle_ehcvm2021.dta — 12 965 ménages x 12 indicateurs 0/1,
+Sortie  : matrice_situationnelle_ehcvm2021.dta — 12 965 ménages x 15 indicateurs 0/1,
           plus la pondération et les variables de désagrégation, et rien d'autre.
 
 Chaque indicateur suit SOIT la proposition nationale, SOIT l'application du PNUD — le choix est
 porté par la constante INDICATEURS et détaillé dans METHODOLOGIE.md :
 
     proposition nationale : fréquentation scolaire, année de scolarité, alphabétisation,
-                            état civil, assurance maladie, électricité, énergie de cuisson,
-                            emploi
+                            état civil, assurance maladie, renoncement aux soins, électricité,
+                            énergie de cuisson, promiscuité, chômage, emploi de subsistance
     PNUD                  : logement, eau potable, toilettes, biens d'équipement
     FAO (ODD 2.1.2)       : insécurité alimentaire (échelle FIES)
 
@@ -54,6 +54,10 @@ ANNEES_ETUDES_MINIMUM = 10                          # niveau 3e (proposition nat
 MINUTES_ALLER_MAXIMUM = 15                          # 30 minutes aller-retour (PNUD)
 BIENS_MAXIMUM = 1                                   # « ne possède qu'un seul de ces biens » (PNUD)
 SCORE_FIES_MINIMUM = 4                              # insécurité modérée ou sévère (FAO)
+# Densité d'occupation : seuil ONU-Habitat pour l'Afrique subsaharienne, retenu par plusieurs
+# IPM nationaux africains (Éthiopie, Rwanda). Mettre 2 pour la définition OMS, plus exigeante
+# (8,4 % des ménages privés à 3 personnes par pièce, 29,7 % à 2).
+PERSONNES_PAR_PIECE_MAXIMUM = 3
 
 # Lecture de l'indicateur alphabétisation. L'énoncé national dit « UN membre de 17-49 ans ne
 # sait pas lire ou écrire » ; le RGPH 2021 codait « AUCUN membre alphabétisé ». L'écart est
@@ -103,11 +107,21 @@ INDICATEURS = [
                "(score FIES >= 4 sur 8)",
                "insecurite_alimentaire", ["score_fies"], None,
                lambda X: X.score_fies >= SCORE_FIES_MINIMUM),
+    Indicateur("Sante", "Renoncement aux soins", NATIONALE,
+               "Un membre a eu un problème de santé dans les 30 derniers jours, n'a pas "
+               "consulté et a cité le coût comme raison principale",
+               "renoncement_soins", ["membres_renoncement_soins"], "membres_malades_30j",
+               lambda X: X.membres_renoncement_soins >= 1),
 
     Indicateur("Emploi", "Chômage", NATIONALE,
                "Un membre du ménage âgé de 17-40 ans est au chômage",
                "chomage", ["chomeurs_17_40"], "membres_17_40",
                lambda X: X.chomeurs_17_40 >= 1),
+    Indicateur("Emploi", "Emploi agricole de subsistance", NATIONALE,
+               "Le chef de ménage est occupé mais son activité se limite à l'agriculture sur "
+               "son propre champ, sans salariat, apprentissage ni commerce",
+               "emploi_subsistance", ["cm_agriculture_subsistance"], None,
+               lambda X: X.cm_agriculture_subsistance >= 1),
 
     Indicateur("Conditions de vie", "Electricité", NATIONALE,
                "La source d'éclairage n'est pas : électricité, groupe électrogène ou solaire",
@@ -139,9 +153,14 @@ INDICATEURS = [
                "ordinateur, charrette, vélo, moto, réfrigérateur, et pas de voiture",
                "biens_equipement", ["nb_equipements", "possede_voiture"], None,
                lambda X: (X.nb_equipements <= BIENS_MAXIMUM) & (X.possede_voiture == 0)),
+    Indicateur("Conditions de vie", "Promiscuité", NATIONALE,
+               "Plus de 3 personnes par pièce d'habitation (seuil ONU-Habitat pour l'Afrique "
+               "subsaharienne)",
+               "promiscuite", ["taille_menage", "nb_pieces"], None,
+               lambda X: X.taille_menage / X.nb_pieces > PERSONNES_PAR_PIECE_MAXIMUM),
 ]
 
-# les 12 colonnes indicateurs, dans l'ordre du tableau de référence
+# les 15 colonnes indicateurs, dans l'ordre du tableau de référence
 COLONNES_INDICATEURS = [i.colonne for i in INDICATEURS]
 
 # Vecteur z de la méthode Alkire-Foster : la valeur de coupure de chaque indicateur.
@@ -156,7 +175,9 @@ PARAMETRES_Z = {
     "etat_civil": ("au moins un enfant 5-15 ans sans acte", 1),
     "assurance_maladie": ("nombre de membres assurés", 1),
     "insecurite_alimentaire": ("score FIES (0-8), nombre de « oui »", SCORE_FIES_MINIMUM),
+    "renoncement_soins": ("au moins un membre ayant renoncé aux soins pour raison de coût", 1),
     "chomage": ("au moins un chômeur BIT de 17-40 ans", 1),
+    "emploi_subsistance": ("chef de ménage en agriculture de subsistance seule", 1),
     "electricite": ("codes d'éclairage adéquats", ECLAIRAGE_ADEQUAT),
     "logement": ("codes de matériaux précaires (sol/toit/mur)",
                  [SOL_NATUREL, TOIT_PRECAIRE, MUR_PRECAIRE]),
@@ -165,6 +186,7 @@ PARAMETRES_Z = {
     "energie_cuisson": ("combustibles propres", COMBUSTIBLE_PROPRE),
     "toilette": ("codes de sanitaires améliorés (ODD), non partagés", SANITAIRE_AMELIORE),
     "biens_equipement": ("nombre de biens possédés, sans voiture", BIENS_MAXIMUM),
+    "promiscuite": ("personnes par pièce d'habitation", PERSONNES_PAR_PIECE_MAXIMUM),
 }
 
 
@@ -284,6 +306,9 @@ def verifier():
         "enfants_5_15": [1, 1], "enfants_5_15_sans_acte": [1, 0],
         "membres_assures": [0, 1],
         "score_fies": [8.0, 0.0],
+        "membres_malades_30j": [2, 0], "membres_renoncement_soins": [1, 0],
+        "cm_agriculture_subsistance": [1, 0],
+        "nb_pieces": [1.0, 4.0],        # 4 personnes : 4 par pièce / 1 par pièce
         "ponderation_menage": [1.0, 1.0], "taille_menage": [4, 4],
     }, index=["A", "B"])
 
