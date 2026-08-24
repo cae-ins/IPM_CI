@@ -49,7 +49,7 @@ CLE = ["grappe", "menage", "vague"]
 
 # variables de pondération et de désagrégation transportées d'une étape à l'autre
 COLONNES_TECHNIQUES = ["id_menage", "ponderation_menage", "taille_menage",
-                       "region", "milieu", "sexe_cm"]
+                       "region", "departement", "sous_prefecture", "milieu", "sexe_cm"]
 
 
 def configurer_logs(logger, fichier=None, niveau=logging.INFO):

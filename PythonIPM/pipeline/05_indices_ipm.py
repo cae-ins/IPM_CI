@@ -47,9 +47,13 @@ TOLERANCE = 1e-9
 DESAGREGATIONS = {
     "milieu": "Milieu de résidence",
     "region": "Région",
+    "departement": "Département",
+    # pas de « / » : le libellé sert aussi de nom de feuille Excel
+    "sous_prefecture": "Sous-préfecture ou commune",
     "sexe_cm": "Sexe du chef de ménage",
     "classe_taille": "Taille du ménage",
 }
+MODALITES_AFFICHEES = 40        # au-delà, la console n'affiche que les extrêmes
 BORNES_TAILLE = [0, 2, 4, 6, 9, 100]
 LIBELLES_TAILLE = ["1-2 personnes", "3-4", "5-6", "7-9", "10 et plus"]
 
@@ -133,7 +137,7 @@ def desagregations(X, M0_national, population_totale):
         table.index.name = "modalite"
         table = table.reset_index()
         # les tableaux publiés portent les libellés, pas les codes de l'enquête
-        etiquettes = dico.MODALITES.get(colonne)
+        etiquettes = dico.modalites(colonne)
         table["code"] = table.modalite
         table["modalite"] = (table.modalite.map(etiquettes) if etiquettes
                              else table.modalite).astype(str)
@@ -142,11 +146,18 @@ def desagregations(X, M0_national, population_totale):
             assert not inconnues, f"{inconnues} modalités sans libellé pour {colonne}"
         morceaux.append(table)
 
-        logger.info("%s :", libelle)
+        # les découpages fins (108 départements, 442 sous-préfectures) ne sont détaillés que
+        # dans le journal : la console garde les extrêmes.
+        detaille = len(table) <= MODALITES_AFFICHEES
+        logger.info("%s (%d modalités)%s :", libelle, len(table),
+                    "" if detaille else " — extrêmes, détail dans le journal")
+        a_afficher = table if detaille else pd.concat(
+            [table.nlargest(5, "M0_ipm"), table.nsmallest(5, "M0_ipm")])
         for _, ligne in table.iterrows():
-            logger.info("  %-14s H = %5.1f %% | A = %.4f | M0 = %.4f | %5.1f %% de la population",
-                        ligne.modalite, 100 * ligne.H_incidence, ligne.A_intensite,
-                        ligne.M0_ipm, 100 * ligne.population / population_totale)
+            journalise = logger.info if ligne.modalite in set(a_afficher.modalite) else logger.debug
+            journalise("  %-26s H = %5.1f %% | A = %.4f | M0 = %.4f | %5.1f %% de la population",
+                       ligne.modalite, 100 * ligne.H_incidence, ligne.A_intensite,
+                       ligne.M0_ipm, 100 * ligne.population / population_totale)
 
     D = pd.concat(morceaux, ignore_index=True)
     D["part_population"] = D.population / population_totale

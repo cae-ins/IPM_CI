@@ -5,6 +5,12 @@ Source : libellés des .dta + questionnaire CAPI ménage vague 1
 (le numéro de question figure en commentaire).
 """
 
+from functools import lru_cache
+
+import pandas as pd
+
+from orchestrateur import DATA
+
 MENAGE = {
     # identification et pondération
     "grappe": "grappe",
@@ -21,6 +27,9 @@ MENAGE = {
     "hgender": "sexe_cm",
     "hage": "age_cm",
     "hcsp": "csp_cm",
+    # découpage administratif (section 0) : 33 régions, 108 départements, 442 sous-préfectures
+    "s00q02": "departement",                 # 0.02 Préfecture/Arrondissement
+    "s00q03": "sous_prefecture",             # 0.03 Commune / sous-préfecture
     # logement (section 11)
     "s11q01": "type_logement",               # 11.01
     "s11q02": "nb_pieces",                   # 11.02
@@ -188,3 +197,18 @@ REGION = {
 
 # désagrégation -> table de correspondance
 MODALITES = {"milieu": MILIEU, "region": REGION, "sexe_cm": SEXE}
+
+# Départements (108) et sous-préfectures/communes (442) : trop nombreux pour être recopiés ici,
+# leurs libellés sont lus dans les value labels de Base_Menage.dta.
+ETIQUETTES_DTA = {"departement": "s00q02", "sous_prefecture": "s00q03"}
+
+
+@lru_cache(maxsize=None)
+def modalites(colonne):
+    """Libellés d'une variable de désagrégation, ou None si elle n'en a pas."""
+    if colonne in MODALITES:
+        return MODALITES[colonne]
+    if colonne not in ETIQUETTES_DTA:
+        return None
+    labels = pd.io.stata.StataReader(DATA / "Base_Menage.dta").value_labels()
+    return labels[ETIQUETTES_DTA[colonne]]
