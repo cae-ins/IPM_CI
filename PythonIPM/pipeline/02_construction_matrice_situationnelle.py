@@ -1,7 +1,7 @@
 """Étape 02 du pipeline IPM — matrice situationnelle X (EHCVM 2021).
 
 Entrée  : preconstruction_matrice_situationnelle.dta (étape 01)
-Sortie  : matrice_situationnelle_ehcvm2021.dta — 12 965 ménages x 15 indicateurs 0/1,
+Sortie  : matrice_situationnelle_ehcvm2021.dta — 12 965 ménages x 16 indicateurs 0/1,
           plus la pondération et les variables de désagrégation, et rien d'autre.
 
 Chaque indicateur suit SOIT la proposition nationale, SOIT l'application du PNUD — le choix est
@@ -160,7 +160,7 @@ INDICATEURS = [
                lambda X: X.taille_menage / X.nb_pieces > PERSONNES_PAR_PIECE_MAXIMUM),
 ]
 
-# les 15 colonnes indicateurs, dans l'ordre du tableau de référence
+# les 16 colonnes indicateurs, dans l'ordre du tableau de référence
 COLONNES_INDICATEURS = [i.colonne for i in INDICATEURS]
 
 # Vecteur z de la méthode Alkire-Foster : la valeur de coupure de chaque indicateur.
@@ -330,7 +330,7 @@ def verifier():
 def main():
     configurer_logs(logger, JOURNAL)
     debut = time.perf_counter()
-    logger.info("=== étape 02 : matrice situationnelle X (12 indicateurs) ===")
+    logger.info("=== étape 02 : matrice situationnelle X (16 indicateurs) ===")
 
     P = charger_preconstruction()
     journaliser_vecteur_z()

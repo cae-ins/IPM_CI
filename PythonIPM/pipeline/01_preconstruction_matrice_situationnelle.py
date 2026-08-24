@@ -1,7 +1,7 @@
 """Étape 01 du pipeline IPM — préconstruction (EHCVM 2021).
 
 Cette étape ne calcule AUCUN indicateur et n'applique AUCUN seuil : elle prépare, ménage par
-ménage, les variables de situation dont l'étape 02 a besoin pour construire les 12 indicateurs.
+ménage, les variables de situation dont l'étape 02 a besoin pour construire les 16 indicateurs.
 
     Base_Individus  ->  âge, années d'études, scolarisation, alphabétisation, chômage BIT
                         puis agrégation au ménage (effectif concerné + effectif défavorable)

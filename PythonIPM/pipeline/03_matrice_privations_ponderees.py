@@ -1,7 +1,7 @@
 """Étape 03 du pipeline IPM — pondérations w, matrice pondérée et score cᵢ.
 
 Entrée  : matrice_situationnelle_ehcvm2021.dta (étape 02) = la matrice de privation g0,
-          12 965 ménages x 13 indicateurs en 0/1.
+          12 965 ménages x 16 indicateurs en 0/1.
 Sorties : vecteur_w                     — le poids de chaque indicateur
           matrice_privations_ponderees  — g0 pondérée (wⱼ · g0ᵢⱼ) et le score cᵢ
 
@@ -52,7 +52,7 @@ def vecteur_w(chemin_z=ENTREE_Z):
     """Poids de chaque indicateur : dimensions équipondérées, partage égal à l'intérieur.
 
     Aucune liste d'indicateurs n'est réécrite ici : elle est lue dans le vecteur z produit par
-    l'étape 02, ce qui garantit que w et z portent sur exactement les mêmes 12 colonnes.
+    l'étape 02, ce qui garantit que w et z portent sur exactement les mêmes 16 colonnes.
     """
     logger.info("--- 1. vecteur w des pondérations ---")
     z = pd.read_csv(chemin_z)
