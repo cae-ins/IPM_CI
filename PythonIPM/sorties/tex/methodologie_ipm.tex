@@ -20,13 +20,15 @@ averti tout ce qu'il faut pour reproduire ou contester le calcul. Chaque choix d
 
 \begin{retenir}[Les résultats en cinq lignes]
 \begin{itemize}
-  \item \textbf{65,8~\%} de la population ivoirienne vit dans un ménage multidimensionnellement
-        pauvre, soit 19,6 millions de personnes.
-  \item Ces personnes cumulent en moyenne \textbf{47,4~\%} des privations pondérées possibles.
-  \item L'indice qui combine les deux vaut $\ipm = \mathbf{0{,}3122}$.
-  \item Le milieu rural rassemble \textbf{63,3~\%} de la pauvreté pour 47,3~\% de la population.
-  \item L'écart entre régions va de 0,132 (Abidjan) à 0,468 (Bounkani), soit un rapport de
-        un à trois et demi.
+  \item \textbf{58,0~\%} de la population ivoirienne vit dans un ménage multidimensionnellement
+        pauvre, soit 17,3 millions de personnes --- intervalle de confiance à 95~\% :
+        [54,9~\% ; 61,0~\%].
+  \item Ces personnes cumulent en moyenne \textbf{49,4~\%} des privations pondérées possibles.
+  \item L'indice qui combine les deux vaut $\ipm = \mathbf{0{,}2863}$, IC 95~\%
+        [0,2700 ; 0,3026].
+  \item Le milieu rural rassemble \textbf{71,9~\%} de la pauvreté pour 47,3~\% de la population.
+  \item L'écart entre régions va de 0,058 (Abidjan) à 0,481 (Bounkani), soit un rapport de
+        un à huit.
 \end{itemize}
 \end{retenir}
 
@@ -120,11 +122,11 @@ Chaque ménage $i$ compte donc pour
 n_i \;=\; \col{taille\_menage}_i \times \col{ponderation\_menage}_i .
 \]
 
-\section{Les treize indicateurs}
+\section{Les seize indicateurs}
 
 Quatre dimensions, équipondérées à 0,25 chacune. Le poids d'une dimension se partage à parts
-égales entre ses indicateurs : un indicateur seul dans sa dimension porte 0,25 à lui seul, quatre
-indicateurs se partagent 0,0625 chacun.
+égales entre ses indicateurs : deux indicateurs portent 0,125 chacun, quatre indicateurs
+0,0625 chacun.
 
 \begin{center}
 \begin{tabular}{@{}lrrr@{}}
@@ -132,11 +134,11 @@ indicateurs se partagent 0,0625 chacun.
 \textbf{Dimension} & \textbf{Indicateurs} & \textbf{Poids $w_j$} & \textbf{Total} \\
 \midrule
 Éducation & 4 & 0,0625 & 0,25 \\
-Santé & 2 & 0,1250 & 0,25 \\
-Emploi & 1 & 0,2500 & 0,25 \\
-Conditions de vie & 6 & 0,0417 & 0,25 \\
+Santé & 3 & 0,0833 & 0,25 \\
+Emploi & 2 & 0,1250 & 0,25 \\
+Conditions de vie & 7 & 0,0357 & 0,25 \\
 \midrule
-\textbf{Ensemble} & \textbf{13} & & \textbf{1,00} \\
+\textbf{Ensemble} & \textbf{16} & & \textbf{1,00} \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -171,8 +173,12 @@ Santé & Assurance maladie & nationale & aucun membre n'est couvert par une assu
 & 93,4~\% \\
 Santé & Insécurité alimentaire & FAO & le score FIES atteint 4 sur 8 (insécurité modérée ou
 sévère) & 42,7~\% \\
+Santé & Renoncement aux soins & nationale & un membre malade dans les 30 derniers jours n'a pas
+consulté, et pour raison de coût & 9,2~\% \\
 \midrule
 Emploi & Chômage & nationale & un membre de 17--40 ans est au chômage au sens du BIT & 3,7~\% \\
+Emploi & Emploi agricole de subsistance & nationale & le chef de ménage occupé ne travaille que
+sur son propre champ : ni salariat, ni apprentissage, ni commerce & 48,1~\% \\
 \midrule
 Cadre de vie & Électricité & nationale & l'éclairage n'est ni le réseau, ni un groupe
 électrogène, ni le solaire & 13,3~\% \\
@@ -186,6 +192,8 @@ Cadre de vie & Toilettes & PNUD & les sanitaires ne sont pas améliorés, ou son
 & 77,3~\% \\
 Cadre de vie & Biens d'équipement & PNUD & le ménage possède au plus un bien sur sept et pas de
 voiture & 29,2~\% \\
+Cadre de vie & Promiscuité & nationale & le logement abrite plus de 3 personnes par pièce
+(seuil ONU-Habitat) & 8,4~\% \\
 \bottomrule
 \end{longtable}
 \end{center}
@@ -201,11 +209,11 @@ renversée sans revenir aux données individuelles.
 
 \subsection{La matrice situationnelle et le vecteur de seuils}
 
-On part d'un tableau $X$ à 12\,965 lignes (les ménages) et 13 colonnes (les indicateurs), qui
+On part d'un tableau $X$ à 12\,965 lignes (les ménages) et 16 colonnes (les indicateurs), qui
 décrit la \emph{situation} de chaque ménage : combien d'enfants non scolarisés, quel type de
 sanitaires, combien d'années d'études pour le plus instruit.
 
-Le vecteur $z = (z_1, \dots, z_{13})$ donne le seuil de chaque indicateur. Il ne prend pas
+Le vecteur $z = (z_1, \dots, z_{16})$ donne le seuil de chaque indicateur. Il ne prend pas
 toujours la forme d'un nombre : selon l'indicateur, le seuil est une valeur numérique (10 années
 d'études), un effectif (« au moins une personne »), ou un ensemble de modalités jugées adéquates
 (les codes des sources d'eau améliorées au sens des ODD). Ces trois formes coexistent dans
@@ -226,12 +234,12 @@ g^0_{ij} =
 
 Chaque colonne est multipliée par son poids, puis la ligne est sommée :
 \[
-c_i \;=\; \sum_{j=1}^{13} w_j \, g^0_{ij}, \qquad 0 \le c_i \le 1 .
+c_i \;=\; \sum_{j=1}^{16} w_j \, g^0_{ij}, \qquad 0 \le c_i \le 1 .
 \]
 
 Le score $c_i$ est la \emph{part pondérée de privations} du ménage $i$. Un ménage privé partout a
 $c_i = 1$ ; un ménage sans aucune privation a $c_i = 0$. Sur l'EHCVM 2021, le score moyen est de
-\textbf{0,3968} et le maximum observé de 0,9583 : aucun ménage n'est privé sur les treize
+\textbf{0,3918} et le maximum observé de 0,8929 : aucun ménage n'est privé sur les seize
 indicateurs à la fois.
 
 \subsection{La censure au seuil \texorpdfstring{$k$}{k}}
@@ -249,8 +257,8 @@ c_i & \text{si } c_i \ge k,\\
 
 La censure est le cœur de la méthode. Les privations des ménages \emph{non} pauvres ne
 disparaissent pas des données --- elles restent lisibles dans la matrice pondérée --- mais elles
-ne comptent pas dans l'indice. Sur l'EHCVM 2021, la censure efface \textbf{14,8~\%} des privations
-pondérées, celles de 3\,386 ménages.
+ne comptent pas dans l'indice. Sur l'EHCVM 2021, la censure efface \textbf{18,3~\%} des privations
+pondérées, celles de 4\,269 ménages.
 
 \begin{retenir}[Pourquoi censurer ?]
 Sans censure, une amélioration chez un ménage déjà très peu privé ferait baisser l'indice autant
@@ -290,15 +298,17 @@ national. Cette propriété est vérifiée automatiquement à chaque exécution 
 \section{Résultats}
 
 \begin{center}
-\begin{tabular}{@{}lrl@{}}
+\begin{tabular}{@{}lrll@{}}
 \toprule
-\textbf{Indice} & \textbf{Valeur} & \textbf{Lecture} \\
+\textbf{Indice} & \textbf{Valeur} & \textbf{IC 95~\%} & \textbf{Lecture} \\
 \midrule
-$H$ --- incidence & 0,6584 & 65,8~\% de la population est pauvre, soit 19,6 millions de personnes \\
-$A$ --- intensité & 0,4742 & les pauvres cumulent en moyenne 47,4~\% des privations pondérées \\
-\ipm{} & 0,3122 & $= H \times A$ \\
-Vulnérables & 19,1~\% & score entre 0,2 et 1/3 \\
-Pauvreté sévère & 26,8~\% & score d'au moins 0,5 \\
+$H$ --- incidence & 0,5795 & [0,5489 ; 0,6101] & 58,0~\% de la population est pauvre, soit
+17,3 millions \\
+$A$ --- intensité & 0,4940 & [0,4894 ; 0,4985] & les pauvres cumulent 49,4~\% des privations
+pondérées \\
+\ipm{} & 0,2863 & [0,2700 ; 0,3026] & $= H \times A$ \\
+Vulnérables & 22,8~\% & & score entre 0,2 et 1/3 \\
+Pauvreté sévère & 26,1~\% & & score d'au moins 0,5 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -310,18 +320,18 @@ Pauvreté sévère & 26,8~\% & score d'au moins 0,5 \\
 \toprule
 & \textbf{Part de la population} & \textbf{$H$} & \textbf{$A$} & \textbf{\ipm{}} \\
 \midrule
-Urbain & 52,7~\% & 48,0~\% & 0,4531 & 0,2175 \\
-Rural  & 47,3~\% & 85,7~\% & 0,4874 & 0,4178 \\
+Urbain & 52,7~\% & 33,6~\% & 0,4533 & 0,1525 \\
+Rural  & 47,3~\% & 85,0~\% & 0,5119 & 0,4353 \\
 \midrule
-Chef de ménage homme & 83,6~\% & 67,0~\% & 0,4751 & 0,3183 \\
-Chef de ménage femme & 16,4~\% & 59,9~\% & 0,4693 & 0,2810 \\
+Chef de ménage homme & 83,6~\% & 60,7~\% & 0,4969 & 0,3014 \\
+Chef de ménage femme & 16,4~\% & 44,2~\% & 0,4734 & 0,2090 \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-Le rural concentre \textbf{63,3~\%} de la pauvreté multidimensionnelle avec 47,3~\% de la
-population ; son \ipm{} est presque le double de l'urbain. Entre régions, l'écart va de 0,132
-(Abidjan) à 0,468 (Bounkani). Quatre régions --- Béré, Folon, Worodougou, Bounkani --- dépassent
+Le rural concentre \textbf{71,9~\%} de la pauvreté multidimensionnelle avec 47,3~\% de la
+population ; son \ipm{} est près de trois fois celui de l'urbain. Entre régions, l'écart va de
+0,058 (Abidjan) à 0,481 (Bounkani). Trois régions --- Worodougou, Béré, Folon --- dépassent
 90~\% d'incidence.
 
 Le résultat apparemment contre-intuitif --- les ménages dirigés par une femme sont \emph{moins}
@@ -335,23 +345,95 @@ dit rien du niveau de vie individuel des femmes, que l'IPM ménage ne mesure pas
 \toprule
 \textbf{Dimension} & \textbf{Poids nominal} & \textbf{Contribution réelle à \ipm{}} \\
 \midrule
-Santé & 25,0~\% & 40,5~\% \\
-Éducation & 25,0~\% & 31,8~\% \\
-Conditions de vie & 25,0~\% & 23,1~\% \\
-Emploi & 25,0~\% & 4,6~\% \\
+Éducation & 25,0~\% & 32,3~\% \\
+Santé & 25,0~\% & 27,9~\% \\
+Conditions de vie & 25,0~\% & 21,3~\% \\
+Emploi & 25,0~\% & 18,5~\% \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 \begin{attention}[Un résultat qui mérite l'attention du lecteur]
-Les quatre dimensions sont équipondérées \emph{en droit}, mais elles pèsent en fait de 4,6~\% à
-40,5~\% --- un facteur neuf. Le poids $w_j$ fixe le maximum qu'une dimension \emph{peut}
-apporter ; ce qu'elle apporte \emph{vraiment} dépend de la fréquence de la privation. Le chômage
-détient le poids individuel le plus élevé du système (0,25, seul dans sa dimension) et la
-contribution la plus faible, parce qu'il ne touche que 5,7~\% des pauvres. Une dimension à un seul
-indicateur est toujours à la merci de la fréquence de cet indicateur : trop fréquent, il domine ;
-trop rare, il disparaît. Les deux dimensions à indicateur unique sont précisément celles qui
-s'écartent le plus de leur poids nominal.
+Les quatre dimensions sont équipondérées \emph{en droit} ; elles pèsent en fait de 18,5~\% à
+32,3~\%. Le poids $w_j$ fixe le maximum qu'une dimension \emph{peut} apporter ; ce qu'elle
+apporte \emph{vraiment} dépend de la fréquence de la privation. L'écart s'est nettement resserré
+depuis la version à treize indicateurs, où l'Emploi tombait à 4,6~\% et la Santé montait à
+40,5~\% : ces deux dimensions n'avaient alors qu'un ou deux indicateurs, et se trouvaient donc à
+la merci de la fréquence de chacun. Le déséquilibre s'est déplacé \emph{à l'intérieur} des
+dimensions : en Emploi, l'agriculture de subsistance apporte 16,9~\% de l'\ipm{} et le chômage
+1,6~\%, à poids égal (0,125) --- le premier prive 48,1~\% des ménages, le second 3,7~\%.
+\end{attention}
+
+\section{La précision des estimations}
+
+Tous les indices publiés sont des estimations tirées d'un échantillon : ils sont accompagnés
+d'un \textbf{intervalle de confiance à 95~\%}, calculé pour $H$, $A$ et \ipm{}, à tous les
+niveaux de désagrégation.
+
+\subsection{Le plan de sondage, pas la loi binomiale}
+
+$H$, $A$ et \ipm{} sont tous des ratios de la même forme
+\[
+R = \frac{\sum_i n_i \, y_i}{\sum_i n_i \, x_i}
+\]
+--- pour $H$, $y_i = \mathbf{1}(c_i \ge k)$ et $x_i = 1$ ; pour \ipm{}, $y_i = c_i(k)$ et
+$x_i = 1$ ; pour $A$, $y_i = c_i(k)$ et $x_i = \mathbf{1}(c_i \ge k)$. Une seule formule de
+variance les couvre donc tous les trois.
+
+L'EHCVM est un sondage \textbf{à deux degrés} : on tire d'abord des grappes (zones de
+dénombrement), puis des ménages dans chaque grappe. Deux ménages d'une même grappe se
+ressemblent --- même village, même école, même point d'eau --- et n'apportent donc pas deux
+informations indépendantes. La variance est calculée en conséquence, par agrégation des
+résidus linéarisés \textbf{au niveau de la grappe} :
+\[
+\widehat{\mathrm{V}}(R) = \frac{m}{m-1} \sum_{g=1}^{m} u_g^2,
+\qquad
+u_g = \sum_{i \in g} \frac{n_i \,(y_i - R\,x_i)}{\sum_i n_i x_i},
+\]
+où $m$ est le nombre de grappes du domaine. L'intervalle est
+$R \pm t_{0{,}975;\,m-1}\sqrt{\widehat{\mathrm{V}}(R)}$, borné à $[0, 1]$. Traiter les ménages
+comme indépendants diviserait l'erreur-type par deux ou plus : les intervalles publiés seraient
+alors faux, et faussement rassurants.
+
+\begin{retenir}[Ce que l'intervalle recouvre --- et ce qu'il ne recouvre pas]
+L'intervalle décrit la seule \textbf{incertitude d'échantillonnage}. Il ne dit rien des erreurs
+de déclaration, des non-réponses, ni des choix de définition documentés dans ce rapport --- qui
+pèsent souvent bien plus lourd. Un \ipm{} de 0,2863 « à $\pm$ 0,016 près » reste un \ipm{} dont
+la valeur dépend d'abord des seize indicateurs retenus.
+\end{retenir}
+
+\subsection{Jusqu'où descendre dans le territoire}
+
+Les indices sont désagrégés à quatre niveaux : milieu, région (33), \textbf{département} (108) et
+\textbf{sous-préfecture ou commune} (442). Plus le domaine est fin, moins il contient de grappes,
+et plus l'intervalle s'élargit.
+
+\begin{center}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Niveau} & \textbf{Domaines} & \textbf{Grappes (médiane)} & \textbf{Largeur de l'IC} &
+\textbf{CV $>$ 20~\%} \\
+\midrule
+Milieu & 2 & 540 & 0,027 & 0 \\
+Région & 33 & 30 & 0,113 & 0 \\
+Département & 108 & 8 & 0,213 & 15 \\
+Sous-préfecture / commune & 442 & 2 & 0,485 & 93 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+La colonne \col{M0\_cv} du classeur donne le coefficient de variation de \ipm{}
+(erreur-type / estimation). L'usage statistique retient 20~\% comme limite de publication : au
+delà, l'estimation est indicative et ne doit pas être commentée seule. Au niveau régional, aucune
+estimation n'est concernée ; au niveau des sous-préfectures, 93 sur 442 le sont, et
+\textbf{211 domaines ne comptent qu'une seule grappe}, ce qui rend la variance non estimable ---
+leurs colonnes d'intervalle sont alors vides, jamais remplies d'une valeur inventée.
+
+\begin{attention}[Le département est le plancher raisonnable]
+L'EHCVM 2021 a été dimensionnée pour être représentative au niveau régional. Les résultats
+départementaux sont exploitables avec prudence ; les résultats par sous-préfecture sont fournis
+pour le ciblage local et l'exploration, pas pour la publication ni pour classer des territoires
+entre eux.
 \end{attention}
 
 \section{Écarts assumés et limites}
@@ -364,7 +446,7 @@ l'interprétation des résultats et la comparabilité internationale.
   \item[Mortalité juvénile --- indicateur abandonné.] L'enquête n'a ni module décès ni historique
   des naissances. La base des chocs enregistre bien un décès dans le ménage (1\,328 ménages sur
   trois ans) mais sans l'âge du défunt : impossible d'isoler les moins de 18 ans. La dimension
-  Santé repose donc sur l'assurance maladie et l'insécurité alimentaire. Ce dernier indicateur
+  Santé repose donc sur l'assurance maladie, l'insécurité alimentaire et le renoncement aux soins. Ce dernier indicateur
   remplace la nutrition de l'IPM mondial, que l'EHCVM ne permet pas non plus de mesurer faute de
   module anthropométrique. Cette substitution fait l'objet d'un document séparé.
 
@@ -385,6 +467,25 @@ l'interprétation des résultats et la comparabilité internationale.
   \item[Fréquentation scolaire --- deux années scolaires.] La question portant sur 2021/22 n'est
   posée qu'en seconde vague. Un enfant est réputé scolarisé s'il l'était sur l'année la plus
   récente disponible pour sa vague.
+
+  \item[Renoncement aux soins --- conditionné à la maladie.] L'indicateur ne peut être privé que
+  dans un ménage où quelqu'un a été malade dans les 30 derniers jours : 67,2~\% des ménages sont
+  concernés, et 9,2~\% sont privés. Un ménage où personne n'a été malade n'est pas privé, comme
+  partout ailleurs dans ce pipeline. Le coût est identifié par les modalités 2
+  (« trop cher ») et 8 (« manque d'argent ») de la question 3.06.
+
+  \item[Emploi de subsistance --- codage 1/2, pas 0/1.] Les questions 4.06 à 4.09 de l'EHCVM sont
+  codées 1 = oui, 2 = non ; elles ne prennent jamais la valeur 0. Le critère « sans emploi
+  salarié, ni apprentissage, ni commerce » est donc appliqué comme « pas de \emph{oui} », ce qui
+  englobe les non-réponses de ces branches. L'indicateur porte sur le seul \textbf{chef de
+  ménage} : c'est lui qui détermine, dans la structure de l'EHCVM, l'activité principale du
+  ménage.
+
+  \item[Promiscuité --- seuil ONU-Habitat.] Le seuil retenu est de \emph{plus de} 3 personnes par
+  pièce (question 11.02), recommandé par ONU-Habitat pour l'Afrique subsaharienne et utilisé par
+  les IPM nationaux éthiopien et rwandais : 8,4~\% des ménages sont privés. Le seuil de l'OMS,
+  plus exigeant, est de 2 personnes par pièce et porterait la privation à 29,7~\%. La bascule
+  tient à une constante du code.
 
   \item[Électricité --- source d'éclairage, pas raccordement.] La variable « connecté au réseau »
   ignore le groupe électrogène et le solaire : elle classerait 2\,597 ménages de plus comme privés
@@ -449,21 +550,22 @@ logique sur un jeu de données construit à la main, aux résultats connus d'ava
 \textbf{Étape} & \textbf{Ce qu'elle fait} & \textbf{Ce qu'elle produit} \\
 \midrule
 01 & lit les quatre bases, calcule âge, scolarité, chômage, agrège au ménage &
-\col{preconstruction\_...} (12\,965 $\times$ 29) \\
+\col{preconstruction\_...} (12\,965 $\times$ 38) \\
 02 & applique le vecteur $z$ &
-\col{vecteur\_z}, \col{matrice\_situationnelle\_...} (13 indicateurs 0/1) \\
+\col{vecteur\_z}, \col{matrice\_situationnelle\_...} (16 indicateurs 0/1) \\
 03 & construit $w$, pondère, calcule $c_i$ &
 \col{vecteur\_w}, \col{matrice\_privations\_ponderees} \\
 04 & censure à $k$, calcule $c_i(k)$ &
 \col{matrice\_privations\_censuree} \\
-05 & calcule $H$, $A$, \ipm{}, contributions, désagrégations &
+05 & calcule $H$, $A$, \ipm{}, leurs intervalles de confiance, les contributions et les
+désagrégations (milieu, région, département, sous-préfecture, sexe et taille) &
 \col{indices\_ipm}, \col{contributions\_ipm}, le classeur \col{.xlsx} \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 \begin{verbatim}
-python pipeline/orchestrateur.py            # les cinq étapes, environ 4 secondes
+python pipeline/orchestrateur.py            # les cinq étapes, environ 17 secondes
 python pipeline/orchestrateur.py --check    # les auto-contrôles seuls
 \end{verbatim}
 

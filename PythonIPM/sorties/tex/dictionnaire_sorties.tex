@@ -28,7 +28,8 @@ Qui risque de basculer ? & \col{vulnerables} \\
 Qui est le plus en difficulté ? & \col{pauvrete\_severe} \\
 Quelle région pèse le plus ? & \col{contribution\_M0}, feuille \textsf{Région} \\
 Quel indicateur pèse le plus ? & \col{contribution\_M0}, feuille \textsf{Contributions} \\
-Le chiffre est-il robuste ? & \col{menages} (effectif d'échantillon) \\
+Le chiffre est-il robuste ? & \col{M0\_cv} et \col{grappes} \\
+Quelle est la marge d'erreur ? & \col{M0\_ic\_bas}, \col{M0\_ic\_haut} \\
 \end{tabular}
 \end{center}
 \end{retenir}
@@ -47,7 +48,7 @@ Toutes les formules de ce document utilisent trois symboles.
   $n_i$ : elles décrivent la \textbf{population}, jamais l'échantillon.
 
   \item[$c_i$ --- le score de privation du ménage $i$.] La somme pondérée de ses privations,
-  entre 0 (aucune privation) et 1 (privé sur les treize indicateurs).
+  entre 0 (aucune privation) et 1 (privé sur les seize indicateurs).
 
   \item[$k$ --- le seuil de pauvreté multidimensionnelle.] Fixé à $1/3$. Un ménage est pauvre si
   $c_i \ge k$.
@@ -57,7 +58,7 @@ Le score censuré $c_i(k)$ vaut $c_i$ si le ménage est pauvre, et $0$ sinon.
 
 \section{Structure du classeur}
 
-Six feuilles. Les quatre feuilles de désagrégation et la feuille \textsf{Ensemble} ont exactement
+Huit feuilles. Les six feuilles de désagrégation et la feuille \textsf{Ensemble} ont exactement
 les mêmes colonnes ; seule la feuille \textsf{Contributions} a une structure propre.
 
 \begin{center}
@@ -66,9 +67,11 @@ les mêmes colonnes ; seule la feuille \textsf{Contributions} a une structure pr
 \textbf{Feuille} & \textbf{Une ligne =} & \textbf{Lignes} \\
 \midrule
 \textsf{Ensemble} & la Côte d'Ivoire entière & 1 \\
-\textsf{Contributions} & un indicateur & 13 \\
+\textsf{Contributions} & un indicateur & 16 \\
 \textsf{Milieu de résidence} & urbain ou rural & 2 \\
 \textsf{Région} & une des 33 régions & 33 \\
+\textsf{Département} & un des 108 départements & 108 \\
+\textsf{Sous-préfecture ou commune} & une des 442 sous-préfectures & 442 \\
 \textsf{Sexe du chef de ménage} & masculin ou féminin & 2 \\
 \textsf{Taille du ménage} & une classe de taille & 5 \\
 \bottomrule
@@ -77,13 +80,14 @@ les mêmes colonnes ; seule la feuille \textsf{Contributions} a une structure pr
 
 \section{Les feuilles d'indices}
 
-\emph{(\textsf{Ensemble} et les quatre désagrégations.)}
+\emph{(\textsf{Ensemble} et les six désagrégations.)}
 
 \subsection{Identification de la ligne}
 
 \begin{description}
   \item[\col{variable}] Le découpage auquel appartient la ligne : \textsf{Ensemble},
-  \textsf{Milieu de résidence}, \textsf{Région}, \textsf{Sexe du chef de ménage} ou
+  \textsf{Milieu de résidence}, \textsf{Région}, \textsf{Département},
+  \textsf{Sous-préfecture ou commune}, \textsf{Sexe du chef de ménage} ou
   \textsf{Taille du ménage}. Utile quand plusieurs feuilles sont empilées.
 
   \item[\col{modalite}] Le groupe décrit, en clair : \textsf{Rural}, \textsf{Bounkani},
@@ -103,6 +107,12 @@ les mêmes colonnes ; seule la feuille \textsf{Contributions} a une structure pr
   d'échantillon, \textbf{non pondéré}. Il ne sert pas à décrire la population : il sert à juger de
   la robustesse du chiffre. Une région à 120 ménages donne un $H$ nettement moins précis qu'une
   région à 900.
+
+  \item[\col{grappes}] Le nombre de \textbf{grappes} (zones de dénombrement) dont provient le
+  groupe. C'est l'effectif qui détermine réellement la précision : dans un sondage à deux degrés,
+  ce sont les grappes qui sont tirées au sort, pas les ménages. Une modalité à 24 ménages issus de
+  2 grappes est nettement moins précise que 24 ménages issus de 24 grappes. En dessous de deux
+  grappes, aucun intervalle de confiance n'est calculable.
 
   \item[\col{population}] Le nombre de personnes représentées : $\sum_i n_i$ sur le groupe. Cette
   fois, c'est bien une grandeur de population. La feuille \textsf{Ensemble} affiche 29\,809\,416.
@@ -130,8 +140,9 @@ ne compte pas, l'ampleur de ses privations n'intervient pas.
 le plus intuitif, et donc celui qu'il faut manier avec le plus de prudence : un ménage à $c_i =
 0{,}34$ et un ménage à $c_i = 0{,}95$ y pèsent identiquement.
 
-\textbf{Lecture.} $H = 0{,}6584$ pour l'ensemble : \textbf{65,8~\% de la population ivoirienne},
-soit 19,6 millions de personnes, vit dans un ménage pauvre. En rural, $H = 0{,}857$.
+\textbf{Lecture.} $H = 0{,}5795$ pour l'ensemble : \textbf{58,0~\% de la population ivoirienne},
+soit 17,3 millions de personnes, vit dans un ménage pauvre --- IC 95~\% [54,9~\% ; 61,0~\%].
+En rural, $H = 0{,}850$.
 
 \subsection*{\col{A\_intensite} --- l'intensité}
 
@@ -148,9 +159,9 @@ pauvre a par définition $c_i \ge 1/3$, $A$ ne peut jamais descendre sous $0{,}3
 moyenne sur une population déjà sélectionnée. Il faut donc lire $A$ par rapport à ce plancher, pas
 par rapport à zéro.
 
-\textbf{Lecture.} $A = 0{,}4742$ : les personnes pauvres cumulent en moyenne \textbf{47,4~\% des
+\textbf{Lecture.} $A = 0{,}4940$ : les personnes pauvres cumulent en moyenne \textbf{49,4~\% des
 privations pondérées possibles}, contre un minimum concevable de 33,3~\%. La variation de $A$
-entre groupes est faible (de 0,432 à 0,519 selon les régions) : en Côte d'Ivoire, c'est surtout le
+entre groupes est faible (de 0,415 à 0,557 selon les régions) : en Côte d'Ivoire, c'est surtout le
 \emph{nombre} de pauvres qui varie d'une région à l'autre, pas la gravité de leur situation.
 
 \subsection*{\col{M0\_ipm} --- l'indice de pauvreté multidimensionnelle}
@@ -168,8 +179,8 @@ population pauvre ». Sa qualité première est de bouger quand $H$ ne bouge pas
 améliore la situation de ménages qui restent pauvres, $H$ est inchangé mais $A$ baisse, donc \ipm{}
 baisse. C'est pour cela que c'est \emph{lui}, et non $H$, qui constitue l'indice.
 
-\textbf{Lecture.} $\ipm = 0{,}3122$. Un \ipm{} n'a pas d'unité parlante en soi : il se lit par
-comparaison. Entre 0,132 à Abidjan et 0,468 dans le Bounkani, le rapport est de un à trois et demi.
+\textbf{Lecture.} $\ipm = 0{,}2863$. Un \ipm{} n'a pas d'unité parlante en soi : il se lit par
+comparaison. Entre 0,058 à Abidjan et 0,481 dans le Bounkani, le rapport est de un à huit.
 
 \subsection*{\col{vulnerables} --- la population vulnérable}
 
@@ -187,8 +198,8 @@ supplémentaire survenait --- une école qui ferme, une source qui tarit. Un pay
 pendant que la vulnérabilité augmente n'a pas nécessairement progressé : il a peut-être seulement
 déplacé des ménages juste sous le seuil.
 
-\textbf{Lecture.} 19,1~\% pour l'ensemble. À noter, un effet mécanique intéressant : la
-vulnérabilité est plus forte là où la pauvreté est plus faible (26,3~\% en urbain contre 11,2~\%
+\textbf{Lecture.} 22,8~\% pour l'ensemble. À noter, un effet mécanique intéressant : la
+vulnérabilité est plus forte là où la pauvreté est plus faible (33,5~\% en urbain contre 11,0~\%
 en rural), simplement parce qu'en rural la plupart des ménages ont déjà franchi le seuil.
 
 \subsection*{\col{pauvrete\_severe} --- la pauvreté sévère}
@@ -205,15 +216,15 @@ pondérées possibles.
 $\text{pauvrete\_severe} / H$ indique la profondeur du problème : plus il est proche de 1, plus les
 pauvres sont concentrés dans le bas de la distribution.
 
-\textbf{Lecture.} 26,8~\% de la population, soit 41~\% des pauvres. En rural, 39,5~\% de la
-population est sévèrement pauvre contre 15,4~\% en urbain --- un écart de un à deux et demi, plus
+\textbf{Lecture.} 26,1~\% de la population, soit 45~\% des pauvres. En rural, 44,7~\% de la
+population est sévèrement pauvre contre 9,4~\% en urbain --- un écart de un à cinq, bien plus
 marqué que celui de $H$.
 
 \begin{retenir}[Comment se recoupent les cinq indices]
 Les trois statuts sont exclusifs deux à deux pour \col{vulnerables} et $H$ (on ne peut pas être à
 la fois vulnérable et pauvre), tandis que \col{pauvrete\_severe} est inclus dans $H$.
-Numériquement : 65,8~\% de pauvres, dont 26,8~\% de sévèrement pauvres ; plus 19,1~\% de
-vulnérables ; le reste, 15,1~\%, n'est ni pauvre ni vulnérable.
+Numériquement : 58,0~\% de pauvres, dont 26,1~\% de sévèrement pauvres ; plus 22,8~\% de
+vulnérables ; le reste, 19,2~\%, n'est ni pauvre ni vulnérable.
 \end{retenir}
 
 \subsection*{\col{contribution\_M0} --- la part du groupe dans l'IPM national}
@@ -231,21 +242,59 @@ feuille --- vérifié automatiquement.
 contribue plus que son poids démographique concentre la pauvreté ; l'inverse signale un groupe
 relativement épargné.
 
-\textbf{Lecture.} Le rural pèse 47,3~\% de la population et \textbf{63,3~\%} de l'IPM. Abidjan
-pèse 21,5~\% de la population et seulement \textbf{9,1~\%} de l'IPM. Sur la feuille
+\textbf{Lecture.} Le rural pèse 47,3~\% de la population et \textbf{71,9~\%} de l'IPM. Abidjan
+pèse 21,5~\% de la population et seulement \textbf{4,3~\%} de l'IPM. Sur la feuille
 \textsf{Ensemble}, la valeur est 1 par construction.
+
+\section{La précision : intervalles, erreur-type, CV}
+
+Chacun des trois indices principaux est publié avec son intervalle de confiance à 95~\%. Ce sont
+des estimations d'échantillon : les citer sans marge revient à leur prêter une exactitude qu'elles
+n'ont pas.
+
+\begin{description}
+  \item[\col{H\_ic\_bas}, \col{H\_ic\_haut}] Les bornes de l'intervalle de $H$. Pour l'ensemble :
+  [0,5489 ; 0,6101] autour de $H = 0{,}5795$. Lecture : « l'incidence est comprise entre 54,9 et
+  61,0~\% ».
+
+  \item[\col{A\_ic\_bas}, \col{A\_ic\_haut}] Les bornes de l'intervalle de $A$. Elles sont
+  toujours serrées ([0,4894 ; 0,4985] pour l'ensemble) : l'intensité est une moyenne sur les
+  pauvres, une population nombreuse et homogène.
+
+  \item[\col{M0\_ic\_bas}, \col{M0\_ic\_haut}] Les bornes de l'intervalle de \ipm{} :
+  [0,2700 ; 0,3026]. Ce sont ces deux colonnes qui doivent accompagner tout \ipm{} publié.
+
+  \item[\col{M0\_erreur\_type}] L'écart-type d'échantillonnage de \ipm{} : 0,0083 au niveau
+  national. L'intervalle vaut l'estimation $\pm\, t \times$ cette valeur, avec $t$ pris dans la loi
+  de Student à (nombre de grappes $-$ 1) degrés de liberté.
+
+  \item[\col{M0\_cv}] Le \textbf{coefficient de variation} : erreur-type / estimation, soit
+  2,9~\% au niveau national. C'est le critère de publication : au-delà de \textbf{20~\%}, une
+  estimation est jugée trop imprécise pour être publiée ou commentée seule. Aucune région n'est
+  concernée ; 15 départements sur 108 et 93 sous-préfectures sur 442 le sont.
+\end{description}
+
+\begin{attention}[Deux colonnes vides ne sont pas une erreur]
+Quand un domaine ne contient qu'une seule grappe --- le cas de 211 sous-préfectures --- la
+variance d'échantillonnage n'est pas estimable. Les colonnes d'intervalle restent alors vides. Le
+pipeline ne fabrique jamais un intervalle qu'il ne peut pas calculer.
+\end{attention}
+
+Le calcul tient compte du plan de sondage à deux degrés de l'EHCVM : la variance est agrégée au
+niveau de la \emph{grappe}, et non du ménage. La formule complète figure dans la \emph{Méthodologie
+de calcul}.
 
 \section{La feuille \textsf{Contributions}}
 
-Une ligne par indicateur, treize lignes. Elle répond à une question différente des précédentes :
+Une ligne par indicateur, seize lignes. Elle répond à une question différente des précédentes :
 non plus « \emph{qui} est pauvre ? » mais « \emph{de quoi} la pauvreté est-elle faite ? ».
 
 \begin{description}
   \item[\col{dimension}, \col{indicateur}, \col{colonne}] La dimension d'appartenance, le libellé
   publiable, et le nom technique de la colonne dans les fichiers intermédiaires.
 
-  \item[\col{poids\_w}] Le poids $w_j$ de l'indicateur dans le score. Somme à 1 sur les treize
-  lignes. Il vaut 0,0625 en Éducation, 0,125 en Santé, 0,25 pour le chômage et 0,0417 en
+  \item[\col{poids\_w}] Le poids $w_j$ de l'indicateur dans le score. Somme à 1 sur les seize
+  lignes. Il vaut 0,0625 en Éducation, 0,0833 en Santé, 0,125 en Emploi et 0,0357 en
   conditions de vie.
 
   \item[\col{taux\_privation\_censure}] Le taux de privation \textbf{censuré} $CH_j$ : la part de
@@ -254,25 +303,26 @@ non plus « \emph{qui} est pauvre ? » mais « \emph{de quoi} la pauvreté est-e
   CH_j = \frac{\sum_i n_i \, g^0_{ij} \, \mathbf{1}(c_i \ge k)}{\sum_i n_i}
   \]
   À ne pas confondre avec le taux de privation brut du tableau des définitions : l'assurance
-  maladie prive 90,2~\% de la population au sens brut, mais son taux censuré est de 64,9~\% ---
+  maladie prive 90,2~\% de la population au sens brut, mais son taux censuré est de 57,3~\% ---
   la différence, ce sont les ménages non assurés qui ne sont pas pauvres par ailleurs.
 
   \item[\col{apport\_a\_M0}] Le produit $w_j \times CH_j$, c'est-à-dire ce que l'indicateur ajoute
-  en points d'\ipm{}. La somme des treize apports vaut exactement \ipm{} $= 0{,}3122$.
+  en points d'\ipm{}. La somme des seize apports vaut exactement \ipm{} $= 0{,}2863$.
 
   \item[\col{contribution\_M0}] $C_j = w_j \, CH_j / \ipm$, la part de l'indicateur dans l'IPM.
-  Somme à 1. L'assurance maladie en explique 26,0~\% à elle seule ; l'électricité, 1,2~\%.
+  Somme à 1. L'emploi agricole de subsistance en explique 16,9~\% et l'assurance maladie 16,7~\% ;
+  la promiscuité, 1,1~\%.
 
   \item[\col{contribution\_dimension}] La somme des contributions des indicateurs de la même
   dimension, répétée sur chaque ligne de cette dimension pour permettre un tri direct.
 \end{description}
 
 \begin{attention}[Poids nominal et poids réel]
-Les quatre dimensions sont équipondérées à 25~\%, mais leurs contributions réelles vont de 4,6~\%
-(Emploi) à 40,5~\% (Santé). Le poids $w_j$ fixe ce qu'un indicateur \emph{peut} apporter au
-maximum ; ce qu'il apporte réellement dépend de la fréquence de la privation. Un indicateur rare
---- le chômage ne touche que 5,7~\% des pauvres --- ne peut pas porter une dimension entière,
-quel que soit son poids.
+Les quatre dimensions sont équipondérées à 25~\%, mais leurs contributions réelles vont de 18,5~\%
+(Emploi) à 32,3~\% (Éducation). Le poids $w_j$ fixe ce qu'un indicateur \emph{peut} apporter au
+maximum ; ce qu'il apporte réellement dépend de la fréquence de la privation. À poids identique
+(0,125), l'emploi agricole de subsistance apporte 16,9~\% de l'\ipm{} et le chômage 1,6~\% :
+un indicateur rare ne peut pas porter une dimension, quel que soit son poids.
 \end{attention}
 
 \section{Les autres sorties}
@@ -287,15 +337,15 @@ Le classeur est la restitution ; le pipeline produit aussi les tables de travail
 \textbf{Table} & \textbf{Contenu} & \textbf{Dimensions} \\
 \midrule
 \col{preconstruction\_...} & situations brutes : effectifs concernés et défavorables, codes de
-modalité, aucune valeur seuillée & 12\,965 $\times$ 29 \\
-\col{vecteur\_z} & les treize seuils, avec leur source et leur énoncé & 13 $\times$ 7 \\
-\col{matrice\_situationnelle\_...} & la matrice de privation $g^0$ : treize colonnes 0/1 &
-12\,965 $\times$ 19 \\
-\col{vecteur\_w} & les treize poids et leur dimension & 13 $\times$ 6 \\
+modalité, aucune valeur seuillée & 12\,965 $\times$ 38 \\
+\col{vecteur\_z} & les seize seuils, avec leur source et leur énoncé & 16 $\times$ 7 \\
+\col{matrice\_situationnelle\_...} & la matrice de privation $g^0$ : seize colonnes 0/1 &
+12\,965 $\times$ 27 \\
+\col{vecteur\_w} & les seize poids et leur dimension & 16 $\times$ 6 \\
 \col{matrice\_privations\_ponderees} & $w_j\,g^0_{ij}$ et le score $c_i$, sans censure &
-12\,965 $\times$ 20 \\
+12\,965 $\times$ 28 \\
 \col{matrice\_privations\_censuree} & $w_j\,g^0_{ij}\mathbf{1}(c_i \ge k)$, le score $c_i(k)$ et
-les statuts & 12\,965 $\times$ 24 \\
+les statuts & 12\,965 $\times$ 32 \\
 \col{indices\_ipm}, \col{contributions\_ipm} & les mêmes données que le classeur & \\
 \bottomrule
 \end{tabular}
@@ -310,7 +360,7 @@ sont systématiques : \col{\_ponderee} pour la matrice pondérée non censurée,
 \begin{enumerate}
   \item La somme d'une ligne de \col{matrice\_privations\_ponderees} redonne \col{score}.
   \item La somme d'une ligne de \col{matrice\_privations\_censuree} redonne \col{score\_censure}.
-  \item La moyenne pondérée population de \col{score\_censure} redonne \ipm{} $= 0{,}3122$.
+  \item La moyenne pondérée population de \col{score\_censure} redonne \ipm{} $= 0{,}2863$.
 \end{enumerate}
 Ces trois égalités sont contrôlées automatiquement, mais elles restent le moyen le plus rapide de
 s'assurer qu'un fichier n'a pas été altéré.
@@ -319,7 +369,8 @@ s'assurer qu'un fichier n'a pas été altéré.
 \vfill
 \noindent\rule{\linewidth}{0.4pt}\\[2pt]
 \small
-Documents associés : \emph{Méthodologie de calcul} (la construction complète) et \emph{Note sur la
-dimension Santé} (le choix de l'insécurité alimentaire).
+Documents associés : \emph{Méthodologie de calcul} (la construction complète, dont le calcul des
+intervalles de confiance) et \emph{Note sur la dimension Santé} (les indicateurs qui remplacent la
+mortalité juvénile et la nutrition).
 
 \end{document}

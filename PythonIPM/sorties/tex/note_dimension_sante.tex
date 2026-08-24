@@ -13,8 +13,9 @@
 \noindent La dimension Santé de l'IPM ivoirien a d'abord reposé sur un unique indicateur ---
 l'absence de couverture maladie --- faute de pouvoir mesurer la mortalité juvénile dans l'EHCVM.
 Cette note montre pourquoi ce montage produisait un indice non plausible, expose le mécanisme
-arithmétique en cause, documente la décision prise (l'ajout de l'insécurité alimentaire mesurée
-par l'échelle FIES de la FAO) et en mesure l'effet. Elle se termine sur ce qui reste ouvert.
+arithmétique en cause, documente les décisions prises --- l'ajout de l'insécurité alimentaire mesurée
+par l'échelle FIES de la FAO, puis celui du renoncement aux soins pour raison de coût --- et en
+mesure l'effet. Elle se termine sur ce qui reste ouvert.
 \end{abstract}
 
 \section{Le point de départ}
@@ -132,30 +133,52 @@ demande à un indicateur de privation --- séparer --- et c'est ce que le FIES f
 Le taux de privation retenu s'établit à \textbf{42,7~\% des ménages}, soit 40,8~\% de la
 population.
 
+\section{Le troisième indicateur : le renoncement aux soins}
+
+Un \textbf{troisième indicateur} a ensuite été ajouté à la dimension : un ménage est privé si l'un
+de ses membres a eu un problème de santé dans les 30 derniers jours (question 3.01), n'a
+\emph{pas} consulté (3.05) et a cité le \textbf{coût} comme raison principale (3.06, modalités
+« trop cher » et « manque d'argent »).
+
+Là où l'assurance maladie mesure une \emph{couverture} formelle --- largement absente en Côte
+d'Ivoire, donc peu discriminante --- le renoncement aux soins mesure un \textbf{accès effectif
+empêché par l'argent}. C'est un fait, pas un droit théorique : le ménage a été malade, et n'a pas
+pu se soigner. L'indicateur prive \textbf{9,2~\% des ménages} (8,9~\% de la population). Il ne
+peut être privé que parmi les 67,2~\% de ménages ayant connu un problème de santé sur la période :
+un ménage où personne n'a été malade n'est pas privé.
+
 \section{L'effet mesuré}
 
-La dimension Santé compte désormais deux indicateurs à \textbf{0,125} chacun : le poids de
-l'assurance maladie est mécaniquement divisé par deux.
+La dimension Santé compte désormais trois indicateurs à \textbf{0,0833} chacun : le poids de
+l'assurance maladie est le tiers de ce qu'il était.
 
 \begin{center}
-\begin{tabular}{@{}lrr@{}}
+\small
+\begin{tabular}{@{}lrrr@{}}
 \toprule
-& \textbf{Avant} & \textbf{Après} \\
-& \small(assurance seule) & \small(assurance + FIES) \\
+& \textbf{Avant} & \textbf{Étape 2} & \textbf{Aujourd'hui} \\
+& \small(assurance seule) & \small(+ FIES) & \small(+ renoncement) \\
 \midrule
-Poids de l'assurance maladie & 0,2500 & 0,1250 \\
-Part de l'assurance dans le score moyen & 50,8~\% & 29,4~\% \\
-Score moyen $c_i$ & 0,4603 & 0,3968 \\
-\textbf{$H$ --- incidence} & \textbf{79,7~\%} & \textbf{65,8~\%} \\
-Vulnérables & 12,7~\% & 19,1~\% \\
-Pauvreté sévère & 44,0~\% & 26,8~\% \\
-Ménages au score exactement égal à $k$ & 396 & 928 \\
+Indicateurs de l'IPM & 13 & 13 & 16 \\
+Poids de l'assurance maladie & 0,2500 & 0,1250 & 0,0833 \\
+Part de l'assurance dans le score moyen & 50,8~\% & 29,4~\% & 19,9~\% \\
+Score moyen $c_i$ & 0,4603 & 0,3968 & 0,3918 \\
+\textbf{$H$ --- incidence} & \textbf{79,7~\%} & \textbf{65,8~\%} & \textbf{58,0~\%} \\
+Vulnérables & 12,7~\% & 19,1~\% & 22,8~\% \\
+Pauvreté sévère & 44,0~\% & 26,8~\% & 26,1~\% \\
+Ménages au score exactement égal à $k$ & 396 & 928 & 16 \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-L'effet est net sur la pauvreté sévère, qui passe de 44,0~\% à 26,8~\% : c'est là que la
-domination d'un indicateur unique se voyait le plus.
+\emph{La colonne « Aujourd'hui » n'isole pas le seul effet du renoncement aux soins : elle intègre
+les trois indicateurs ajoutés en même temps (renoncement, emploi agricole de subsistance,
+promiscuité), qui font passer l'IPM de treize à seize indicateurs.}
+
+L'effet est net sur la pauvreté sévère, qui passe de 44,0~\% à 26,1~\% : c'est là que la
+domination d'un indicateur unique se voyait le plus. La dimension Santé, qui pesait 40,5~\% de
+l'\ipm{} pour un poids nominal de 25~\%, en pèse désormais \textbf{27,9~\%} --- l'assurance
+maladie 16,7~\%, l'insécurité alimentaire 9,0~\%, le renoncement aux soins 2,2~\%.
 
 \section{Limites assumées}
 
@@ -177,23 +200,25 @@ domination d'un indicateur unique se voyait le plus.
 
 \section{Ce qui reste ouvert}
 
-\begin{attention}[$H = 65{,}8~\%$ demeure au-dessus de l'ordre de grandeur de référence]
-L'assurance maladie pèse encore \textbf{26,0~\% de l'IPM} --- moins qu'avant, mais beaucoup pour
-un indicateur qui prive 93~\% des ménages. Trois leviers restent disponibles, non tranchés à ce
-jour.
+\begin{attention}[$H = 58{,}0~\%$ demeure au-dessus de l'ordre de grandeur de référence]
+L'assurance maladie pèse encore \textbf{16,7~\% de l'IPM} --- la deuxième contribution de tout le
+système --- pour un indicateur qui prive 93~\% des ménages. Trois leviers restent disponibles, non
+tranchés à ce jour.
 \end{attention}
 
 \begin{enumerate}
-  \item \textbf{Abandonner l'assurance maladie} et ne garder que le FIES en Santé. Cohérent avec
-  le constat qu'un indicateur à 93~\% n'informe pas, mais laisse la dimension sur une seule jambe
-  --- avec le risque symétrique déjà observé pour l'Emploi.
+  \item \textbf{Abandonner l'assurance maladie} et garder le FIES et le renoncement aux soins en
+  Santé. Cohérent avec le constat qu'un indicateur à 93~\% n'informe pas ; la dimension garderait
+  cette fois deux jambes, ce qui n'était pas le cas au moment du premier arbitrage.
 
   \item \textbf{Rééquilibrer les dimensions.} Rien n'oblige à quatre dimensions égales. L'IPM
   mondial en retient trois --- Santé, Éducation, Niveau de vie --- à un tiers chacune.
 
   \item \textbf{Revoir d'autres seuils dans le même esprit.} L'année de scolarité (72,5~\%),
   l'énergie de cuisson (76,8~\%) et les toilettes (77,3~\%) privent aussi une large majorité des
-  ménages, et posent la même question de pouvoir discriminant.
+  ménages, et posent la même question de pouvoir discriminant. Le cas s'est reproduit hors Santé :
+  l'emploi agricole de subsistance prive 48,1~\% des ménages et apporte à lui seul 16,9~\% de
+  l'\ipm{}, contre 1,6~\% au chômage, à poids identique.
 \end{enumerate}
 
 Ces arbitrages relèvent du cadrage et non de la technique : chacun se modifie en une ligne dans
