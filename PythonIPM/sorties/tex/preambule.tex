@@ -1,9 +1,10 @@
 % Préambule commun aux documents de PythonIPM/documentation.
 % Compilation : tectonic <fichier>.tex
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-\usepackage[french]{babel}
+% tectonic compile avec XeTeX, qui lit l'UTF-8 nativement : surtout PAS inputenc ni fontenc,
+% faits pour pdfLaTeX. Ce sont eux qui décodaient mal les caractères multi-octets — « cœur »
+% ressortait en « cur », et les tirets cadratins en caractères parasites.
 \usepackage{lmodern}
+\usepackage[french]{babel}
 \usepackage{microtype}
 \usepackage[a4paper,margin=2.4cm]{geometry}
 \usepackage{amsmath,amssymb}

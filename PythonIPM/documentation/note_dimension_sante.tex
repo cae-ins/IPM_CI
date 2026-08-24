@@ -1,0 +1,207 @@
+\documentclass[11pt,a4paper]{article}
+\input{preambule}
+
+\title{\bfseries Note sur la dimension Santé\\[4pt]
+\large Pourquoi l'assurance maladie ne peut pas la porter seule}
+\author{Pipeline \col{PythonIPM} --- IPM Côte d'Ivoire, EHCVM 2021}
+\date{Août 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent La dimension Santé de l'IPM ivoirien a d'abord reposé sur un unique indicateur ---
+l'absence de couverture maladie --- faute de pouvoir mesurer la mortalité juvénile dans l'EHCVM.
+Cette note montre pourquoi ce montage produisait un indice non plausible, expose le mécanisme
+arithmétique en cause, documente la décision prise (l'ajout de l'insécurité alimentaire mesurée
+par l'échelle FIES de la FAO) et en mesure l'effet. Elle se termine sur ce qui reste ouvert.
+\end{abstract}
+
+\section{Le point de départ}
+
+Le tableau de référence national place dans la dimension Santé un indicateur de \textbf{mortalité
+juvénile}. L'EHCVM 2021 ne permet pas de le construire : l'enquête n'a ni module décès ni
+historique des naissances. La base des chocs enregistre bien un « décès d'un membre du ménage »
+--- 1\,328 ménages sur trois ans, avec la date --- mais \textbf{sans l'âge du défunt}. Il est donc
+impossible d'isoler les décès d'enfants de moins de dix-huit ans.
+
+La dimension a d'abord été mesurée par un seul indicateur de substitution : \emph{aucun membre du
+ménage n'est couvert par une assurance maladie}. Le choix se défendait --- la question est
+renseignée pour 100~\% des ménages, sans biais de sélection, et se lit sans ambiguïté.
+
+\section{Le problème}
+
+Avec quatre dimensions équipondérées à 0,25, un indicateur seul dans sa dimension \textbf{porte
+tout son poids}. Or 93,4~\% des ménages ivoiriens n'ont aucun membre assuré. Trois conséquences
+en découlent, toutes arithmétiques et non statistiques.
+
+\subsection{L'indicateur dominait le score}
+
+L'assurance maladie apportait en moyenne \textbf{0,2336} sur un score moyen de 0,4603, soit
+\textbf{50,8~\% du score de privation} à elle seule. Les douze autres indicateurs se partageaient
+l'autre moitié.
+
+\subsection{Elle fonctionnait comme un laissez-passer vers le seuil}
+
+Un ménage non assuré partait déjà à 0,25 sur les 0,3333 requis pour être déclaré pauvre. Deux
+privations de conditions de vie ($2 \times 0{,}0417 = 0{,}0833$) suffisaient alors à franchir
+exactement le seuil. \textbf{403 ménages} se trouvaient dans ce cas précis, et 396 avaient un
+score exactement égal à $k$ : un ménage sur trente basculait sur une différence de troisième
+décimale.
+
+\subsection{Le résultat n'était pas plausible}
+
+Une simulation retirant l'indicateur et renormalisant les poids donne :
+
+\begin{center}
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Configuration} & \textbf{$H$ (population pauvre)} \\
+\midrule
+Treize indicateurs, assurance seule en Santé & 79,7~\% \\
+Les mêmes, sans l'assurance maladie & 45,7~\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Le second ordre de grandeur est celui publié pour la Côte d'Ivoire dans la table globale de
+l'OPHI. Le premier ne l'est pas.
+
+\begin{retenir}[Le fond du problème]
+Un indicateur qui prive 93~\% de la population ne discrimine plus : il déplace le niveau de
+l'indice sans rien apprendre sur \emph{qui} est pauvre. Ce n'était pas une erreur de calcul --- le
+code appliquait fidèlement les choix actés --- mais la rencontre de deux décisions qui se
+combinent mal : substituer l'assurance maladie à la mortalité juvénile, \emph{et} conserver quatre
+dimensions équipondérées.
+\end{retenir}
+
+\section{La décision}
+
+Un \textbf{second indicateur} a été ajouté à la dimension Santé : l'insécurité alimentaire mesurée
+par l'échelle \textbf{FIES} (\emph{Food Insecurity Experience Scale}) de la FAO, présente dans la
+section 8A de l'EHCVM. Huit questions oui/non portant sur les douze derniers mois, ordonnées par
+sévérité croissante, dont le nombre de « oui » forme un score de 0 à 8.
+
+\begin{center}
+\small
+\begin{tabular}{@{}rlp{2.6cm}@{}}
+\toprule
+\textbf{\#} & \textbf{Question} & \textbf{Sévérité} \\
+\midrule
+1 & inquiétude de manquer de nourriture & légère \\
+2 & n'a pas pu manger sain et nutritif & légère \\
+3 & a mangé peu varié & légère \\
+4 & a sauté un repas & modérée \\
+5 & a mangé moins que nécessaire & modérée \\
+6 & plus de nourriture dans le ménage & modérée \\
+7 & a eu faim sans manger & sévère \\
+8 & est resté une journée entière sans manger & sévère \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Le seuil retenu est \textbf{score $\ge 4$}, qui correspond à l'insécurité alimentaire modérée ou
+sévère --- le seuil standardisé de l'\textbf{indicateur ODD 2.1.2}. Il n'a donc pas fallu inventer
+un seuil : celui-ci est comparable aux publications de la FAO.
+
+\subsection{Pourquoi cet indicateur plutôt qu'un autre}
+
+La justification est de fond, et pas seulement d'opportunité. Dans l'IPM mondial, la dimension
+Santé est composée de la \textbf{nutrition} et de la mortalité juvénile. Remplacer la seconde
+--- impossible à mesurer ici --- par une mesure de la première ne dénature pas la dimension :
+c'est son autre pilier officiel.
+
+S'y ajoute une raison statistique. La distribution du score FIES le sépare nettement de
+l'assurance maladie :
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrrrrrrrr@{}}
+\toprule
+\textbf{Score FIES} & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 \\
+\midrule
+\textbf{Part des ménages} & 30,5 & 7,5 & 7,8 & 10,1 & 9,2 & 9,8 & 7,9 & 8,5 & 7,4 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Un tiers des ménages à zéro, le reste étalé sur toute l'échelle. L'assurance maladie, elle, oppose
+93,4~\% à 6,6~\% : elle sépare mal parce qu'elle ne varie presque pas. C'est exactement ce qu'on
+demande à un indicateur de privation --- séparer --- et c'est ce que le FIES fait.
+
+Le taux de privation retenu s'établit à \textbf{42,7~\% des ménages}, soit 40,8~\% de la
+population.
+
+\section{L'effet mesuré}
+
+La dimension Santé compte désormais deux indicateurs à \textbf{0,125} chacun : le poids de
+l'assurance maladie est mécaniquement divisé par deux.
+
+\begin{center}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+& \textbf{Avant} & \textbf{Après} \\
+& \small(assurance seule) & \small(assurance + FIES) \\
+\midrule
+Poids de l'assurance maladie & 0,2500 & 0,1250 \\
+Part de l'assurance dans le score moyen & 50,8~\% & 29,4~\% \\
+Score moyen $c_i$ & 0,4603 & 0,3968 \\
+\textbf{$H$ --- incidence} & \textbf{79,7~\%} & \textbf{65,8~\%} \\
+Vulnérables & 12,7~\% & 19,1~\% \\
+Pauvreté sévère & 44,0~\% & 26,8~\% \\
+Ménages au score exactement égal à $k$ & 396 & 928 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+L'effet est net sur la pauvreté sévère, qui passe de 44,0~\% à 26,8~\% : c'est là que la
+domination d'un indicateur unique se voyait le plus.
+
+\section{Limites assumées}
+
+\begin{description}
+  \item[Le FIES n'est pas une mesure d'état nutritionnel.] Il mesure l'insécurité alimentaire
+  \emph{vécue}. L'OPHI, lui, mesure la nutrition par l'anthropométrie --- indice de masse
+  corporelle des adultes, retard de croissance des enfants. L'EHCVM n'a pas de module
+  anthropométrique : le FIES est le meilleur substitut disponible, pas un équivalent.
+
+  \item[C'est du déclaratif rétrospectif sur douze mois.] Il est donc sensible à la saison de
+  collecte. Les deux vagues de l'EHCVM ayant été collectées à des saisons différentes, une
+  vérification de la comparabilité entre vagues reste à mener.
+
+  \item[195 ménages (1,5~\%) n'ont pas de score complet], pour cause de non-réponse ou de refus
+  sur au moins un des huit items. Ils sont traités comme non privés, conformément à la convention
+  générale du pipeline. C'est un choix --- celui de ne pas pénaliser un refus de répondre --- et
+  non une déduction.
+\end{description}
+
+\section{Ce qui reste ouvert}
+
+\begin{attention}[$H = 65{,}8~\%$ demeure au-dessus de l'ordre de grandeur de référence]
+L'assurance maladie pèse encore \textbf{26,0~\% de l'IPM} --- moins qu'avant, mais beaucoup pour
+un indicateur qui prive 93~\% des ménages. Trois leviers restent disponibles, non tranchés à ce
+jour.
+\end{attention}
+
+\begin{enumerate}
+  \item \textbf{Abandonner l'assurance maladie} et ne garder que le FIES en Santé. Cohérent avec
+  le constat qu'un indicateur à 93~\% n'informe pas, mais laisse la dimension sur une seule jambe
+  --- avec le risque symétrique déjà observé pour l'Emploi.
+
+  \item \textbf{Rééquilibrer les dimensions.} Rien n'oblige à quatre dimensions égales. L'IPM
+  mondial en retient trois --- Santé, Éducation, Niveau de vie --- à un tiers chacune.
+
+  \item \textbf{Revoir d'autres seuils dans le même esprit.} L'année de scolarité (72,5~\%),
+  l'énergie de cuisson (76,8~\%) et les toilettes (77,3~\%) privent aussi une large majorité des
+  ménages, et posent la même question de pouvoir discriminant.
+\end{enumerate}
+
+Ces arbitrages relèvent du cadrage et non de la technique : chacun se modifie en une ligne dans
+\col{pipeline/02\_construction\_matrice\_situationnelle.py}.
+
+\vfill
+\noindent\rule{\linewidth}{0.4pt}\\[2pt]
+\small
+Documents associés : \emph{Méthodologie de calcul} et \emph{Dictionnaire des sorties}.
+
+\end{document}
