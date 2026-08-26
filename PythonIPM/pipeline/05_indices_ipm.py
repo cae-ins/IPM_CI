@@ -1,12 +1,26 @@
-"""Étape 05 du pipeline IPM — indices H, A, M0 et désagrégations.
+"""Étape 05 du pipeline IPM — indices H, A, M0 et désagrégations, pour DEUX variantes.
 
-Entrée  : matrice_privations_censuree.dta (étape 04)
-Sorties : indices_ipm       — une ligne « Ensemble » puis une ligne par modalité de
-                              désagrégation (.dta, .csv)
-          contributions_ipm — la part de chaque indicateur et de chaque dimension dans M0
-                              (.dta, .csv)
-          indices_ipm.xlsx  — le classeur de restitution : une feuille par objet
-                              (Ensemble, Contributions, une par désagrégation, Tout)
+Un seul code produit les deux indices, qui ne diffèrent que par la liste des dimensions
+retenues :
+
+    indices_ipm_ci            16 indicateurs, 4 dimensions (Education, Santé, Emploi,
+                              Conditions de vie) — l'IPM national publié.
+    indices_ipm_international 14 indicateurs, 3 dimensions — l'Emploi est retiré, les trois
+                              dimensions restantes sont réequipondérées à 1/3. C'est le
+                              périmètre comparable au niveau international (tableau ODD/PNUD).
+
+Entrées : matrice_situationnelle_ehcvm2021.dta (étape 02) = la matrice de privation g0
+          vecteur_z.csv (étape 02)                        = la dimension de chaque indicateur
+          matrice_privations_censuree.dta (étape 04)      = contrôle de la variante nationale
+
+Sorties : pour chaque variante, <nom>.dta / <nom>.csv et un classeur <nom>.xlsx (une feuille
+          par objet : Ensemble, Contributions, une par désagrégation), plus
+          contributions_<variante>.dta / .csv.
+
+Comme les poids changent d'une variante à l'autre, la pondération et la censure sont refaites
+ici pour chacune : reprendre telle quelle la matrice censurée de l'étape 04 ne vaudrait que
+pour la variante nationale. La variante nationale EST comparée à cette matrice par `assert` —
+si les deux chemins de calcul divergeaient, l'étape s'arrêterait.
 
 Formules (méthode Alkire-Foster, document méthodologique national) :
 
@@ -34,15 +48,29 @@ import pandas as pd
 from scipy import stats
 
 import dictionnaire_ehcvm as dico
-from orchestrateur import (CLE, LOGS, SORTIES_CSV, SORTIES_DTA, SORTIES_XLSX,
-                           configurer_logs, exporter_table, part)
+from orchestrateur import (CLE, COLONNES_TECHNIQUES, LOGS, SORTIES_CSV, SORTIES_DTA,
+                           SORTIES_XLSX, configurer_logs, exporter_table, part)
 
-ENTREE = SORTIES_DTA / "matrice_privations_censuree.dta"
-ENTREE_W = SORTIES_CSV / "vecteur_w.csv"
-NOM_SORTIE = "indices_ipm"
-NOM_CONTRIBUTIONS = "contributions_ipm"
+ENTREE_G0 = SORTIES_DTA / "matrice_situationnelle_ehcvm2021.dta"
+ENTREE_Z = SORTIES_CSV / "vecteur_z.csv"
+ENTREE_CENSUREE = SORTIES_DTA / "matrice_privations_censuree.dta"
 JOURNAL = LOGS / "05_indices_ipm.log"
 
+# les deux variantes : nom de sortie -> (libellé, dimensions retenues ; None = toutes)
+VARIANTES = {
+    "indices_ipm_ci": ("IPM national — 4 dimensions", None),
+    "indices_ipm_international": ("IPM international — 3 dimensions, sans l'Emploi",
+                                  ["Education", "Sante", "Conditions de vie"]),
+}
+
+# Seuils (identiques à l'étape 04). k = 1/3 est le seuil de pauvreté multidimensionnelle ;
+# les deux autres servent aux indicateurs complémentaires publiés à côté de M0.
+K_PAUVRETE = 1 / 3
+K_VULNERABILITE = 0.2    # 0,2 <= c < 1/3 : vulnérable à la pauvreté multidimensionnelle
+K_SEVERE = 0.5           # c >= 0,5       : pauvreté multidimensionnelle sévère
+
+# Comparaison de flottants : avec 4 dimensions à 0,25 le score peut valoir EXACTEMENT 1/3
+# (0,25 + 2 x 0,041666...), et 0,3333333 < 0,33333333 selon les erreurs d'arrondi.
 TOLERANCE = 1e-9
 
 # variables de désagrégation : colonne de la matrice -> libellé publié
@@ -72,19 +100,114 @@ COLONNES_PUBLIEES = ["variable", "modalite", "code", "menages", "grappes", "popu
 logger = logging.getLogger("ipm.indices")
 
 
-def charger():
-    logger.info("--- 1. lecture de la matrice censurée (étape 04) ---")
-    X = pd.read_stata(ENTREE).set_index(CLE)
+# --------------------------------------------------------------------------- #
+# 1. matrice censurée de la variante : w, pondération, censure
+# --------------------------------------------------------------------------- #
+def charger_g0():
+    logger.info("--- 1. lecture de la matrice de privation g0 (étape 02) ---")
+    g0 = pd.read_stata(ENTREE_G0).set_index(CLE)
+    logger.info("%s : %d ménages x %d colonnes", ENTREE_G0.name, *g0.shape)
+    return g0
 
+
+def vecteur_w(dimensions=None, chemin_z=ENTREE_Z):
+    """Poids de chaque indicateur : dimensions équipondérées, partage égal à l'intérieur.
+
+    `dimensions` restreint le périmètre (variante internationale) ; None les garde toutes.
+    La liste des indicateurs n'est pas réécrite ici : elle est lue dans le vecteur z produit
+    par l'étape 02, ce qui garantit que w et z portent sur exactement les mêmes colonnes.
+    """
+    z = pd.read_csv(chemin_z)
+    if dimensions is not None:
+        inconnues = set(dimensions) - set(z.dimension)
+        assert not inconnues, f"dimensions absentes du vecteur z : {sorted(inconnues)}"
+        z = z[z.dimension.isin(dimensions)]
+
+    poids_dimension = 1 / z.dimension.nunique()
+    w = z[["dimension", "indicateur", "colonne"]].copy()
+    w["indicateurs_dans_la_dimension"] = w.groupby("dimension").colonne.transform("size")
+    w["poids_dimension"] = poids_dimension
+    w["poids_indicateur"] = poids_dimension / w.indicateurs_dans_la_dimension
+
+    logger.info("%d indicateurs, %d dimensions équipondérées à %.4f",
+                len(w), z.dimension.nunique(), poids_dimension)
+    for dimension, groupe in w.groupby("dimension", sort=False):
+        logger.info("  %-18s %d indicateur(s) x %.4f = %.4f",
+                    dimension, len(groupe), groupe.poids_indicateur.iloc[0],
+                    groupe.poids_indicateur.sum())
+
+    total = w.poids_indicateur.sum()
+    assert abs(total - 1) < TOLERANCE, f"les poids doivent sommer à 1, obtenu {total}"
+    return w.reset_index(drop=True)
+
+
+def matrice_censuree(g0, w):
+    """wⱼ · g0ᵢⱼ, le score cᵢ, les statuts au seuil k et la matrice censurée wⱼ · g0ᵢⱼ · 1(cᵢ>=k).
+
+    C'est le condensé des étapes 03 et 04, refait ici parce que les poids dépendent de la
+    variante. La censure est le cœur de la méthode : les privations des ménages NON pauvres
+    sont remises à zéro, ce qui rend M0 décomposable par indicateur.
+    """
+    poids = w.set_index("colonne").poids_indicateur
+    manquantes = [c for c in poids.index if c not in g0.columns]
+    assert not manquantes, f"indicateurs absents de la matrice de privation : {manquantes}"
+
+    ponderee = g0[poids.index].mul(poids, axis=1)
+    score = ponderee.sum(axis=1)
+    assert score.between(-TOLERANCE, 1 + TOLERANCE).all(), "un score sort de [0, 1]"
+
+    pauvre = score >= K_PAUVRETE - TOLERANCE
+    vulnerable = (score >= K_VULNERABILITE - TOLERANCE) & ~pauvre
+    severe = score >= K_SEVERE - TOLERANCE
+
+    censuree = ponderee.mul(pauvre, axis=0)
+    censuree.columns = [f"{c}_censuree" for c in poids.index]
+    score_censure = score.where(pauvre, 0.0)
+    ecart = (censuree.sum(axis=1) - score_censure).abs().max()
+    assert ecart < TOLERANCE, f"la somme des lignes censurées doit redonner cᵢ(k), écart {ecart}"
+
+    X = pd.concat([
+        pd.DataFrame({"score": score, "score_censure": score_censure,
+                      "pauvre": pauvre.astype(int), "vulnerable": vulnerable.astype(int),
+                      "pauvrete_severe": severe.astype(int)}),
+        censuree,
+        g0[[c for c in COLONNES_TECHNIQUES if c in g0.columns]],
+    ], axis=1)
     X["poids_population"] = X.ponderation_menage * X.taille_menage
     X["classe_taille"] = pd.cut(X.taille_menage, bins=BORNES_TAILLE, labels=LIBELLES_TAILLE)
 
-    logger.info("%s : %d ménages, %d colonnes", ENTREE.name, *X.shape)
-    logger.info("population représentée : %s personnes",
+    logger.info("score : moyenne %.4f, médiane %.4f, max %.4f | population représentée : %s",
+                score.mean(), score.median(), score.max(),
                 part(int(X.poids_population.sum()), 0))
+    for libelle, statut in [("pauvres (c >= 1/3)", pauvre),
+                            ("vulnérables (0,2 <= c < 1/3)", vulnerable),
+                            ("pauvreté sévère (c >= 0,5)", severe)]:
+        logger.info("  %-30s %-16s | pondéré population : %.1f %%", libelle,
+                    part(int(statut.sum()), len(X)),
+                    100 * (statut * X.poids_population).sum() / X.poids_population.sum())
     return X
 
 
+def controler_contre_etape_04(X):
+    """La variante nationale doit reproduire à l'identique la matrice censurée de l'étape 04.
+
+    Deux chemins de calcul (03+04 d'un côté, cette étape de l'autre) sur les mêmes données :
+    tout écart signale une divergence de poids ou de seuil, à corriger avant publication.
+    """
+    if not ENTREE_CENSUREE.exists():
+        logger.warning("étape 04 absente (%s) — contrôle croisé non effectué",
+                       ENTREE_CENSUREE.name)
+        return
+    reference = pd.read_stata(ENTREE_CENSUREE).set_index(CLE)
+    ecart = (X.score_censure - reference.score_censure).abs().max()
+    assert ecart < 1e-6, f"cᵢ(k) diffère de l'étape 04 (écart max {ecart})"
+    assert (X.pauvre == reference.pauvre).all(), "statut de pauvreté différent de l'étape 04"
+    logger.info("contrôle croisé avec l'étape 04 : cᵢ(k) identique (écart max %.2e)", ecart)
+
+
+# --------------------------------------------------------------------------- #
+# 2. indices H, A, M0
+# --------------------------------------------------------------------------- #
 def grappes_de(X):
     """L'unité primaire de sondage de l'EHCVM : la grappe, portée par la clé du ménage."""
     if "grappe" in (X.index.names or []):
@@ -147,7 +270,7 @@ def indices(X):
 
 
 def indices_nationaux(X):
-    logger.info("--- 2. indices nationaux ---")
+    logger.info("--- 3. indices nationaux ---")
     resultat = indices(X)
 
     # M0 = H x A par construction : le vérifier attrape toute erreur de pondération
@@ -181,7 +304,7 @@ def indices_nationaux(X):
 
 def desagregations(X, M0_national, population_totale):
     """H, A et M0 par sous-population, avec la contribution de chaque groupe à M0 national."""
-    logger.info("--- 3. désagrégations ---")
+    logger.info("--- 4. désagrégations ---")
     morceaux = []
 
     for colonne, libelle in DESAGREGATIONS.items():
@@ -238,15 +361,14 @@ def desagregations(X, M0_national, population_totale):
     return D
 
 
-def contributions(X, M0):
+def contributions(X, M0, w):
     """Cⱼ = wⱼ · CHⱼ / M0 — la part de chaque indicateur dans l'IPM.
 
     CHⱼ est le taux de privation CENSURÉ : la privation des seuls ménages pauvres. Comme les
-    colonnes `_censuree` de l'étape 04 portent déjà wⱼ · g0ᵢⱼ · 1(pauvre), leur moyenne pondérée
-    population vaut directement wⱼ · CHⱼ. Les Cⱼ somment à 1 par construction.
+    colonnes `_censuree` portent déjà wⱼ · g0ᵢⱼ · 1(pauvre), leur moyenne pondérée population
+    vaut directement wⱼ · CHⱼ. Les Cⱼ somment à 1 par construction.
     """
-    logger.info("--- 4. contributions des indicateurs à M0 ---")
-    w = pd.read_csv(ENTREE_W)
+    logger.info("--- 5. contributions des indicateurs à M0 ---")
     n = X.poids_population
 
     lignes = []
@@ -278,7 +400,8 @@ def contributions(X, M0):
     logger.info("somme des contributions = %.6f", total)
 
     par_dimension = C.groupby("dimension").contribution_M0.sum().sort_values(ascending=False)
-    logger.info("par dimension (poids nominal : 25,0 %% chacune) :")
+    logger.info("par dimension (poids nominal : %.1f %% chacune) :",
+                100 * w.poids_dimension.iloc[0])
     for dimension, contribution in par_dimension.items():
         logger.info("  %-18s %.1f %%", dimension, 100 * contribution)
 
@@ -289,7 +412,7 @@ def contributions(X, M0):
 
 def assembler(national, D):
     """Une seule table : la ligne Ensemble puis les désagrégations, colonnes ordonnées."""
-    logger.info("--- 5. assemblage de la table publiée ---")
+    logger.info("--- 6. assemblage de la table publiée ---")
     national = national.assign(code=0, part_population=1.0, contribution_M0=1.0)
     table = pd.concat([national, D], ignore_index=True)[COLONNES_PUBLIEES]
 
@@ -308,13 +431,14 @@ def assembler(national, D):
     return table
 
 
-def exporter_classeur(table, C, nom=NOM_SORTIE):
-    """Un classeur, une feuille par objet : l'ensemble, les contributions, puis une feuille
-    par variable de désagrégation."""
+def exporter_classeur(table, C, w, nom):
+    """Un classeur, une feuille par objet : l'ensemble, les contributions, les poids, puis une
+    feuille par variable de désagrégation."""
     chemin = SORTIES_XLSX / f"{nom}.xlsx"
 
     feuilles = {"Ensemble": table[table.variable == "Ensemble"],
-                "Contributions": C}
+                "Contributions": C,
+                "Ponderations": w}
     for libelle in DESAGREGATIONS.values():
         morceau = table[table.variable == libelle]
         if not morceau.empty:
@@ -331,10 +455,39 @@ def exporter_classeur(table, C, nom=NOM_SORTIE):
 
 
 # --------------------------------------------------------------------------- #
+# une variante de bout en bout
+# --------------------------------------------------------------------------- #
+def calculer_variante(g0, nom, libelle, dimensions):
+    """Le même enchaînement pour les deux indices : w, censure, indices, export."""
+    logger.info("")
+    logger.info("=" * 78)
+    logger.info("%s  (%s)", libelle, nom)
+    logger.info("=" * 78)
+
+    logger.info("--- 2. vecteur w et matrice censurée de la variante ---")
+    w = vecteur_w(dimensions)
+    X = matrice_censuree(g0, w)
+    if dimensions is None:
+        controler_contre_etape_04(X)
+
+    national = indices_nationaux(X)
+    M0 = national.M0_ipm.iloc[0]
+    D = desagregations(X, M0, national.population.iloc[0])
+    C = contributions(X, M0, w)
+    table = assembler(national, D)
+
+    logger.info("--- 7. export (Stata + CSV + XLSX) ---")
+    exporter_table(table, nom, logger, index=False)
+    exporter_table(C, nom.replace("indices", "contributions"), logger, index=False)
+    exporter_classeur(table, C, w, nom)
+    return table, C
+
+
+# --------------------------------------------------------------------------- #
 # auto-contrôle
 # --------------------------------------------------------------------------- #
 def verifier():
-    """Quatre ménages aux indices calculables à la main."""
+    """Quatre ménages aux indices calculables à la main, et les poids des deux variantes."""
     configurer_logs(logger, niveau=logging.WARNING)
 
     #  A : pauvre, c = 0,50, 2 personnes      B : pauvre, c = 1,00, 8 personnes
@@ -392,28 +545,71 @@ def verifier():
     assert list(table.columns) == COLONNES_PUBLIEES
     assert table.variable.tolist() == ["Ensemble", "Milieu de résidence", "Milieu de résidence"]
 
+    # --- les deux variantes de pondération, sur un vecteur z factice ---
+    z = pd.DataFrame({
+        "dimension": ["Education"] * 4 + ["Sante"] * 3 + ["Emploi"] * 2
+                     + ["Conditions de vie"] * 7,
+        "indicateur": [f"i{n}" for n in range(16)],
+        "colonne": [f"i{n}" for n in range(16)],
+    })
+    chemin = SORTIES_CSV / "_test_vecteur_z.csv"
+    z.to_csv(chemin, index=False)
+    try:
+        # nationale : 4 dimensions à 0,25 -> Éducation 4 x 0,0625, Emploi 2 x 0,125
+        w4 = vecteur_w(None, chemin).set_index("colonne").poids_indicateur
+        assert abs(w4.sum() - 1) < TOLERANCE
+        assert abs(w4["i0"] - 0.0625) < TOLERANCE, w4["i0"]
+        assert abs(w4["i7"] - 0.125) < TOLERANCE, w4["i7"]
+        assert abs(w4["i9"] - 0.25 / 7) < TOLERANCE
+
+        # internationale : 3 dimensions à 1/3, l'Emploi disparaît
+        w3 = vecteur_w(VARIANTES["indices_ipm_international"][1], chemin)
+        assert len(w3) == 14, len(w3)
+        assert "Emploi" not in set(w3.dimension)
+        poids3 = w3.set_index("colonne").poids_indicateur
+        assert abs(poids3.sum() - 1) < TOLERANCE
+        assert abs(poids3["i0"] - 1 / 12) < TOLERANCE, poids3["i0"]    # Éducation, 4 indic.
+        assert abs(poids3["i4"] - 1 / 9) < TOLERANCE, poids3["i4"]     # Santé, 3 indic.
+        assert abs(poids3["i9"] - 1 / 21) < TOLERANCE, poids3["i9"]    # Cadre de vie, 7 indic.
+
+        # censure : un ménage privé partout a c = 1 et reste pauvre dans les deux variantes,
+        # un ménage privé nulle part a c = 0 et sort de la matrice censurée
+        g0 = pd.DataFrame(0, index=["A", "B"], columns=[f"i{n}" for n in range(16)])
+        g0.loc["A"] = 1
+        g0["ponderation_menage"] = 1.0
+        g0["taille_menage"] = 4
+        for dimensions in (None, VARIANTES["indices_ipm_international"][1]):
+            w = vecteur_w(dimensions, chemin)
+            Y = matrice_censuree(g0, w)
+            assert abs(Y.loc["A", "score"] - 1) < TOLERANCE, Y.loc["A", "score"]
+            assert Y.loc["B", "score"] == 0
+            assert Y.pauvre.tolist() == [1, 0]
+            assert abs(Y.loc["A", "score_censure"] - 1) < TOLERANCE
+    finally:
+        chemin.unlink()
+
     print("auto-contrôle 05 : OK")
 
 
 def main():
     configurer_logs(logger, JOURNAL)
     debut = time.perf_counter()
-    logger.info("=== étape 05 : indices H, A, M0 et désagrégations ===")
+    logger.info("=== étape 05 : indices H, A, M0 — %d variantes ===", len(VARIANTES))
 
-    X = charger()
-    national = indices_nationaux(X)
-    M0 = national.M0_ipm.iloc[0]
-    D = desagregations(X, M0, national.population.iloc[0])
-    C = contributions(X, M0)
-    table = assembler(national, D)
+    g0 = charger_g0()
+    resultats = {nom: calculer_variante(g0, nom, libelle, dimensions)
+                 for nom, (libelle, dimensions) in VARIANTES.items()}
 
-    logger.info("--- 6. export (Stata + CSV + XLSX) ---")
-    exporter_table(table, NOM_SORTIE, logger, index=False)
-    exporter_table(C, NOM_CONTRIBUTIONS, logger, index=False)
-    exporter_classeur(table, C)
+    logger.info("")
+    logger.info("--- comparaison des variantes ---")
+    logger.info("  %-28s %8s %8s %8s", "", "H", "A", "M0")
+    for nom, (table, _) in resultats.items():
+        ensemble = table[table.variable == "Ensemble"].iloc[0]
+        logger.info("  %-28s %7.1f %% %8.4f %8.4f", nom,
+                    100 * ensemble.H_incidence, ensemble.A_intensite, ensemble.M0_ipm)
 
     logger.info("=== terminé en %.1f s ===", time.perf_counter() - debut)
-    return table
+    return resultats
 
 
 if __name__ == "__main__":
