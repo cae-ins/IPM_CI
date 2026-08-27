@@ -75,8 +75,12 @@ EQUIPEMENTS_PNUD = {
 }
 VOITURE = 28                     # le camion n'existe pas non plus dans la section 12
 
-# question 3.06 : raison principale de la non-consultation. 2 « Trop cher », 8 « Manque d'argent »
-RAISONS_COUT = [2, 8]
+# Question 3.06 : raison principale de la non-consultation. Deux familles de motifs sont
+# retenues — le renoncement est subi dans les deux cas, contrairement à l'automédication (4) ou
+# au « pas nécessaire » (1), qui relèvent d'un choix :
+#   coût            2 « Trop cher », 8 « Manque d'argent »
+#   offre de soins  11 « Service spécialisé non disponible », 12 « Absence de personnel »
+RAISONS_RENONCEMENT = [2, 8, 11, 12]
 
 ITEMS_FIES = ["fies_inquietude", "fies_pas_sain", "fies_peu_varie", "fies_saute_repas",
               "fies_mange_moins", "fies_plus_de_nourriture", "fies_faim",
@@ -222,12 +226,13 @@ def calculer_situations_individuelles(ind):
     logger.info("chômeurs parmi les %d-%d ans : %s", a, b,
                 part((cible & ind.chomeur_bit).sum(), cible.sum()))
 
-    # renoncement aux soins : malade (3.01), non consulté (3.05), pour raison de coût (3.06)
+    # renoncement aux soins : malade (3.01), non consulté (3.05), pour une raison subie —
+    # coût ou indisponibilité de l'offre (3.06)
     malade = ind.probleme_sante_30j == 1
     ind["renonce_aux_soins"] = (malade & (ind.consultation_sante_30j != 1)
-                               & ind.raison_non_consultation.isin(RAISONS_COUT))
+                               & ind.raison_non_consultation.isin(RAISONS_RENONCEMENT))
     logger.info("problème de santé sur 30 jours (3.01) : %s, dont non consulté %s, "
-                "dont pour raison de coût (3.06 = 2 ou 8) : %s",
+                "dont pour coût ou indisponibilité (3.06 = 2, 8, 11 ou 12) : %s",
                 part(malade.sum(), len(ind)),
                 part((malade & (ind.consultation_sante_30j != 1)).sum(), malade.sum()),
                 part(ind.renonce_aux_soins.sum(), malade.sum()))
@@ -307,7 +312,7 @@ def agreger_par_menage(ind):
     logger.info("  %-16s ménages sans aucun membre assuré : %s",
                 "membres_assures", part((X.membres_assures == 0).sum(), len(X)))
     logger.info("  %-16s ménages sans malade sur 30 jours : %-14s | au moins un renoncement "
-                "aux soins pour raison de coût : %s", "membres_malades_30j",
+                "aux soins (coût ou indisponibilité) : %s", "membres_malades_30j",
                 part((X.membres_malades_30j == 0).sum(), len(X)),
                 part((X.membres_renoncement_soins > 0).sum(), len(X)))
     logger.info("  %-16s chef en agriculture de subsistance seule : %s",
@@ -483,7 +488,7 @@ def verifier():
         "acte_naissance": [2.0, 1.0, 1.0, 1.0],
         "assurance_maladie": [2.0, 2.0, 1.0, 2.0],
         # santé : P1 malade et renonce faute d'argent, P2 malade mais a consulté,
-        # P3 malade et renonce mais pour une autre raison, P4 pas malade
+        # P3 malade et renonce mais par automédication (choix, pas contrainte), P4 pas malade
         "probleme_sante_30j": [1.0, 1.0, 1.0, 2.0],
         "consultation_sante_30j": [2.0, 1.0, 2.0, np.nan],
         "raison_non_consultation": [8.0, np.nan, 4.0, np.nan],
@@ -508,6 +513,10 @@ def verifier():
     assert ind.alphabetise.tolist() == [False, True, False, False]
     assert ind.chomeur_bit.tolist() == [False, True, False, False]
     assert ind.renonce_aux_soins.tolist() == [True, False, False, False]
+    # les motifs d'offre comptent au même titre que le coût, l'automédication non
+    motifs = ind.assign(raison_non_consultation=[11.0, np.nan, 12.0, np.nan])
+    assert (calculer_situations_individuelles(motifs).renonce_aux_soins.tolist()
+            == [True, False, True, False])
     assert ind.agriculture_subsistance.tolist() == [True, False, False, False]
 
     X = agreger_par_menage(ind)

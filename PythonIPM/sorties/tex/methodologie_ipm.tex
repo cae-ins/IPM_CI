@@ -25,10 +25,13 @@ averti tout ce qu'il faut pour reproduire ou contester le calcul. Chaque choix d
         [54,9~\% ; 61,0~\%].
   \item Ces personnes cumulent en moyenne \textbf{49,4~\%} des privations pondérées possibles.
   \item L'indice qui combine les deux vaut $\ipm = \mathbf{0{,}2863}$, IC 95~\%
-        [0,2700 ; 0,3026].
+        [0,2701 ; 0,3026].
   \item Le milieu rural rassemble \textbf{71,9~\%} de la pauvreté pour 47,3~\% de la population.
   \item L'écart entre régions va de 0,058 (Abidjan) à 0,481 (Bounkani), soit un rapport de
         un à huit.
+  \item Sur le périmètre comparable au niveau international --- les trois dimensions sans
+        l'Emploi --- l'indice vaut $\ipm = \mathbf{0{,}3461}$ pour $H = 66{,}4~\%$
+        (section~\ref{sec:international}).
 \end{itemize}
 \end{retenir}
 
@@ -173,8 +176,9 @@ Santé & Assurance maladie & nationale & aucun membre n'est couvert par une assu
 & 93,4~\% \\
 Santé & Insécurité alimentaire & FAO & le score FIES atteint 4 sur 8 (insécurité modérée ou
 sévère) & 42,7~\% \\
-Santé & Renoncement aux soins & nationale & un membre malade dans les 30 derniers jours n'a pas
-consulté, et pour raison de coût & 9,2~\% \\
+Santé & Renoncement aux soins (coût ou indisponibilité) & nationale & un membre malade dans les
+30 derniers jours n'a pas consulté, pour raison de coût ou faute de service disponible
+& 9,3~\% \\
 \midrule
 Emploi & Chômage & nationale & un membre de 17--40 ans est au chômage au sens du BIT & 3,7~\% \\
 Emploi & Emploi agricole de subsistance & nationale & le chef de ménage occupé ne travaille que
@@ -302,9 +306,9 @@ national. Cette propriété est vérifiée automatiquement à chaque exécution 
 \toprule
 \textbf{Indice} & \textbf{Valeur} & \textbf{IC 95~\%} & \textbf{Lecture} \\
 \midrule
-$H$ --- incidence & 0,5795 & [0,5489 ; 0,6101] & 58,0~\% de la population est pauvre, soit
+$H$ --- incidence & 0,5796 & [0,5490 ; 0,6102] & 58,0~\% de la population est pauvre, soit
 17,3 millions \\
-$A$ --- intensité & 0,4940 & [0,4894 ; 0,4985] & les pauvres cumulent 49,4~\% des privations
+$A$ --- intensité & 0,4940 & [0,4894 ; 0,4986] & les pauvres cumulent 49,4~\% des privations
 pondérées \\
 \ipm{} & 0,2863 & [0,2700 ; 0,3026] & $= H \times A$ \\
 Vulnérables & 22,8~\% & & score entre 0,2 et 1/3 \\
@@ -321,10 +325,10 @@ Pauvreté sévère & 26,1~\% & & score d'au moins 0,5 \\
 & \textbf{Part de la population} & \textbf{$H$} & \textbf{$A$} & \textbf{\ipm{}} \\
 \midrule
 Urbain & 52,7~\% & 33,6~\% & 0,4533 & 0,1525 \\
-Rural  & 47,3~\% & 85,0~\% & 0,5119 & 0,4353 \\
+Rural  & 47,3~\% & 85,1~\% & 0,5120 & 0,4354 \\
 \midrule
-Chef de ménage homme & 83,6~\% & 60,7~\% & 0,4969 & 0,3014 \\
-Chef de ménage femme & 16,4~\% & 44,2~\% & 0,4734 & 0,2090 \\
+Chef de ménage homme & 83,6~\% & 60,7~\% & 0,4970 & 0,3014 \\
+Chef de ménage femme & 16,4~\% & 44,2~\% & 0,4733 & 0,2092 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -417,7 +421,7 @@ et plus l'intervalle s'élargit.
 Milieu & 2 & 540 & 0,027 & 0 \\
 Région & 33 & 30 & 0,113 & 0 \\
 Département & 108 & 8 & 0,213 & 15 \\
-Sous-préfecture / commune & 442 & 2 & 0,485 & 93 \\
+Sous-préfecture / commune & 442 & 2 & 0,485 & 92 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -425,7 +429,7 @@ Sous-préfecture / commune & 442 & 2 & 0,485 & 93 \\
 La colonne \col{M0\_cv} du classeur donne le coefficient de variation de \ipm{}
 (erreur-type / estimation). L'usage statistique retient 20~\% comme limite de publication : au
 delà, l'estimation est indicative et ne doit pas être commentée seule. Au niveau régional, aucune
-estimation n'est concernée ; au niveau des sous-préfectures, 93 sur 442 le sont, et
+estimation n'est concernée ; au niveau des sous-préfectures, 92 sur 442 le sont, et
 \textbf{211 domaines ne comptent qu'une seule grappe}, ce qui rend la variance non estimable ---
 leurs colonnes d'intervalle sont alors vides, jamais remplies d'une valeur inventée.
 
@@ -468,11 +472,16 @@ l'interprétation des résultats et la comparabilité internationale.
   posée qu'en seconde vague. Un enfant est réputé scolarisé s'il l'était sur l'année la plus
   récente disponible pour sa vague.
 
-  \item[Renoncement aux soins --- conditionné à la maladie.] L'indicateur ne peut être privé que
-  dans un ménage où quelqu'un a été malade dans les 30 derniers jours : 67,2~\% des ménages sont
-  concernés, et 9,2~\% sont privés. Un ménage où personne n'a été malade n'est pas privé, comme
-  partout ailleurs dans ce pipeline. Le coût est identifié par les modalités 2
-  (« trop cher ») et 8 (« manque d'argent ») de la question 3.06.
+  \item[Renoncement aux soins --- conditionné à la maladie, et élargi à l'offre.] L'indicateur ne
+  peut être privé que dans un ménage où quelqu'un a été malade dans les 30 derniers jours :
+  67,2~\% des ménages sont concernés, et 9,3~\% sont privés. Un ménage où personne n'a été malade
+  n'est pas privé, comme partout ailleurs dans ce pipeline. Quatre modalités de la question 3.06
+  rendent privé, réunies par le fait d'être \emph{subies} : le coût --- 2 (« trop cher ») et 8
+  (« manque d'argent ») --- et l'indisponibilité de l'offre --- 11 (« service spécialisé non
+  disponible ») et 12 (« absence de personnel »). Les motifs d'arbitrage, au premier rang
+  desquels l'automédication, ne rendent pas privé. L'élargissement à l'offre ne concerne que 14
+  personnes et 10 ménages : il pèse 0,00008 sur l'\ipm{} et relève de la définition, non du
+  résultat.
 
   \item[Emploi de subsistance --- codage 1/2, pas 0/1.] Les questions 4.06 à 4.09 de l'EHCVM sont
   codées 1 = oui, 2 = non ; elles ne prennent jamais la valeur 0. Le critère « sans emploi
@@ -506,12 +515,76 @@ déclarent exactement 15 minutes --- un effet d'arrondi aux multiples de cinq --
 la privation en eau de 24,6~\% à environ 27,7~\%.
 \end{attention}
 
-\subsection{Comparabilité internationale}
+\section{La variante internationale : trois dimensions}
+\label{sec:international}
 
-Ces adaptations, et surtout le choix des dimensions, interdisent une comparaison directe avec
-l'IPM mondial publié par l'OPHI, qui repose sur trois dimensions et dix indicateurs. Les
-grandeurs restent du même ordre, mais un écart de niveau doit s'interpréter comme une différence
-de construction avant d'être lu comme une différence de réalité.
+Les adaptations qui précèdent, et surtout le choix des dimensions, interdisent une comparaison
+directe avec l'IPM mondial publié par l'OPHI, qui repose sur trois dimensions et dix indicateurs.
+La dimension \textbf{Emploi} est en particulier une spécificité nationale : elle n'existe ni dans
+l'IPM mondial ni dans le tableau de référence ODD.
+
+Le pipeline publie donc \textbf{deux indices}, calculés par le même code sur les mêmes données,
+qui ne diffèrent que par le périmètre des dimensions retenues :
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+& \textbf{IPM national} & \textbf{IPM international} \\
+\midrule
+Dimensions & 4 & 3 (sans l'Emploi) \\
+Indicateurs & 16 & 14 \\
+Poids d'une dimension & 0,25 & 1/3 \\
+Table publiée & \col{indices\_ipm\_ci} & \col{indices\_ipm\_international} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Retirer l'Emploi ne consiste pas à mettre ses deux indicateurs à zéro : les trois dimensions
+restantes sont \textbf{réequipondérées} à 1/3 chacune. Chaque indicateur d'Éducation passe donc
+de 0,0625 à 1/12, chaque indicateur de Santé de 0,0833 à 1/9, et chaque indicateur de conditions
+de vie de 0,0357 à 1/21. Le seuil $k = 1/3$, la censure et les formules de $H$, $A$ et \ipm{}
+sont inchangés.
+
+\begin{center}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+& \textbf{National (16)} & \textbf{International (14)} & \textbf{Écart} \\
+\midrule
+$H$ --- incidence & 0,5796 & 0,6639 & $+8{,}4$ pts \\
+$A$ --- intensité & 0,4940 & 0,5214 & $+2{,}7$ pts \\
+\ipm{} & 0,2863 & 0,3461 & $+0{,}060$ \\
+IC 95~\% de \ipm{} & [0,2700 ; 0,3026] & [0,3296 ; 0,3624] & \\
+Vulnérables & 22,8~\% & 18,0~\% & $-4{,}8$ pts \\
+Pauvreté sévère & 26,1~\% & 34,9~\% & $+8{,}8$ pts \\
+Population pauvre & 17,3 millions & 19,8 millions & $+2{,}5$ M \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{attention}[Retirer une dimension fait \emph{monter} l'indice]
+Le résultat surprend, et il est pourtant mécanique. Les deux indicateurs d'Emploi sont peu
+fréquents rapportés à leur poids : ensemble ils portent 0,25 du score mais n'apportent que
+18,5~\% de l'\ipm{} national. Les retirer redistribue ce quart aux trois dimensions restantes,
+où les privations sont bien plus répandues --- l'assurance maladie prive 93,4~\% des ménages,
+l'année de scolarité 72,5~\%. Le score de chaque ménage augmente, davantage de ménages franchissent
+$k = 1/3$, et $H$ comme $A$ montent. \textbf{Un IPM plus élevé ne signifie donc pas ici une
+pauvreté plus grande : c'est le même pays mesuré avec une autre règle.} Les deux chiffres ne se
+comparent qu'à eux-mêmes dans le temps, jamais l'un à l'autre.
+\end{attention}
+
+Le déséquilibre entre poids nominal et poids réel se creuse dans la variante internationale : à
+1/3 nominal, l'Éducation apporte 39,2~\% de l'\ipm{}, la Santé 35,0~\% et les conditions de vie
+25,8~\%. L'assurance maladie devient à elle seule le premier contributeur (21,1~\%), là où elle
+était au coude à coude avec l'emploi de subsistance dans la variante nationale.
+
+\begin{retenir}[Lequel publier ?]
+L'\textbf{IPM national à 16 indicateurs} reste l'indice de référence pour la Côte d'Ivoire : il
+intègre l'Emploi, dimension retenue par la proposition nationale. L'\textbf{IPM international}
+sert aux comparaisons régionales et au suivi des ODD. Les deux tables ont exactement la même
+structure de colonnes et les mêmes désagrégations, ce qui rend leur mise en regard immédiate.
+Même ainsi, la comparaison avec l'IPM mondial de l'OPHI reste indicative : les indicateurs de
+santé de l'EHCVM ne sont pas ceux de l'OPHI (voir la \emph{Note sur la dimension Santé}).
+\end{retenir}
 
 \section{Le traitement des valeurs manquantes}
 
@@ -558,8 +631,10 @@ logique sur un jeu de données construit à la main, aux résultats connus d'ava
 04 & censure à $k$, calcule $c_i(k)$ &
 \col{matrice\_privations\_censuree} \\
 05 & calcule $H$, $A$, \ipm{}, leurs intervalles de confiance, les contributions et les
-désagrégations (milieu, région, département, sous-préfecture, sexe et taille) &
-\col{indices\_ipm}, \col{contributions\_ipm}, le classeur \col{.xlsx} \\
+désagrégations (milieu, région, département, sous-préfecture, sexe et taille) --- pour les
+\textbf{deux variantes}, nationale et internationale &
+\col{indices\_ipm\_ci} et \col{indices\_ipm\_international}, leurs contributions et un
+classeur \col{.xlsx} chacune \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -568,6 +643,11 @@ désagrégations (milieu, région, département, sous-préfecture, sexe et taill
 python pipeline/orchestrateur.py            # les cinq étapes, environ 17 secondes
 python pipeline/orchestrateur.py --check    # les auto-contrôles seuls
 \end{verbatim}
+
+Les poids changeant d'une variante à l'autre, l'étape 05 refait pour chacune la pondération et la
+censure des étapes 03 et 04, au lieu de reprendre leur matrice --- qui ne vaut que pour la
+variante nationale. Celle-ci est justement \emph{comparée} à la matrice de l'étape 04 par un
+contrôle automatique : si les deux chemins de calcul divergeaient, l'étape s'arrêterait.
 
 Une étape en échec interrompt la chaîne : mieux vaut aucune sortie qu'une sortie partielle. Toutes
 les tables sont écrites simultanément au format Stata (\col{sorties/dta/}) et texte

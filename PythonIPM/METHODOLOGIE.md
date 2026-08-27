@@ -3,7 +3,7 @@
 Journal de méthode du pipeline `PythonIPM`. Il retrace les sources, les définitions retenues, les
 écarts assumés et les conventions de calcul. À tenir à jour à chaque étape.
 
-*Dernière mise à jour : 20 août 2026 — étapes 01 (préconstruction) et 02 (matrice situationnelle X, 12 indicateurs) terminées.*
+*Dernière mise à jour : 27 août 2026 — 16 indicateurs ; renoncement aux soins élargi au coût et à l'indisponibilité de l'offre.*
 
 ---
 
@@ -45,13 +45,17 @@ exécution.
 | Éducation | Alphabétisation | nationale | `alphabetisation` | au moins un membre de 17-49 ans ne lit/écrit pas le français | 61,7 % |
 | Éducation | Déclaration d'état civil | nationale | `etat_civil` | au moins un enfant de 5-15 ans sans acte | 23,5 % |
 | Santé | Assurance maladie | nationale | `assurance_maladie` | aucun membre couvert | 93,4 % |
+| Santé | Insécurité alimentaire | FAO | `insecurite_alimentaire` | score FIES ≥ 4 sur 8 (modérée ou sévère) | 42,7 % |
+| Santé | Renoncement aux soins (coût ou indisponibilité) | nationale | `renoncement_soins` | un membre malade sur 30 j n'a pas consulté, pour raison subie : coût (2 « trop cher », 8 « manque d'argent ») ou offre (11 « service indisponible », 12 « absence de personnel ») | 9,3 % |
 | Emploi | Chômage | nationale | `chomage` | au moins un chômeur BIT de 17-40 ans | 3,7 % |
+| Emploi | Emploi agricole de subsistance | nationale | `emploi_subsistance` | chef occupé ne travaillant que son propre champ (sans salariat, apprentissage ni commerce) | 48,1 % |
 | Conditions de vie | Électricité | nationale | `electricite` | éclairage hors réseau / groupe électrogène / solaire | 13,3 % |
 | Conditions de vie | Logement | PNUD | `logement` | sol naturel **ou** toit **ou** murs précaires | 22,3 % |
 | Conditions de vie | Eau potable | PNUD | `eau_potable` | source non améliorée **ou** plus de 15 min à l'aller (30 min aller-retour) | 24,6 % |
 | Conditions de vie | Énergie de cuisson | nationale | `energie_cuisson` | combustible principal ni gaz ni électricité | 76,8 % |
 | Conditions de vie | Toilettes | PNUD | `toilette` | sanitaires non améliorés **ou** partagés | 77,3 % |
 | Conditions de vie | Biens d'équipement | PNUD | `biens_equipement` | au plus 1 bien sur 7 **et** pas de voiture | 29,2 % |
+| Conditions de vie | Promiscuité | nationale | `promiscuite` | plus de 3 personnes par pièce à coucher | 8,4 % |
 
 Les seuils sont portés par la constante `INDICATEURS` de `02_construction_matrice_situationnelle.py` : chaque
 entrée réunit la dimension, le libellé, la source de la définition, l'énoncé, la colonne produite
@@ -69,9 +73,9 @@ alphabétisé » (35,0 %). Le code suit l'énoncé littéral du tableau ; la bas
 | Dimension | Indicateurs | Poids par indicateur |
 |---|---|---|
 | Éducation | 4 | 0,0625 |
-| Santé | 1 | 0,25 |
-| Emploi | 1 | 0,25 |
-| Conditions de vie | 6 | 0,0417 |
+| Santé | 3 | 0,0833 |
+| Emploi | 2 | 0,125 |
+| Conditions de vie | 7 | 0,0357 |
 
 Seuil de pauvreté multidimensionnelle : **k = 1/3**. Vulnérabilité : 0,2 < score < 1/3. Pauvreté
 sévère : score ≥ 0,5.
@@ -129,7 +133,7 @@ sévère : score ≥ 0,5.
 | Étape | Fichier | Entrée | Sortie | Journal |
 |---|---|---|---|---|
 | 01 — préconstruction | `01_preconstruction_matrice_situationnelle.py` ✅ | les 4 bases `.dta` | `preconstruction_matrice_situationnelle.dta` (12 965 × 29 : situations brutes + colonnes techniques) | `01_…log` |
-| 02 — matrice situationnelle X | `02_construction_matrice_situationnelle.py` ✅ | la préconstruction | `matrice_situationnelle_ehcvm2021.dta` (12 965 × 18 : **12 indicateurs 0/1** + pondération + désagrégation) | `02_…log` |
+| 02 — matrice situationnelle X | `02_construction_matrice_situationnelle.py` ✅ | la préconstruction | `matrice_situationnelle_ehcvm2021.dta` (12 965 × 18 : **16 indicateurs 0/1** + pondération + désagrégation) | `02_…log` |
 | 03 — matrice de privations, pondérations w, score cᵢ et censure | `03_…` (à venir) | X | score, statuts pauvre / vulnérable / sévère | — |
 | 04 — H, A, M₀ et contributions | `04_…` (à venir) | score | indices et désagrégations | — |
 
@@ -168,7 +172,8 @@ Des **situations brutes** (effectifs, maximum, code de modalité) : aucun seuil 
 Colonnes : les effectifs concernés et défavorables des indicateurs individuels
 (`enfants_6_16` / `enfants_6_16_non_scolarises`, `membres_17_40` / `chomeurs_17_40`,
 `enfants_5_15` / `enfants_5_15_sans_acte`, `membres_17_49` / `membres_17_49_alphabetises`,
-`membres_17_95` / `annees_etudes_max`, `membres_assures`), les codes de modalité des conditions de
+`membres_17_95` / `annees_etudes_max`, `membres_assures`, `membres_malades_30j` /
+`membres_renoncement_soins`), les codes de modalité des conditions de
 vie (`source_eclairage`, `materiau_toit`, `materiau_mur`, `materiau_sol`,
 `source_eau_boisson_seche`, `temps_aller_source_seche`, `combustible_principal`, `type_sanitaire`,
 `sanitaire_partage`), l'équipement (`nb_equipements`, `possede_voiture`), la variante non retenue
@@ -179,13 +184,14 @@ de distinguer « non privé » de « non concerné » sans revenir aux données 
 
 ### Contenu de la matrice situationnelle X (étape 02)
 
-Les 12 colonnes indicateurs en 0/1 (1 = privé), puis les colonnes techniques et rien d'autre :
+Les 16 colonnes indicateurs en 0/1 (1 = privé), puis les colonnes techniques et rien d'autre :
 `id_menage`, `ponderation_menage`, `taille_menage`, `region`, `milieu`, `sexe_cm` — pondération et
 désagrégations de l'étape 04. Moyenne de 5,26 privations par ménage, 2,0 % des ménages sans aucune
 privation (3,3 % de la population).
 
 Quelques ordres de grandeur produits par l'étape 01 : 33,3 % des ménages n'ont aucun enfant de
-6-16 ans, 18,5 % aucun membre de 17-40 ans, 93,4 % aucun membre assuré ; `annees_etudes_max` a une
+6-16 ans, 18,5 % aucun membre de 17-40 ans, 93,4 % aucun membre assuré, 67,2 % ont eu au moins un
+malade sur 30 jours et 9,3 % au moins un renoncement aux soins ; `annees_etudes_max` a une
 médiane de 5 années et un 3ᵉ quartile de 10 ; le nombre de biens possédés est de 2,20 en moyenne.
 
 ---
@@ -202,4 +208,5 @@ médiane de 5 années et un 3ᵉ quartile de 10 ; le nombre de biens possédés 
 | 20 août 2026 | Définitions mixtes nationale / PNUD | choix indicateur par indicateur (voir § 2) |
 | 20 août 2026 | Chômage sur les 17-40 ans | énoncé du tableau officiel (le RGPH 2021 utilisait 16-35) |
 | 20 août 2026 | Variante PNUD non produite en parallèle | une seule série de résultats à publier |
-| 20 août 2026 | Pipeline scindé en 01 préconstruction / 02 construction | X ne doit contenir que les 12 indicateurs et les variables de pondération et de désagrégation ; les situations brutes restent traçables dans la préconstruction |
+| 20 août 2026 | Pipeline scindé en 01 préconstruction / 02 construction | X ne doit contenir que les 16 indicateurs et les variables de pondération et de désagrégation ; les situations brutes restent traçables dans la préconstruction |
+| 27 août 2026 | Renoncement aux soins élargi au coût **et** à l'offre (3.06 = 2, 8, 11, 12) | motifs **subis** — coût (trop cher, manque d'argent) ou indisponibilité du service (service spécialisé indisponible, absence de personnel) — ; l'automédication (4) et le « pas nécessaire » (1) relèvent d'un arbitrage, pas d'une contrainte. N'ajoute que 14 personnes et 10 ménages (privation 9,3 %) ; déplace l'IPM de 0,00008 — décision de définition, pas d'effet sur les résultats |

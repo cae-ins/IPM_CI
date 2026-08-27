@@ -107,9 +107,11 @@ INDICATEURS = [
                "(score FIES >= 4 sur 8)",
                "insecurite_alimentaire", ["score_fies"], None,
                lambda X: X.score_fies >= SCORE_FIES_MINIMUM),
-    Indicateur("Sante", "Renoncement aux soins", NATIONALE,
+    Indicateur("Sante", "Renoncement aux soins (coût ou indisponibilité)", NATIONALE,
                "Un membre a eu un problème de santé dans les 30 derniers jours, n'a pas "
-               "consulté et a cité le coût comme raison principale",
+               "consulté, et a cité comme raison principale le coût (trop cher, manque "
+               "d'argent) ou l'indisponibilité de l'offre (service spécialisé indisponible, "
+               "absence de personnel)",
                "renoncement_soins", ["membres_renoncement_soins"], "membres_malades_30j",
                lambda X: X.membres_renoncement_soins >= 1),
 
@@ -175,7 +177,8 @@ PARAMETRES_Z = {
     "etat_civil": ("au moins un enfant 5-15 ans sans acte", 1),
     "assurance_maladie": ("nombre de membres assurés", 1),
     "insecurite_alimentaire": ("score FIES (0-8), nombre de « oui »", SCORE_FIES_MINIMUM),
-    "renoncement_soins": ("au moins un membre ayant renoncé aux soins pour raison de coût", 1),
+    "renoncement_soins": ("au moins un membre ayant renoncé aux soins pour raison de coût "
+                          "ou d'indisponibilité de l'offre", 1),
     "chomage": ("au moins un chômeur BIT de 17-40 ans", 1),
     "emploi_subsistance": ("chef de ménage en agriculture de subsistance seule", 1),
     "electricite": ("codes d'éclairage adéquats", ECLAIRAGE_ADEQUAT),

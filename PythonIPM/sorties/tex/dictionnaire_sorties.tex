@@ -2,7 +2,8 @@
 \input{preambule}
 
 \title{\bfseries Dictionnaire des sorties\\[4pt]
-\large Le classeur \col{indices\_ipm.xlsx}, colonne par colonne}
+\large Les classeurs \col{indices\_ipm\_ci.xlsx} et \col{indices\_ipm\_international.xlsx},
+colonne par colonne}
 \author{Pipeline \col{PythonIPM} --- IPM Côte d'Ivoire, EHCVM 2021}
 \date{Août 2026}
 
@@ -10,11 +11,21 @@
 \maketitle
 
 \begin{abstract}
-\noindent Ce document décrit chaque feuille et chaque colonne du classeur de restitution produit
-par l'étape 05 du pipeline. Pour chaque colonne : sa définition, sa formule, son unité, et une
-phrase de lecture sur un cas réel. Il s'adresse autant à celui qui doit citer un chiffre dans un
-rapport qu'à celui qui doit le recalculer.
+\noindent Ce document décrit chaque feuille et chaque colonne des classeurs de restitution
+produits par l'étape 05 du pipeline. Pour chaque colonne : sa définition, sa formule, son unité,
+et une phrase de lecture sur un cas réel. Il s'adresse autant à celui qui doit citer un chiffre
+dans un rapport qu'à celui qui doit le recalculer.
 \end{abstract}
+
+\begin{attention}[Deux classeurs de structure identique]
+L'étape 05 produit \textbf{deux} classeurs, qui ne diffèrent que par le périmètre des dimensions :
+\col{indices\_ipm\_ci.xlsx} porte l'\textbf{IPM national} (16 indicateurs, 4 dimensions à 0,25) et
+\col{indices\_ipm\_international.xlsx} l'\textbf{IPM international} (14 indicateurs, 3 dimensions à
+1/3, sans l'Emploi). Colonnes, feuilles et formules sont \emph{les mêmes} : tout ce document vaut
+pour les deux. Seules changent les valeurs, et le nombre de lignes de la feuille
+\textsf{Contributions} (16 contre 14). Les chiffres cités en exemple ici sont ceux de l'IPM
+national ; la comparaison des deux indices figure dans la \emph{Méthodologie de calcul}.
+\end{attention}
 
 \begin{retenir}[Où trouver le chiffre que je cherche]
 \begin{center}
@@ -58,8 +69,9 @@ Le score censuré $c_i(k)$ vaut $c_i$ si le ménage est pauvre, et $0$ sinon.
 
 \section{Structure du classeur}
 
-Huit feuilles. Les six feuilles de désagrégation et la feuille \textsf{Ensemble} ont exactement
-les mêmes colonnes ; seule la feuille \textsf{Contributions} a une structure propre.
+Neuf feuilles. Les six feuilles de désagrégation et la feuille \textsf{Ensemble} ont exactement
+les mêmes colonnes ; les feuilles \textsf{Contributions} et \textsf{Ponderations} ont une
+structure propre.
 
 \begin{center}
 \begin{tabular}{@{}llr@{}}
@@ -68,6 +80,7 @@ les mêmes colonnes ; seule la feuille \textsf{Contributions} a une structure pr
 \midrule
 \textsf{Ensemble} & la Côte d'Ivoire entière & 1 \\
 \textsf{Contributions} & un indicateur & 16 \\
+\textsf{Ponderations} & un indicateur : sa dimension et son poids $w_j$ & 16 \\
 \textsf{Milieu de résidence} & urbain ou rural & 2 \\
 \textsf{Région} & une des 33 régions & 33 \\
 \textsf{Département} & un des 108 départements & 108 \\
@@ -140,9 +153,9 @@ ne compte pas, l'ampleur de ses privations n'intervient pas.
 le plus intuitif, et donc celui qu'il faut manier avec le plus de prudence : un ménage à $c_i =
 0{,}34$ et un ménage à $c_i = 0{,}95$ y pèsent identiquement.
 
-\textbf{Lecture.} $H = 0{,}5795$ pour l'ensemble : \textbf{58,0~\% de la population ivoirienne},
+\textbf{Lecture.} $H = 0{,}5796$ pour l'ensemble : \textbf{58,0~\% de la population ivoirienne},
 soit 17,3 millions de personnes, vit dans un ménage pauvre --- IC 95~\% [54,9~\% ; 61,0~\%].
-En rural, $H = 0{,}850$.
+En rural, $H = 0{,}851$.
 
 \subsection*{\col{A\_intensite} --- l'intensité}
 
@@ -254,15 +267,15 @@ n'ont pas.
 
 \begin{description}
   \item[\col{H\_ic\_bas}, \col{H\_ic\_haut}] Les bornes de l'intervalle de $H$. Pour l'ensemble :
-  [0,5489 ; 0,6101] autour de $H = 0{,}5795$. Lecture : « l'incidence est comprise entre 54,9 et
+  [0,5490 ; 0,6102] autour de $H = 0{,}5796$. Lecture : « l'incidence est comprise entre 54,9 et
   61,0~\% ».
 
   \item[\col{A\_ic\_bas}, \col{A\_ic\_haut}] Les bornes de l'intervalle de $A$. Elles sont
-  toujours serrées ([0,4894 ; 0,4985] pour l'ensemble) : l'intensité est une moyenne sur les
+  toujours serrées ([0,4894 ; 0,4986] pour l'ensemble) : l'intensité est une moyenne sur les
   pauvres, une population nombreuse et homogène.
 
   \item[\col{M0\_ic\_bas}, \col{M0\_ic\_haut}] Les bornes de l'intervalle de \ipm{} :
-  [0,2700 ; 0,3026]. Ce sont ces deux colonnes qui doivent accompagner tout \ipm{} publié.
+  [0,2701 ; 0,3026]. Ce sont ces deux colonnes qui doivent accompagner tout \ipm{} publié.
 
   \item[\col{M0\_erreur\_type}] L'écart-type d'échantillonnage de \ipm{} : 0,0083 au niveau
   national. L'intervalle vaut l'estimation $\pm\, t \times$ cette valeur, avec $t$ pris dans la loi
@@ -271,7 +284,7 @@ n'ont pas.
   \item[\col{M0\_cv}] Le \textbf{coefficient de variation} : erreur-type / estimation, soit
   2,9~\% au niveau national. C'est le critère de publication : au-delà de \textbf{20~\%}, une
   estimation est jugée trop imprécise pour être publiée ou commentée seule. Aucune région n'est
-  concernée ; 15 départements sur 108 et 93 sous-préfectures sur 442 le sont.
+  concernée ; 15 départements sur 108 et 92 sous-préfectures sur 442 le sont.
 \end{description}
 
 \begin{attention}[Deux colonnes vides ne sont pas une erreur]
@@ -286,7 +299,7 @@ de calcul}.
 
 \section{La feuille \textsf{Contributions}}
 
-Une ligne par indicateur, seize lignes. Elle répond à une question différente des précédentes :
+Une ligne par indicateur : seize dans le classeur national, quatorze dans l'international. Elle répond à une question différente des précédentes :
 non plus « \emph{qui} est pauvre ? » mais « \emph{de quoi} la pauvreté est-elle faite ? ».
 
 \begin{description}
@@ -295,7 +308,8 @@ non plus « \emph{qui} est pauvre ? » mais « \emph{de quoi} la pauvreté est-e
 
   \item[\col{poids\_w}] Le poids $w_j$ de l'indicateur dans le score. Somme à 1 sur les seize
   lignes. Il vaut 0,0625 en Éducation, 0,0833 en Santé, 0,125 en Emploi et 0,0357 en
-  conditions de vie.
+  conditions de vie. Dans le classeur international, où les trois dimensions restantes se
+  partagent le poids de l'Emploi, il vaut respectivement 1/12, 1/9 et 1/21.
 
   \item[\col{taux\_privation\_censure}] Le taux de privation \textbf{censuré} $CH_j$ : la part de
   la population qui est \emph{à la fois} pauvre \emph{et} privée sur cet indicateur.
@@ -346,7 +360,10 @@ modalité, aucune valeur seuillée & 12\,965 $\times$ 38 \\
 12\,965 $\times$ 28 \\
 \col{matrice\_privations\_censuree} & $w_j\,g^0_{ij}\mathbf{1}(c_i \ge k)$, le score $c_i(k)$ et
 les statuts & 12\,965 $\times$ 32 \\
-\col{indices\_ipm}, \col{contributions\_ipm} & les mêmes données que le classeur & \\
+\col{indices\_ipm\_ci}, \col{contributions\_ipm\_ci} & les mêmes données que le classeur
+national & 593 $\times$ 21 \\
+\col{indices\_ipm\_international}, \col{contributions\_ipm\_international} & idem, périmètre
+à trois dimensions & 593 $\times$ 21 \\
 \bottomrule
 \end{tabular}
 \end{center}
