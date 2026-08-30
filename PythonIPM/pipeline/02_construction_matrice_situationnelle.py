@@ -1,15 +1,17 @@
 """Étape 02 du pipeline IPM — matrice situationnelle X (EHCVM 2021).
 
 Entrée  : preconstruction_matrice_situationnelle.dta (étape 01)
-Sortie  : matrice_situationnelle_ehcvm2021.dta — 12 965 ménages x 16 indicateurs 0/1,
+Sortie  : matrice_situationnelle_ehcvm2021.dta — 12 965 ménages x 17 indicateurs 0/1,
           plus la pondération et les variables de désagrégation, et rien d'autre.
 
-Chaque indicateur suit SOIT la proposition nationale, SOIT l'application du PNUD — le choix est
-porté par la constante INDICATEURS et détaillé dans METHODOLOGIE.md :
+Chaque indicateur suit SOIT la proposition nationale, SOIT l'application du PNUD, SOIT une
+définition BIT — le choix est porté par la constante INDICATEURS et détaillé dans
+METHODOLOGIE.md :
 
     proposition nationale : fréquentation scolaire, année de scolarité, alphabétisation,
                             état civil, assurance maladie, renoncement aux soins, électricité,
-                            énergie de cuisson, promiscuité, chômage, emploi de subsistance
+                            énergie de cuisson, promiscuité, emploi de subsistance
+    BIT (19e CIST)         : SU3 (sous-utilisation élargie de la main-d'œuvre), NEET
     PNUD                  : logement, eau potable, toilettes, biens d'équipement
     FAO (ODD 2.1.2)       : insécurité alimentaire (échelle FIES)
 
@@ -38,6 +40,7 @@ JOURNAL = LOGS / "02_construction_matrice_situationnelle.log"
 NATIONALE = "proposition nationale"
 PNUD = "application PNUD"
 FAO = "échelle FIES (FAO, ODD 2.1.2)"
+BIT = "définition BIT (19e CIST)"
 
 Indicateur = namedtuple("Indicateur",
                         "dimension libelle source definition colonne situation eligibilite regle")
@@ -115,10 +118,17 @@ INDICATEURS = [
                "renoncement_soins", ["membres_renoncement_soins"], "membres_malades_30j",
                lambda X: X.membres_renoncement_soins >= 1),
 
-    Indicateur("Emploi", "Chômage", NATIONALE,
-               "Un membre du ménage âgé de 17-40 ans est au chômage",
-               "chomage", ["chomeurs_17_40"], "membres_17_40",
-               lambda X: X.chomeurs_17_40 >= 1),
+    Indicateur("Emploi", "SU3 — sous-utilisation élargie de la main-d'œuvre", BIT,
+               "Un membre du ménage âgé de 16 ans et plus est au chômage BIT ou fait partie "
+               "de la main-d'œuvre potentielle (taux combiné chômage + main-d'œuvre "
+               "potentielle, LU3/SU3 de la 19e CIST)",
+               "su3", ["su3_16_95"], "membres_16_95",
+               lambda X: X.su3_16_95 >= 1),
+    Indicateur("Emploi", "NEET", BIT,
+               "Un membre du ménage âgé de 16-35 ans n'est ni en emploi, ni scolarisé, ni en "
+               "formation (non formelle)",
+               "neet", ["neet_16_35"], "jeunes_16_35",
+               lambda X: X.neet_16_35 >= 1),
     Indicateur("Emploi", "Emploi agricole de subsistance", NATIONALE,
                "Le chef de ménage est occupé mais son activité se limite à l'agriculture sur "
                "son propre champ, sans salariat, apprentissage ni commerce",
@@ -179,7 +189,8 @@ PARAMETRES_Z = {
     "insecurite_alimentaire": ("score FIES (0-8), nombre de « oui »", SCORE_FIES_MINIMUM),
     "renoncement_soins": ("au moins un membre ayant renoncé aux soins pour raison de coût "
                           "ou d'indisponibilité de l'offre", 1),
-    "chomage": ("au moins un chômeur BIT de 17-40 ans", 1),
+    "su3": ("au moins un membre 16 ans et plus en chômage BIT ou main-d'œuvre potentielle", 1),
+    "neet": ("au moins un jeune 16-35 ans ni en emploi, ni scolarisé, ni en formation", 1),
     "emploi_subsistance": ("chef de ménage en agriculture de subsistance seule", 1),
     "electricite": ("codes d'éclairage adéquats", ECLAIRAGE_ADEQUAT),
     "logement": ("codes de matériaux précaires (sol/toit/mur)",
@@ -305,7 +316,8 @@ def verifier():
         "enfants_6_16": [2, 2], "enfants_6_16_non_scolarises": [1, 0],
         "membres_17_95": [2, 2], "annees_etudes_max": [3.0, 13.0],
         "membres_17_49": [2, 2], "membres_17_49_alphabetises": [0, 2],
-        "membres_17_40": [1, 1], "chomeurs_17_40": [1, 0],
+        "membres_16_95": [1, 1], "su3_16_95": [1, 0],
+        "jeunes_16_35": [1, 1], "neet_16_35": [1, 0],
         "enfants_5_15": [1, 1], "enfants_5_15_sans_acte": [1, 0],
         "membres_assures": [0, 1],
         "score_fies": [8.0, 0.0],
@@ -333,7 +345,7 @@ def verifier():
 def main():
     configurer_logs(logger, JOURNAL)
     debut = time.perf_counter()
-    logger.info("=== étape 02 : matrice situationnelle X (16 indicateurs) ===")
+    logger.info("=== étape 02 : matrice situationnelle X (17 indicateurs) ===")
 
     P = charger_preconstruction()
     journaliser_vecteur_z()

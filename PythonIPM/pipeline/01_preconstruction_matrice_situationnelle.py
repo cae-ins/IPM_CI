@@ -1,10 +1,10 @@
 """Étape 01 du pipeline IPM — préconstruction (EHCVM 2021).
 
 Cette étape ne calcule AUCUN indicateur et n'applique AUCUN seuil : elle prépare, ménage par
-ménage, les variables de situation dont l'étape 02 a besoin pour construire les 16 indicateurs.
+ménage, les variables de situation dont l'étape 02 a besoin pour construire les 17 indicateurs.
 
-    Base_Individus  ->  âge, années d'études, scolarisation, alphabétisation, chômage BIT
-                        puis agrégation au ménage (effectif concerné + effectif défavorable)
+    Base_Individus  ->  âge, années d'études, scolarisation, alphabétisation, SU3 (BIT),
+                        NEET puis agrégation au ménage (effectif concerné + effectif défavorable)
     Base_Menage     ->  éclairage, matériaux, eau, combustible principal, sanitaires
     Base_avoirs     ->  nombre de biens PNUD possédés, possession d'une voiture
     Base_securite_alimentaire -> score FIES (variante non retenue, conservé pour sensibilité)
@@ -38,7 +38,9 @@ TRANCHES = {
     "scolarisation": (6, 16),
     "annees_etudes": (17, 95),
     "alphabetisation": (17, 49),
-    "chomage": (17, 40),
+    "su3": (16, 95),          # 16 ans et plus, pas de borne haute réelle (95 = sentinelle,
+                              # comme pour "annees_etudes")
+    "neet": (16, 35),         # tranche retenue pour ce projet (définition BIT standard : 15-24)
     "acte_naissance": (5, 15),
 }
 
@@ -183,14 +185,16 @@ def calculer_annees_etudes(ind):
 
 
 def calculer_situations_individuelles(ind):
-    """Scolarisation, alphabétisation et chômage — trois définitions nationales.
+    """Scolarisation, alphabétisation, SU3 et NEET — définitions nationales et BIT.
 
     Scolarisation : « ne fréquente actuellement pas », mesuré sur l'année scolaire la plus
     récente disponible (2.08a n'est posée qu'en vague 2, 2.12 l'est aux deux vagues).
     Alphabétisation : sait lire ET écrire le français.
-    Chômage : les trois critères du BIT — sans emploi, en recherche, disponible.
+    SU3 (BIT, 19e CIST) : taux combiné du chômage et de la main-d'œuvre potentielle — les
+    critères du BIT (sans emploi, en recherche, disponible) restent la base du calcul.
+    NEET (BIT) : jeune de 16-35 ans ni en emploi, ni scolarisé, ni en formation.
     """
-    logger.info("--- 2.3 scolarisation, alphabétisation, chômage ---")
+    logger.info("--- 2.3 scolarisation, alphabétisation, SU3, NEET ---")
 
     recente = ind.scolarise_2021_2022 == 1
     precedente = ind.scolarise_2020_2021 == 1
@@ -217,14 +221,32 @@ def calculer_situations_individuelles(ind):
     disponible = ind.delai_disponibilite.isin([1, 2, 3]) | (ind.disponible_emploi == 1)
     ind["chomeur_bit"] = sans_emploi & recherche & disponible
 
-    logger.info("chômage BIT : sans emploi %s, dont en recherche %s, dont disponibles %s",
+    # main-d'œuvre potentielle (BIT, 19e CIST) : ni occupé ni chômeur BIT, mais soit en
+    # recherche sans être disponible (chercheur découragé), soit disponible sans chercher
+    # activement — exactement un des deux critères, pas les deux (le cas des deux = chômeur).
+    ind["main_oeuvre_potentielle"] = sans_emploi & (recherche != disponible)
+    # SU3 = taux combiné chômage + main-d'œuvre potentielle : union des deux populations.
+    ind["su3"] = ind.chomeur_bit | ind.main_oeuvre_potentielle
+
+    logger.info("sans emploi %s, dont en recherche %s, dont disponibles %s",
                 part(sans_emploi.sum(), len(ind)),
                 part((sans_emploi & recherche).sum(), sans_emploi.sum()),
                 part((sans_emploi & recherche & disponible).sum(), (sans_emploi & recherche).sum()))
-    a, b = TRANCHES["chomage"]
+    logger.info("chômeurs BIT : %s, main-d'œuvre potentielle : %s, SU3 (union) : %s",
+                part(ind.chomeur_bit.sum(), len(ind)),
+                part(ind.main_oeuvre_potentielle.sum(), len(ind)),
+                part(ind.su3.sum(), len(ind)))
+    a, b = TRANCHES["su3"]
     cible = ind.age.between(a, b)
-    logger.info("chômeurs parmi les %d-%d ans : %s", a, b,
-                part((cible & ind.chomeur_bit).sum(), cible.sum()))
+    logger.info("SU3 parmi les %d ans et plus : %s", a, part((cible & ind.su3).sum(), cible.sum()))
+
+    # NEET (BIT) : ni en emploi (mêmes critères que sans_emploi ci-dessus, au sens large — pas
+    # seulement les chômeurs BIT), ni scolarisé (même variable que l'indicateur
+    # « fréquentation scolaire »), ni en formation non formelle (2.05).
+    ind["neet"] = sans_emploi & ~ind.scolarise & (ind.formation_non_formelle != 1)
+    a, b = TRANCHES["neet"]
+    cible = ind.age.between(a, b)
+    logger.info("NEET parmi les %d-%d ans : %s", a, b, part((cible & ind.neet).sum(), cible.sum()))
 
     # renoncement aux soins : malade (3.01), non consulté (3.05), pour une raison subie —
     # coût ou indisponibilité de l'offre (3.06)
@@ -262,7 +284,8 @@ def agreger_par_menage(ind):
     a_sco, b_sco = TRANCHES["scolarisation"]
     a_etu, b_etu = TRANCHES["annees_etudes"]
     a_alp, b_alp = TRANCHES["alphabetisation"]
-    a_cho, b_cho = TRANCHES["chomage"]
+    a_su3, b_su3 = TRANCHES["su3"]
+    a_neet, b_neet = TRANCHES["neet"]
     a_act, b_act = TRANCHES["acte_naissance"]
 
     concernes_etudes = ind.age.between(a_etu, b_etu)
@@ -274,9 +297,12 @@ def agreger_par_menage(ind):
     situations[f"membres_{a_alp}_{b_alp}"] = ind.age.between(a_alp, b_alp)
     situations[f"membres_{a_alp}_{b_alp}_alphabetises"] = (
         situations[f"membres_{a_alp}_{b_alp}"] & ind.alphabetise)
-    situations[f"membres_{a_cho}_{b_cho}"] = ind.age.between(a_cho, b_cho)
-    situations[f"chomeurs_{a_cho}_{b_cho}"] = (
-        situations[f"membres_{a_cho}_{b_cho}"] & ind.chomeur_bit)
+    situations[f"membres_{a_su3}_{b_su3}"] = ind.age.between(a_su3, b_su3)
+    situations[f"su3_{a_su3}_{b_su3}"] = (
+        situations[f"membres_{a_su3}_{b_su3}"] & ind.su3)
+    situations[f"jeunes_{a_neet}_{b_neet}"] = ind.age.between(a_neet, b_neet)
+    situations[f"neet_{a_neet}_{b_neet}"] = (
+        situations[f"jeunes_{a_neet}_{b_neet}"] & ind.neet)
     situations[f"enfants_{a_act}_{b_act}"] = ind.age.between(a_act, b_act)
     situations[f"enfants_{a_act}_{b_act}_sans_acte"] = (
         situations[f"enfants_{a_act}_{b_act}"] & (ind.acte_naissance != 1))
@@ -301,7 +327,8 @@ def agreger_par_menage(ind):
              "un enfant non scolarisé"),
             (f"membres_{a_alp}_{b_alp}", f"membres_{a_alp}_{b_alp}_alphabetises",
              "un membre alphabétisé"),
-            (f"membres_{a_cho}_{b_cho}", f"chomeurs_{a_cho}_{b_cho}", "un chômeur"),
+            (f"membres_{a_su3}_{b_su3}", f"su3_{a_su3}_{b_su3}", "une personne en SU3"),
+            (f"jeunes_{a_neet}_{b_neet}", f"neet_{a_neet}_{b_neet}", "un NEET"),
             (f"enfants_{a_act}_{b_act}", f"enfants_{a_act}_{b_act}_sans_acte",
              "un enfant sans acte de naissance")]:
         logger.info("  %-16s ménages sans personne concernée : %-14s | au moins %s : %s",
@@ -339,13 +366,30 @@ def situations_menage(men):
     return men
 
 
+def calculer_zone(men):
+    """Zone = milieu croisé avec Abidjan (1 Abidjan, 2 autre urbain, 3 rural).
+
+    Reconstruite, pas une variable EHCVM d'origine : le milieu de l'enquête est binaire
+    (Urbain/Rural) et ne distingue pas Abidjan des autres villes. La région Autonome
+    d'Abidjan (code 1) est entièrement urbaine, donc « Abidjan » ne recoupe aucune autre région.
+    """
+    logger.info("--- 4.2 zone (Abidjan / autre urbain / rural) ---")
+    men["zone"] = np.select(
+        [men.milieu == 2, (men.milieu == 1) & (men.region == 1), men.milieu == 1],
+        [3, 1, 2], default=np.nan)
+
+    for zone, n in men.zone.value_counts(dropna=False).sort_index().items():
+        logger.info("  %-16s %s", dico.ZONE.get(zone, zone), part(n, len(men)))
+    return men
+
+
 def equipement(avoirs):
     """Biens d'équipement, définition PNUD, et possession d'une voiture.
 
     Un bien compte pour 1 même s'il couvre plusieurs codes (téléphone fixe ou portable).
     La charrette est absente de la section 12 de l'EHCVM : 7 biens au lieu de 8.
     """
-    logger.info("--- 4.2 biens d'équipement (définition PNUD) ---")
+    logger.info("--- 4.3 biens d'équipement (définition PNUD) ---")
     par_bien = (avoirs.assign(_possede=avoirs.possede_bien == 1)
                       .pivot_table(index=CLE, columns="code_bien", values="_possede",
                                    aggfunc="max")
@@ -375,7 +419,7 @@ def score_fies(fies):
     Variante de sensibilité pour la dimension santé — non retenue : l'indicateur santé est
     l'assurance maladie (voir METHODOLOGIE.md).
     """
-    logger.info("--- 4.3 score d'insécurité alimentaire (FIES, variante non retenue) ---")
+    logger.info("--- 4.4 score d'insécurité alimentaire (FIES, variante non retenue) ---")
     reponses = fies.set_index(CLE)[ITEMS_FIES].replace({98: np.nan, 99: np.nan, 2: 0})
     non_reponse = reponses.isna().sum().sum()
     X = pd.DataFrame({"score_fies": reponses.sum(axis=1, min_count=len(ITEMS_FIES))})
@@ -400,6 +444,7 @@ def preconstruire():
 
     X_individus = agreger_par_menage(individus)
     menages = situations_menage(menages)
+    menages = calculer_zone(menages)
     X_biens = equipement(avoirs)
     X_fies = score_fies(fies)
 
@@ -428,11 +473,12 @@ def controler(X):
     logger.info("population représentée (taille x pondération) : %s personnes",
                 part(int((X.ponderation_menage * X.taille_menage).sum()), 0))
 
-    a_cho, b_cho = TRANCHES["chomage"]
+    a_su3, b_su3 = TRANCHES["su3"]
+    a_neet, b_neet = TRANCHES["neet"]
     logger.info("statistiques des situations chiffrées :\n%s",
                 X[["annees_etudes_max", "enfants_6_16_non_scolarises",
-                   f"chomeurs_{a_cho}_{b_cho}", "enfants_5_15_sans_acte", "nb_equipements",
-                   "score_fies", "taille_menage"]].describe().round(2).to_string())
+                   f"su3_{a_su3}_{b_su3}", f"neet_{a_neet}_{b_neet}", "enfants_5_15_sans_acte",
+                   "nb_equipements", "score_fies", "taille_menage"]].describe().round(2).to_string())
 
     manquants = X.isna().mean().sort_values(ascending=False)
     manquants = manquants[manquants > 0]
@@ -463,72 +509,86 @@ def verifier():
     configurer_logs(logger, niveau=logging.WARNING)
 
     ind = pd.DataFrame({
-        "grappe": [1, 1, 2, 2], "menage": [1.0, 1.0, 1.0, 1.0], "vague": [1.0, 1.0, 1.0, 1.0],
-        "annee_naissance": [2010.0, 1983.0, 1980.0, 2015.0],
-        "age_declare": [np.nan, np.nan, np.nan, np.nan],
+        "grappe": [1, 1, 2, 2, 3, 3],
+        "menage": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+        "vague": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+        "annee_naissance": [2010.0, 1983.0, 1980.0, 2015.0, 2001.0, 1999.0],
+        "age_declare": [np.nan] * 6,
         # études : en cours (P1), primaire achevé (P2), secondaire 1 achevé (P3), jamais (P4)
-        "niveau_instruction": [np.nan, 2.0, 3.0, np.nan],
-        "derniere_classe": [np.nan, 6.0, 4.0, np.nan],
-        "niveau_en_cours": [2.0, np.nan, np.nan, np.nan],
-        "classe_en_cours": [5.0, np.nan, np.nan, np.nan],
-        "a_frequente_ecole": [1.0, 1.0, 1.0, 2.0],
-        # scolarisation : P1 déscolarisé, P4 scolarisé
-        "scolarise_2021_2022": [2.0, np.nan, np.nan, 1.0],
-        "scolarise_2020_2021": [2.0, np.nan, np.nan, np.nan],
-        "lit_francais": [0.0, 1.0, 1.0, 0.0],
-        "ecrit_francais": [0.0, 1.0, 0.0, 0.0],
-        # emploi : P2 chômeur BIT à 38 ans (hors de l'ancienne tranche 16-35, dans 17-40),
-        # P3 sans emploi mais sans recherche
-        "a_travaille_7j": [1.0, 0.0, 1.0, 0.0],
-        "emploi_mais_absent_7j": [2.0, 2.0, 2.0, 2.0],
-        "recherche_emploi_30j_a": [np.nan, 1.0, 2.0, np.nan],
-        "recherche_emploi_30j_b": [np.nan, np.nan, np.nan, np.nan],
-        "disponible_emploi": [np.nan, np.nan, np.nan, np.nan],
-        "delai_disponibilite": [np.nan, 1.0, np.nan, np.nan],
-        "acte_naissance": [2.0, 1.0, 1.0, 1.0],
-        "assurance_maladie": [2.0, 2.0, 1.0, 2.0],
+        "niveau_instruction": [np.nan, 2.0, 3.0, np.nan, np.nan, np.nan],
+        "derniere_classe": [np.nan, 6.0, 4.0, np.nan, np.nan, np.nan],
+        "niveau_en_cours": [2.0, np.nan, np.nan, np.nan, np.nan, np.nan],
+        "classe_en_cours": [5.0, np.nan, np.nan, np.nan, np.nan, np.nan],
+        "a_frequente_ecole": [1.0, 1.0, 1.0, 2.0, 1.0, 1.0],
+        # scolarisation : P1 déscolarisé, P4 scolarisé, P5 déscolarisé, P6 scolarisé
+        "scolarise_2021_2022": [2.0, np.nan, np.nan, 1.0, 2.0, 1.0],
+        "scolarise_2020_2021": [2.0, np.nan, np.nan, np.nan, 2.0, np.nan],
+        "lit_francais": [0.0, 1.0, 1.0, 0.0, np.nan, np.nan],
+        "ecrit_francais": [0.0, 1.0, 0.0, 0.0, np.nan, np.nan],
+        # emploi : P2 chômeur BIT à 38 ans (compté dans le SU3, tranche 16 ans et plus),
+        # P3 sans emploi mais sans recherche, P5 main-d'œuvre potentielle (disponible sans
+        # chercher) et NEET, P6 sans emploi mais scolarisé -> ni SU3 ni NEET
+        "a_travaille_7j": [1.0, 0.0, 1.0, 0.0, 2.0, 2.0],
+        "emploi_mais_absent_7j": [2.0, 2.0, 2.0, 2.0, 2.0, 2.0],
+        "recherche_emploi_30j_a": [np.nan, 1.0, 2.0, np.nan, 2.0, np.nan],
+        "recherche_emploi_30j_b": [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
+        "disponible_emploi": [np.nan, np.nan, np.nan, np.nan, 1.0, np.nan],
+        "delai_disponibilite": [np.nan, 1.0, np.nan, np.nan, np.nan, np.nan],
+        "formation_non_formelle": [np.nan, 1.0, np.nan, np.nan, 2.0, np.nan],
+        "acte_naissance": [2.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+        "assurance_maladie": [2.0, 2.0, 1.0, 2.0, 2.0, 2.0],
         # santé : P1 malade et renonce faute d'argent, P2 malade mais a consulté,
-        # P3 malade et renonce mais par automédication (choix, pas contrainte), P4 pas malade
-        "probleme_sante_30j": [1.0, 1.0, 1.0, 2.0],
-        "consultation_sante_30j": [2.0, 1.0, 2.0, np.nan],
-        "raison_non_consultation": [8.0, np.nan, 4.0, np.nan],
+        # P3 malade et renonce mais par automédication (choix, pas contrainte), P4-P6 pas malades
+        "probleme_sante_30j": [1.0, 1.0, 1.0, 2.0, 2.0, 2.0],
+        "consultation_sante_30j": [2.0, 1.0, 2.0, np.nan, np.nan, np.nan],
+        "raison_non_consultation": [8.0, np.nan, 4.0, np.nan, np.nan, np.nan],
         # emploi : P1 chef, agriculture seule ; P3 chef, champ + commerce
-        "lien_parente_cm": [1.0, 3.0, 1.0, 3.0],
-        "travail_champ_7j": [1.0, 2.0, 1.0, np.nan],
-        "travail_commerce_7j": [2.0, 2.0, 1.0, np.nan],
-        "travail_salarie_7j": [2.0, 2.0, 2.0, np.nan],
-        "travail_apprenti_7j": [2.0, 2.0, 2.0, np.nan],
+        "lien_parente_cm": [1.0, 3.0, 1.0, 3.0, 3.0, 3.0],
+        "travail_champ_7j": [1.0, 2.0, 1.0, np.nan, np.nan, np.nan],
+        "travail_commerce_7j": [2.0, 2.0, 1.0, np.nan, np.nan, np.nan],
+        "travail_salarie_7j": [2.0, 2.0, 2.0, np.nan, np.nan, np.nan],
+        "travail_apprenti_7j": [2.0, 2.0, 2.0, np.nan, np.nan, np.nan],
     })
 
     ind = calculer_age(ind)
-    assert ind.age.tolist() == [11.0, 38.0, 41.0, 6.0], ind.age.tolist()
+    assert ind.age.tolist() == [11.0, 38.0, 41.0, 6.0, 20.0, 22.0], ind.age.tolist()
 
     ind = calculer_annees_etudes(ind)
     # P1 : 2e année du primaire en cours -> 4 ; P2 : primaire achevé -> 6 ;
     # P3 : secondaire 1, 4e année -> 10 ; P4 : jamais scolarisé -> 0
-    assert ind.annees_etudes.tolist() == [4.0, 6.0, 10.0, 0.0], ind.annees_etudes.tolist()
+    # (P5, P6 : aucune donnée de niveau -> non testés ici, hors du champ de ce contrôle)
+    assert ind.annees_etudes.tolist()[:4] == [4.0, 6.0, 10.0, 0.0], ind.annees_etudes.tolist()
 
     ind = calculer_situations_individuelles(ind)
-    assert ind.scolarise.tolist() == [False, False, False, True]
-    assert ind.alphabetise.tolist() == [False, True, False, False]
-    assert ind.chomeur_bit.tolist() == [False, True, False, False]
-    assert ind.renonce_aux_soins.tolist() == [True, False, False, False]
+    assert ind.scolarise.tolist() == [False, False, False, True, False, True]
+    assert ind.alphabetise.tolist() == [False, True, False, False, False, False]
+    assert ind.chomeur_bit.tolist() == [False, True, False, False, False, False]
+    # P5 : disponible sans chercher -> main-d'œuvre potentielle, pas chômeur BIT
+    assert ind.main_oeuvre_potentielle.tolist() == [False, False, False, False, True, False]
+    # SU3 = union chômage BIT + main-d'œuvre potentielle : P2 (chômeur) et P5 (potentiel)
+    assert ind.su3.tolist() == [False, True, False, False, True, False]
+    # NEET : P5 (sans emploi, non scolarisé, sans formation) ; P6 exclu car scolarisé
+    assert ind.neet.tolist() == [False, False, False, False, True, False]
+    assert ind.renonce_aux_soins.tolist() == [True, False, False, False, False, False]
     # les motifs d'offre comptent au même titre que le coût, l'automédication non
-    motifs = ind.assign(raison_non_consultation=[11.0, np.nan, 12.0, np.nan])
+    motifs = ind.assign(raison_non_consultation=[11.0, np.nan, 12.0, np.nan, np.nan, np.nan])
     assert (calculer_situations_individuelles(motifs).renonce_aux_soins.tolist()
-            == [True, False, True, False])
-    assert ind.agriculture_subsistance.tolist() == [True, False, False, False]
+            == [True, False, True, False, False, False])
+    assert ind.agriculture_subsistance.tolist() == [True, False, False, False, False, False]
 
     X = agreger_par_menage(ind)
-    m1, m2 = X.loc[(1, 1.0, 1.0)], X.loc[(2, 1.0, 1.0)]
+    m1, m2, m3 = X.loc[(1, 1.0, 1.0)], X.loc[(2, 1.0, 1.0)], X.loc[(3, 1.0, 1.0)]
     assert m1.enfants_6_16 == 1 and m1.enfants_6_16_non_scolarises == 1
     assert m2.enfants_6_16 == 1 and m2.enfants_6_16_non_scolarises == 0
     assert m1.annees_etudes_max == 6 and m2.annees_etudes_max == 10
     assert m1.membres_17_49 == 1 and m1.membres_17_49_alphabetises == 1
     assert m2.membres_17_49 == 1 and m2.membres_17_49_alphabetises == 0
-    # le chômeur a 38 ans : compté dans la tranche 17-40 de la proposition nationale
-    assert m1.membres_17_40 == 1 and m1.chomeurs_17_40 == 1
-    assert m2.chomeurs_17_40 == 0
+    # le chômeur (P2) a 38 ans : compté dans le SU3, tranche 16 ans et plus
+    assert m1.membres_16_95 == 1 and m1.su3_16_95 == 1
+    assert m2.membres_16_95 == 1 and m2.su3_16_95 == 0
+    # ménage 3 : P5 (20 ans, SU3 et NEET) et P6 (22 ans, scolarisé, ni SU3 ni NEET)
+    assert m3.membres_16_95 == 2 and m3.su3_16_95 == 1
+    assert m3.jeunes_16_35 == 2 and m3.neet_16_35 == 1
     assert m1.enfants_5_15_sans_acte == 1 and m2.enfants_5_15_sans_acte == 0
     assert m1.membres_assures == 0 and m2.membres_assures == 1
     assert m1.membres_malades_30j == 2 and m1.membres_renoncement_soins == 1
@@ -550,6 +610,12 @@ def verifier():
     assert E.loc[(1, 1.0, 1.0), "possede_voiture"] == 0
     assert E.loc[(2, 1.0, 1.0), "nb_equipements"] == 1
     assert E.loc[(2, 1.0, 1.0), "possede_voiture"] == 1
+
+    # zone : Abidjan (région 1, urbain), autre urbain (région != 1, urbain), rural (n'importe
+    # quelle région)
+    men_zone = pd.DataFrame({"milieu": [1, 1, 2], "region": [1, 5, 1]})
+    men_zone = calculer_zone(men_zone)
+    assert men_zone.zone.tolist() == [1, 2, 3], men_zone.zone.tolist()
 
     print("auto-contrôle 01 : OK")
 

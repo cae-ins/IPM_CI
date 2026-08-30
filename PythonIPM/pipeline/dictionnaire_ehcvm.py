@@ -71,7 +71,7 @@ INDIVIDUS = {
     "grappe": "grappe",
     "menage": "menage",
     "vague": "vague",
-    "s01q00a": "id_membre",
+    "membres__id": "id_membre",
     "s01q01": "sexe",                      # 1.01
     "s01q02": "lien_parente_cm",           # 1.02
     "s01q03b": "mois_naissance",           # 1.03b
@@ -89,6 +89,7 @@ INDIVIDUS = {
     "s02q02__1": "ecrit_francais",         # 2.02
     "s02q02a__1": "comprend_francais",     # 2.02a
     "s02q03": "a_frequente_ecole",         # 2.03
+    "s02q05": "formation_non_formelle",    # 2.05 : école ou formation non formelle suivie
     "s02q12": "scolarise_2020_2021",       # 2.12
     "s02q08a": "scolarise_2021_2022",      # 2.08a
     "s02q13": "raison_non_scolarisation",  # 2.13
@@ -158,6 +159,9 @@ BASES = {
 # Servent aux désagrégations : la matrice porte les codes, les tableaux publiés
 # portent les libellés.
 MILIEU = {1: "Urbain", 2: "Rural"}
+# Zone = milieu croisé avec la région d'Abidjan, reconstruite (pas une variable EHCVM d'origine) :
+# le milieu de l'EHCVM est binaire (Urbain/Rural), sans distinguer Abidjan des autres villes.
+ZONE = {1: "Abidjan", 2: "Autre urbain", 3: "Rural"}
 SEXE = {1: "Masculin", 2: "Féminin"}
 REGION = {
     1: "Autonome D'Abidjan",
@@ -196,7 +200,7 @@ REGION = {
 }
 
 # désagrégation -> table de correspondance
-MODALITES = {"milieu": MILIEU, "region": REGION, "sexe_cm": SEXE}
+MODALITES = {"milieu": MILIEU, "region": REGION, "sexe_cm": SEXE, "zone": ZONE}
 
 # Départements (108) et sous-préfectures/communes (442) : trop nombreux pour être recopiés ici,
 # leurs libellés sont lus dans les value labels de Base_Menage.dta.

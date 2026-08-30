@@ -3,7 +3,7 @@
 Un seul code produit les deux indices, qui ne diffèrent que par la liste des dimensions
 retenues :
 
-    indices_ipm_ci            16 indicateurs, 4 dimensions (Education, Santé, Emploi,
+    indices_ipm_ci            17 indicateurs, 4 dimensions (Education, Santé, Emploi,
                               Conditions de vie) — l'IPM national publié.
     indices_ipm_international 14 indicateurs, 3 dimensions — l'Emploi est retiré, les trois
                               dimensions restantes sont réequipondérées à 1/3. C'est le
@@ -69,6 +69,11 @@ K_PAUVRETE = 1 / 3
 K_VULNERABILITE = 0.2    # 0,2 <= c < 1/3 : vulnérable à la pauvreté multidimensionnelle
 K_SEVERE = 0.5           # c >= 0,5       : pauvreté multidimensionnelle sévère
 
+# seuils testés pour la robustesse à k (mpitb : klist) — encadrent le seuil officiel K_PAUVRETE,
+# qui reste seul publié comme IPM officiel ; les autres ne servent qu'à juger la sensibilité du
+# résultat au choix du seuil.
+K_LISTE_ROBUSTESSE = sorted({0.10, 0.20, 0.25, 0.30, K_PAUVRETE, 0.40, 0.50, 0.60})
+
 # Comparaison de flottants : avec 4 dimensions à 0,25 le score peut valoir EXACTEMENT 1/3
 # (0,25 + 2 x 0,041666...), et 0,3333333 < 0,33333333 selon les erreurs d'arrondi.
 TOLERANCE = 1e-9
@@ -76,6 +81,7 @@ TOLERANCE = 1e-9
 # variables de désagrégation : colonne de la matrice -> libellé publié
 DESAGREGATIONS = {
     "milieu": "Milieu de résidence",
+    "zone": "Zone (Abidjan, autre urbain, rural)",
     "region": "Région",
     "departement": "Département",
     # pas de « / » : le libellé sert aussi de nom de feuille Excel
@@ -83,6 +89,9 @@ DESAGREGATIONS = {
     "sexe_cm": "Sexe du chef de ménage",
     "classe_taille": "Taille du ménage",
 }
+
+# les deux désagrégations demandées pour le classeur dédié « région + zone »
+DESAGREGATIONS_REGION_ZONE = ["Zone (Abidjan, autre urbain, rural)", "Région"]
 MODALITES_AFFICHEES = 40        # au-delà, la console n'affiche que les extrêmes
 BORNES_TAILLE = [0, 2, 4, 6, 9, 100]
 LIBELLES_TAILLE = ["1-2 personnes", "3-4", "5-6", "7-9", "10 et plus"]
@@ -141,12 +150,15 @@ def vecteur_w(dimensions=None, chemin_z=ENTREE_Z):
     return w.reset_index(drop=True)
 
 
-def matrice_censuree(g0, w):
+def matrice_censuree(g0, w, k=K_PAUVRETE):
     """wⱼ · g0ᵢⱼ, le score cᵢ, les statuts au seuil k et la matrice censurée wⱼ · g0ᵢⱼ · 1(cᵢ>=k).
 
     C'est le condensé des étapes 03 et 04, refait ici parce que les poids dépendent de la
     variante. La censure est le cœur de la méthode : les privations des ménages NON pauvres
     sont remises à zéro, ce qui rend M0 décomposable par indicateur.
+
+    `k` est paramétrable (défaut : le seuil officiel K_PAUVRETE) pour permettre la robustesse
+    à k (voir `robustesse_k`) sans dupliquer cette fonction.
     """
     poids = w.set_index("colonne").poids_indicateur
     manquantes = [c for c in poids.index if c not in g0.columns]
@@ -156,7 +168,7 @@ def matrice_censuree(g0, w):
     score = ponderee.sum(axis=1)
     assert score.between(-TOLERANCE, 1 + TOLERANCE).all(), "un score sort de [0, 1]"
 
-    pauvre = score >= K_PAUVRETE - TOLERANCE
+    pauvre = score >= k - TOLERANCE
     vulnerable = (score >= K_VULNERABILITE - TOLERANCE) & ~pauvre
     severe = score >= K_SEVERE - TOLERANCE
 
@@ -166,11 +178,17 @@ def matrice_censuree(g0, w):
     ecart = (censuree.sum(axis=1) - score_censure).abs().max()
     assert ecart < TOLERANCE, f"la somme des lignes censurées doit redonner cᵢ(k), écart {ecart}"
 
+    # matrice brute (non censurée) : g0ᵢⱼ tel quel, pour le taux de privation non censuré Hⱼ
+    # (OPHI : la part de la population privée sur j, pauvre ou non) publié à côté du taux censuré
+    brute = g0[poids.index].copy()
+    brute.columns = [f"{c}_brute" for c in poids.index]
+
     X = pd.concat([
         pd.DataFrame({"score": score, "score_censure": score_censure,
                       "pauvre": pauvre.astype(int), "vulnerable": vulnerable.astype(int),
                       "pauvrete_severe": severe.astype(int)}),
         censuree,
+        brute,
         g0[[c for c in COLONNES_TECHNIQUES if c in g0.columns]],
     ], axis=1)
     X["poids_population"] = X.ponderation_menage * X.taille_menage
@@ -302,6 +320,36 @@ def indices_nationaux(X):
     return ligne.reset_index(drop=True)
 
 
+def robustesse_k(g0, w):
+    """H, A, M0 nationaux à plusieurs seuils k (mpitb : klist) — robustesse au choix du seuil.
+
+    Chaque k refait la censure et les indices nationaux depuis g0 : ce n'est pas un sous-produit
+    de la matrice censurée officielle (k = K_PAUVRETE), qui reste seule publiée comme IPM.
+    """
+    logger.info("--- robustesse au seuil de pauvreté k ---")
+    lignes = []
+    for k in K_LISTE_ROBUSTESSE:
+        X_k = matrice_censuree(g0, w, k=k)
+        resultat = indices(X_k)
+        officiel = abs(k - K_PAUVRETE) < TOLERANCE
+        lignes.append({
+            "k": k, "k_pct": round(100 * k, 1), "seuil_officiel": officiel,
+            "H_incidence": resultat.H_incidence, "A_intensite": resultat.A_intensite,
+            "M0_ipm": resultat.M0_ipm,
+            "population_pauvre": int(resultat.H_incidence * resultat.population),
+        })
+        logger.info("  k = %5.1f %% %-11s | H = %5.1f %% | A = %.4f | M0 = %.4f",
+                    100 * k, "(officiel)" if officiel else "",
+                    100 * resultat.H_incidence, resultat.A_intensite, resultat.M0_ipm)
+
+    R = pd.DataFrame(lignes)
+    # propriété de base de la méthode AF : relever k ne peut qu'exclure des ménages du champ
+    # des pauvres, donc H (et M0) ne peuvent qu'être non croissants en k
+    assert R.H_incidence.is_monotonic_decreasing, "H doit être non croissant en k"
+    assert R.M0_ipm.is_monotonic_decreasing, "M0 doit être non croissant en k"
+    return R
+
+
 def desagregations(X, M0_national, population_totale):
     """H, A et M0 par sous-population, avec la contribution de chaque groupe à M0 national."""
     logger.info("--- 4. désagrégations ---")
@@ -367,6 +415,10 @@ def contributions(X, M0, w):
     CHⱼ est le taux de privation CENSURÉ : la privation des seuls ménages pauvres. Comme les
     colonnes `_censuree` portent déjà wⱼ · g0ᵢⱼ · 1(pauvre), leur moyenne pondérée population
     vaut directement wⱼ · CHⱼ. Les Cⱼ somment à 1 par construction.
+
+    Hⱼ, le taux de privation NON censuré (OPHI : la part de la population privée sur j, pauvre
+    ou non), est publié à côté : c'est l'écart entre Hⱼ et CHⱼ qui dit si une privation touche
+    surtout les pauvres ou toute la population.
     """
     logger.info("--- 5. contributions des indicateurs à M0 ---")
     n = X.poids_population
@@ -374,15 +426,19 @@ def contributions(X, M0, w):
     lignes = []
     for _, ind in w.iterrows():
         colonne = f"{ind.colonne}_censuree"
+        colonne_brute = f"{ind.colonne}_brute"
         assert colonne in X.columns, f"colonne censurée absente : {colonne}"
+        assert colonne_brute in X.columns, f"colonne brute absente : {colonne_brute}"
 
         apport = (n * X[colonne]).sum() / n.sum()          # = wⱼ · CHⱼ
         brut = (n * (X[colonne] > 0)).sum() / n.sum()      # privation censurée, en effectif
+        non_censure = (n * X[colonne_brute]).sum() / n.sum()   # Hⱼ : privation dans TOUTE la population
         lignes.append({
             "dimension": ind.dimension,
             "indicateur": ind.indicateur,
             "colonne": ind.colonne,
             "poids_w": ind.poids_indicateur,
+            "taux_privation_non_censure": non_censure,
             "taux_privation_censure": brut,
             "apport_a_M0": apport,
             "contribution_M0": apport / M0,
@@ -394,8 +450,9 @@ def contributions(X, M0, w):
     assert abs(total - 1) < 1e-6, f"les contributions doivent sommer à 1, obtenu {total}"
 
     for _, ligne in C.iterrows():
-        logger.info("  %-24s w = %.4f | privation censurée %5.1f %% | contribution %5.1f %%",
-                    ligne.colonne, ligne.poids_w,
+        logger.info("  %-24s w = %.4f | privation non censurée %5.1f %% | censurée %5.1f %% | "
+                    "contribution %5.1f %%",
+                    ligne.colonne, ligne.poids_w, 100 * ligne.taux_privation_non_censure,
                     100 * ligne.taux_privation_censure, 100 * ligne.contribution_M0)
     logger.info("somme des contributions = %.6f", total)
 
@@ -431,14 +488,15 @@ def assembler(national, D):
     return table
 
 
-def exporter_classeur(table, C, w, nom):
-    """Un classeur, une feuille par objet : l'ensemble, les contributions, les poids, puis une
-    feuille par variable de désagrégation."""
+def exporter_classeur(table, C, w, R, nom):
+    """Un classeur, une feuille par objet : l'ensemble, les contributions, les poids, la
+    robustesse à k, puis une feuille par variable de désagrégation."""
     chemin = SORTIES_XLSX / f"{nom}.xlsx"
 
     feuilles = {"Ensemble": table[table.variable == "Ensemble"],
                 "Contributions": C,
-                "Ponderations": w}
+                "Ponderations": w,
+                "Robustesse k": R}
     for libelle in DESAGREGATIONS.values():
         morceau = table[table.variable == libelle]
         if not morceau.empty:
@@ -451,6 +509,21 @@ def exporter_classeur(table, C, w, nom):
 
     logger.info("%-42s -> xlsx %.2f Mo  (%d feuilles : %s)", nom,
                 chemin.stat().st_size / 1e6, len(feuilles), ", ".join(feuilles))
+    return chemin
+
+
+def exporter_region_zone(table, nom="resultats_region_zone"):
+    """Classeur dédié, demandé séparément : Région (33 modalités) et Zone (Abidjan / autre
+    urbain / rural), rien d'autre — à distinguer du classeur technique complet (6 découpages)."""
+    chemin = SORTIES_XLSX / f"{nom}.xlsx"
+    with pd.ExcelWriter(chemin, engine="openpyxl") as classeur:
+        for libelle in DESAGREGATIONS_REGION_ZONE:
+            morceau = table[table.variable == libelle]
+            assert not morceau.empty, f"désagrégation absente de la table publiée : {libelle}"
+            morceau.to_excel(classeur, sheet_name=libelle[:31], index=False, freeze_panes=(1, 2))
+
+    logger.info("%-42s -> xlsx %.2f Mo  (feuilles : %s)", nom, chemin.stat().st_size / 1e6,
+                ", ".join(DESAGREGATIONS_REGION_ZONE))
     return chemin
 
 
@@ -474,12 +547,14 @@ def calculer_variante(g0, nom, libelle, dimensions):
     M0 = national.M0_ipm.iloc[0]
     D = desagregations(X, M0, national.population.iloc[0])
     C = contributions(X, M0, w)
+    R = robustesse_k(g0, w)
     table = assembler(national, D)
 
     logger.info("--- 7. export (Stata + CSV + XLSX) ---")
     exporter_table(table, nom, logger, index=False)
     exporter_table(C, nom.replace("indices", "contributions"), logger, index=False)
-    exporter_classeur(table, C, w, nom)
+    exporter_table(R, nom.replace("indices", "robustesse_k"), logger, index=False)
+    exporter_classeur(table, C, w, R, nom)
     return table, C
 
 
@@ -585,6 +660,13 @@ def verifier():
             assert Y.loc["B", "score"] == 0
             assert Y.pauvre.tolist() == [1, 0]
             assert abs(Y.loc["A", "score_censure"] - 1) < TOLERANCE
+            # i0 : A privée (pauvre) et B non privée -> Hⱼ non censuré = 0,5, égal au censuré ici
+            # puisque B (non privée) ne contribue à aucun des deux
+            M0_test = (Y.poids_population * Y.score_censure).sum() / Y.poids_population.sum()
+            Cw = contributions(Y, M0_test, w)
+            i0 = Cw.set_index("colonne").loc["i0"]
+            assert abs(i0.taux_privation_non_censure - 0.5) < TOLERANCE, i0
+            assert abs(i0.taux_privation_censure - 0.5) < TOLERANCE, i0
     finally:
         chemin.unlink()
 
@@ -607,6 +689,8 @@ def main():
         ensemble = table[table.variable == "Ensemble"].iloc[0]
         logger.info("  %-28s %7.1f %% %8.4f %8.4f", nom,
                     100 * ensemble.H_incidence, ensemble.A_intensite, ensemble.M0_ipm)
+
+    exporter_region_zone(resultats["indices_ipm_ci"][0])
 
     logger.info("=== terminé en %.1f s ===", time.perf_counter() - debut)
     return resultats

@@ -1,7 +1,7 @@
 """Étape 03 du pipeline IPM — pondérations w, matrice pondérée et score cᵢ.
 
 Entrée  : matrice_situationnelle_ehcvm2021.dta (étape 02) = la matrice de privation g0,
-          12 965 ménages x 16 indicateurs en 0/1.
+          12 965 ménages x 17 indicateurs en 0/1.
 Sorties : vecteur_w                     — le poids de chaque indicateur
           matrice_privations_ponderees  — g0 pondérée (wⱼ · g0ᵢⱼ) et le score cᵢ
 

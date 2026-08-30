@@ -3,7 +3,8 @@
 Journal de méthode du pipeline `PythonIPM`. Il retrace les sources, les définitions retenues, les
 écarts assumés et les conventions de calcul. À tenir à jour à chaque étape.
 
-*Dernière mise à jour : 27 août 2026 — 16 indicateurs ; renoncement aux soins élargi au coût et à l'indisponibilité de l'offre.*
+*Dernière mise à jour : 30 août 2026 — 17 indicateurs ; le chômage BIT est remplacé par le SU3
+(BIT, 19e CIST) et un indicateur NEET (16-35 ans) est ajouté à la dimension Emploi.*
 
 ---
 
@@ -22,6 +23,13 @@ Enquête harmonisée sur les conditions de vie des ménages (EHCVM) 2021, Côte 
 **Clé de fusion** : `grappe` + `menage` + `vague`. Les quatre bases couvrent exactement les mêmes
 **12 965 ménages**, la fusion se fait donc sans perte (jointures en `validate="1:1"`).
 
+Ces 4 bases ne sont pas fournies telles quelles par l'EHCVM : elles sont reconstruites depuis les
+fichiers sectionnels bruts (`s01_me`, `s02_me`, `s03_me`, `s04a_me` pour les individus ;
+`ehcvm_welfare`, `s00_me`, `s11_me` pour le ménage ; `s12_me` pour les avoirs ; `s08a_me` pour la
+sécurité alimentaire) par
+[`00_construction_bases_source.py`](pipeline/00_construction_bases_source.py), à lancer une fois
+avant le reste du pipeline.
+
 **Nettoyage** : `Base_securite_alimentaire.dta` contient 728 lignes entièrement vides (clé `NaN`),
 supprimées avant toute fusion.
 
@@ -33,8 +41,8 @@ question du questionnaire CAPI en commentaire.
 
 ## 2. Définitions retenues
 
-Chaque indicateur suit **soit** la proposition nationale, **soit** l'application du PNUD. Ce choix
-est porté dans le code par la constante `INDICATEURS` de
+Chaque indicateur suit **soit** la proposition nationale, **soit** l'application du PNUD, **soit**
+une définition BIT (SU3, NEET). Ce choix est porté dans le code par la constante `INDICATEURS` de
 [`02_construction_matrice_situationnelle.py`](02_construction_matrice_situationnelle.py) et rappelé dans le log à chaque
 exécution.
 
@@ -47,7 +55,8 @@ exécution.
 | Santé | Assurance maladie | nationale | `assurance_maladie` | aucun membre couvert | 93,4 % |
 | Santé | Insécurité alimentaire | FAO | `insecurite_alimentaire` | score FIES ≥ 4 sur 8 (modérée ou sévère) | 42,7 % |
 | Santé | Renoncement aux soins (coût ou indisponibilité) | nationale | `renoncement_soins` | un membre malade sur 30 j n'a pas consulté, pour raison subie : coût (2 « trop cher », 8 « manque d'argent ») ou offre (11 « service indisponible », 12 « absence de personnel ») | 9,3 % |
-| Emploi | Chômage | nationale | `chomage` | au moins un chômeur BIT de 17-40 ans | 3,7 % |
+| Emploi | SU3 — sous-utilisation élargie de la main-d'œuvre | BIT (19e CIST) | `su3` | au moins un membre de 16 ans et plus au chômage BIT **ou** en main-d'œuvre potentielle | 9,4 % |
+| Emploi | NEET | BIT | `neet` | au moins un jeune de 16-35 ans ni en emploi, ni scolarisé, ni en formation non formelle | 37,8 % |
 | Emploi | Emploi agricole de subsistance | nationale | `emploi_subsistance` | chef occupé ne travaillant que son propre champ (sans salariat, apprentissage ni commerce) | 48,1 % |
 | Conditions de vie | Électricité | nationale | `electricite` | éclairage hors réseau / groupe électrogène / solaire | 13,3 % |
 | Conditions de vie | Logement | PNUD | `logement` | sol naturel **ou** toit **ou** murs précaires | 22,3 % |
@@ -74,7 +83,7 @@ alphabétisé » (35,0 %). Le code suit l'énoncé littéral du tableau ; la bas
 |---|---|---|
 | Éducation | 4 | 0,0625 |
 | Santé | 3 | 0,0833 |
-| Emploi | 2 | 0,125 |
+| Emploi | 3 | 0,0833 |
 | Conditions de vie | 7 | 0,0357 |
 
 Seuil de pauvreté multidimensionnelle : **k = 1/3**. Vulnérabilité : 0,2 < score < 1/3. Pauvreté
@@ -89,7 +98,9 @@ sévère : score ≥ 0,5.
 | **Mortalité juvénile** | L'EHCVM n'a ni module décès ni historique des naissances. `Base_chocs` enregistre bien « décès d'un membre du ménage » (1 328 ménages sur 3 ans, avec la date) mais **sans l'âge du défunt** : impossible d'isoler les moins de 18 ans. | Indicateur abandonné, dimension Santé mesurée par l'**assurance maladie** (question 3.32, renseignée à 100 %). |
 | **Années d'études** | L'EHCVM ne demande pas le nombre d'années d'études. | Reconstruites : années accomplies avant le niveau + classe atteinte, en trois branches — niveau achevé (2.29/2.31), niveau en cours (2.14/2.16, moins l'année non terminée), 0 année si jamais scolarisé (2.03). Restent 8,5 % d'individus indéterminés, soit 6 ménages après agrégation par le maximum. |
 | **Charrette** | Absente des 45 biens de la section 12 de l'EHCVM (le camion aussi). | Le décompte PNUD porte sur **7 biens** au lieu de 8. |
-| **Chômage** | Aucune variable de statut d'activité BIT toute faite. | Reconstruit avec les trois critères : sans emploi (4.10 et 4.11), en recherche (4.15 ou 4.17), disponible (4.20 pour les chercheurs, 4.19 sinon). |
+| **SU3** | Aucune variable de statut d'activité BIT toute faite. | Reconstruit avec les mêmes trois critères que le chômage BIT (sans emploi 4.10/4.11, en recherche 4.15/4.17, disponible 4.20/4.19), puis étendu à la main-d'œuvre potentielle (BIT, 19e CIST) : personnes sans emploi qui cherchent sans être disponibles **ou** disponibles sans chercher — exactement un des deux critères, pas les deux (auquel cas c'est un chômeur BIT). SU3 = union des deux populations, tranche 16 ans et plus (pas de borne haute officielle). |
+| **NEET — critère « formation »** | La question 2.05 (« école ou formation non formelle suivie ») a un fort taux de non-réponse (35 513 valeurs manquantes sur 64 491 individus), probablement un filtre de branchement du questionnaire non encore identifié précisément. | Une valeur manquante est traitée comme « pas en formation » (`formation_non_formelle != 1`), cohérent avec la convention du projet (une situation manquante après seuil vaut « non privé » pour le ménage, mais ici c'est un critère individuel élargissant le champ du NEET — à surveiller si le filtre de 2.05 s'avère corrélé à l'âge ou à la scolarisation). |
+| **NEET — tranche d'âge** | La définition BIT standard du NEET porte sur les 15-24 ans. | Ce projet retient **16-35 ans** (décision de cadrage, pas une convention BIT) — cohérent avec l'usage courant en Côte d'Ivoire d'une définition élargie de la « jeunesse » économique. |
 | **Fréquentation scolaire** | La question 2.08a (année 2021/22) n'est posée qu'en **vague 2** ; la 2.12 (année 2020/21) l'est aux deux vagues. | Année la plus récente disponible : scolarisé si 2.08a = oui **ou** 2.12 = oui. |
 | **Électricité** | La variable « connecté au réseau » (11.33) ne capte ni le groupe électrogène ni le solaire : elle classerait 2 597 ménages de plus comme privés (4 319 soit 33,3 %, contre 1 722 soit 13,3 %). | L'indicateur repose sur la **source d'éclairage** (11.37), conformément à l'énoncé national. |
 
@@ -133,7 +144,7 @@ sévère : score ≥ 0,5.
 | Étape | Fichier | Entrée | Sortie | Journal |
 |---|---|---|---|---|
 | 01 — préconstruction | `01_preconstruction_matrice_situationnelle.py` ✅ | les 4 bases `.dta` | `preconstruction_matrice_situationnelle.dta` (12 965 × 29 : situations brutes + colonnes techniques) | `01_…log` |
-| 02 — matrice situationnelle X | `02_construction_matrice_situationnelle.py` ✅ | la préconstruction | `matrice_situationnelle_ehcvm2021.dta` (12 965 × 18 : **16 indicateurs 0/1** + pondération + désagrégation) | `02_…log` |
+| 02 — matrice situationnelle X | `02_construction_matrice_situationnelle.py` ✅ | la préconstruction | `matrice_situationnelle_ehcvm2021.dta` (12 965 × 25 : **17 indicateurs 0/1** + pondération + désagrégation) | `02_…log` |
 | 03 — matrice de privations, pondérations w, score cᵢ et censure | `03_…` (à venir) | X | score, statuts pauvre / vulnérable / sévère | — |
 | 04 — H, A, M₀ et contributions | `04_…` (à venir) | score | indices et désagrégations | — |
 
@@ -170,7 +181,8 @@ PythonIPM/
 
 Des **situations brutes** (effectifs, maximum, code de modalité) : aucun seuil n'y est appliqué.
 Colonnes : les effectifs concernés et défavorables des indicateurs individuels
-(`enfants_6_16` / `enfants_6_16_non_scolarises`, `membres_17_40` / `chomeurs_17_40`,
+(`enfants_6_16` / `enfants_6_16_non_scolarises`, `membres_16_95` / `su3_16_95`,
+`jeunes_16_35` / `neet_16_35`,
 `enfants_5_15` / `enfants_5_15_sans_acte`, `membres_17_49` / `membres_17_49_alphabetises`,
 `membres_17_95` / `annees_etudes_max`, `membres_assures`, `membres_malades_30j` /
 `membres_renoncement_soins`), les codes de modalité des conditions de
@@ -184,15 +196,16 @@ de distinguer « non privé » de « non concerné » sans revenir aux données 
 
 ### Contenu de la matrice situationnelle X (étape 02)
 
-Les 16 colonnes indicateurs en 0/1 (1 = privé), puis les colonnes techniques et rien d'autre :
-`id_menage`, `ponderation_menage`, `taille_menage`, `region`, `milieu`, `sexe_cm` — pondération et
-désagrégations de l'étape 04. Moyenne de 5,26 privations par ménage, 2,0 % des ménages sans aucune
-privation (3,3 % de la population).
+Les 17 colonnes indicateurs en 0/1 (1 = privé), puis les colonnes techniques et rien d'autre :
+`id_menage`, `ponderation_menage`, `taille_menage`, `region`, `departement`, `sous_prefecture`,
+`milieu`, `sexe_cm` — pondération et désagrégations de l'étape 05. Moyenne de 6,78 privations par
+ménage (médiane 7), 1,4 % des ménages sans aucune privation (2,0 % de la population).
 
 Quelques ordres de grandeur produits par l'étape 01 : 33,3 % des ménages n'ont aucun enfant de
-6-16 ans, 18,5 % aucun membre de 17-40 ans, 93,4 % aucun membre assuré, 67,2 % ont eu au moins un
-malade sur 30 jours et 9,3 % au moins un renoncement aux soins ; `annees_etudes_max` a une
-médiane de 5 années et un 3ᵉ quartile de 10 ; le nombre de biens possédés est de 2,20 en moyenne.
+6-16 ans, 0,0 % aucun membre de 16 ans et plus (SU3), 25,2 % aucun jeune de 16-35 ans (NEET),
+93,4 % aucun membre assuré, 67,2 % ont eu au moins un malade sur 30 jours et 9,3 % au moins un
+renoncement aux soins ; `annees_etudes_max` a une médiane de 5 années et un 3ᵉ quartile de 10 ; le
+nombre de biens possédés est de 2,20 en moyenne.
 
 ---
 
@@ -210,3 +223,11 @@ médiane de 5 années et un 3ᵉ quartile de 10 ; le nombre de biens possédés 
 | 20 août 2026 | Variante PNUD non produite en parallèle | une seule série de résultats à publier |
 | 20 août 2026 | Pipeline scindé en 01 préconstruction / 02 construction | X ne doit contenir que les 16 indicateurs et les variables de pondération et de désagrégation ; les situations brutes restent traçables dans la préconstruction |
 | 27 août 2026 | Renoncement aux soins élargi au coût **et** à l'offre (3.06 = 2, 8, 11, 12) | motifs **subis** — coût (trop cher, manque d'argent) ou indisponibilité du service (service spécialisé indisponible, absence de personnel) — ; l'automédication (4) et le « pas nécessaire » (1) relèvent d'un arbitrage, pas d'une contrainte. N'ajoute que 14 personnes et 10 ménages (privation 9,3 %) ; déplace l'IPM de 0,00008 — décision de définition, pas d'effet sur les résultats |
+| 30 août 2026 | Le chômage BIT est **remplacé** par le SU3 (BIT, 19e CIST) | le SU3 englobe le chômage par construction (union chômage + main-d'œuvre potentielle) ; garder les deux aurait fait doublon dans la dimension Emploi |
+| 30 août 2026 | SU3 sur la tranche 16 ans et plus (pas de borne haute) | décision de cadrage, plutôt que de reprendre la tranche 17-40 propre au chômage ou la tranche 15-64 standard du BIT |
+| 30 août 2026 | Ajout d'un indicateur NEET (BIT), tranche 16-35 ans (au lieu de 15-24, définition BIT standard) | Emploi passe de 2 à 3 indicateurs (poids 0,0833 chacun) ; la question 2.05 (formation non formelle) permet de construire les trois critères BIT (emploi, éducation, formation) sans proxy ; tranche élargie à la demande de l'utilisateur, décision de cadrage propre à ce projet |
+| 30 août 2026 | Les 4 bases sources sont reconstruites depuis les fichiers sectionnels bruts par `00_construction_bases_source.py` | `PythonIPM/EHCVM/` était vide dans le dépôt (les `.dta` sont gitignorés) ; la correspondance bases attendues ↔ fichiers sectionnels a été vérifiée colonne par colonne sur les données réelles |
+| 30 août 2026 | `contributions_ipm_ci`/`contributions_ipm_international` publient désormais le taux de privation **non censuré** Hⱼ (colonne `taux_privation_non_censure`) à côté du taux censuré CHⱼ déjà présent | alignement avec la pratique standard OPHI (les deux taux, pas seulement le censuré) — Hⱼ était déjà calculé et loggé à l'étape 02 mais jamais exporté dans une table |
+| 30 août 2026 | Nouvelle désagrégation **Zone** (Abidjan / autre urbain / rural), reconstruite en croisant `region == 1` (Autonome d'Abidjan) et `milieu` | le milieu EHCVM est binaire (Urbain/Rural), il ne distingue pas Abidjan des autres villes ; calculée en étape 01 (`calculer_zone`), publiée comme les autres désagrégations en étape 05 |
+| 30 août 2026 | Nouveau tableau de **robustesse à k** (H, A, M0 à k = 10, 20, 25, 30, 33,3 (officiel), 40, 50, 60 %), exporté (`robustesse_k_ipm_ci`/`_international`, feuille dédiée du classeur) | alignement avec `mpitb`/`mpitbR` (paramètre `klist`, natif dans le toolbox de référence) ; un seul k = 1/3 était calculé jusqu'ici, sans mesure de sensibilité au choix du seuil |
+| 30 août 2026 | Nouveau classeur dédié `resultats_region_zone.xlsx` (Région + Zone uniquement, rien d'autre) | demande explicite de l'utilisateur pour un livrable ciblé, distinct du classeur technique complet (6 désagrégations) |
