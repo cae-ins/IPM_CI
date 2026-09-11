@@ -15,8 +15,9 @@ l'un --- le chômage --- ne prive que 6,5~\% de la population et n'apporte que 1
 Cette note documente précisément ce que recouvre la formule « au chômage au sens du BIT » telle
 qu'elle est implémentée, met au jour cinq décisions que l'énoncé ne mentionne pas, puis distingue
 les trois notions que l'on confond couramment --- le chômage BIT, la sous-utilisation de la
-main-d'\oe uvre (SU1 à SU4) et le NEET. Elle chiffre chacune sur l'EHCVM et conclut sur les
-arbitrages ouverts.
+main-d'\oe uvre (SU1 à SU4) et le NEET. Elle chiffre chacune sur l'EHCVM, mesure l'effet
+de deux montages alternatifs désormais implémentés dans le pipeline (options \col{-{}-su1\_su3}
+et \col{-{}-su3}), et conclut sur les arbitrages ouverts.
 \end{abstract}
 
 \section{Le point de départ}
@@ -292,13 +293,80 @@ d'autant que des jeunes sont en formation professionnelle en cours ; les questio
 permettent d'en majorer le biais, à défaut de le corriger.
 \end{attention}
 
+\section{SU3 mis en \oe uvre : l'effet mesuré}
+
+Les deux montages ont été calculés et sont disponibles dans le pipeline, par les options
+\col{-{}-su1\_su3} (SU3 \emph{en plus} du chômage BIT, l'Emploi passant à trois indicateurs de
+0,0833) et \col{-{}-su3} (SU3 \emph{à la place} du chômage BIT, à 0,125). Sans option, l'IPM
+national publié est inchangé --- ce que le pipeline vérifie à chaque exécution.
+
+Au niveau de l'indicateur, le passage de SU1 à SU3 fait passer le nombre de personnes concernées
+de \textbf{561 à 1\,200} sur la bande 17-40 (2,8~\% $\rightarrow$ 6,0~\%), et le nombre de ménages
+privés de \textbf{476 à 1\,027} (3,7~\% $\rightarrow$ 7,9~\% des ménages ; 6,5~\%
+$\rightarrow$ \textbf{12,1~\%} de la population).
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+\textbf{Variante} & \textbf{$H$} & \textbf{$A$} & \textbf{\ipm{}} & \textbf{Vulnérables} &
+\textbf{Sévère} \\
+\midrule
+IPM national (SU1) & 58,0~\% & 0,4940 & 0,2863 & 22,8~\% & 26,1~\% \\
+SU1 + SU3 (\col{-{}-su1\_su3}) & 57,6~\% & 0,4750 & 0,2736 & 24,0~\% & 20,9~\% \\
+SU3 seul (\col{-{}-su3}) & 59,3~\% & 0,4970 & 0,2949 & 22,7~\% & 27,1~\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Contribution à l'\ipm{}} & \textbf{National} & \textbf{SU1 + SU3} & \textbf{SU3 seul} \\
+\midrule
+Chômage BIT (SU1) & 1,6~\% & 1,4~\% & --- \\
+Sous-utilisation SU3 & --- & 2,4~\% & 3,2~\% \\
+Emploi de subsistance & 16,9~\% & 11,2~\% & 16,5~\% \\
+\midrule
+\textbf{Dimension Emploi} & \textbf{18,5~\%} & \textbf{15,0~\%} & \textbf{19,7~\%} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Lecture}
+
+\textbf{SU3 seul} est le montage cohérent. Il fait ce qu'on attendait : l'indicateur de chômage
+double sa contribution (1,6~\% $\rightarrow$ 3,2~\%) sans bouleverser l'indice, qui monte de
+0,2863 à \textbf{0,2949}. L'écart reste dans l'intervalle de confiance de l'IPM national
+(\mbox{[0,2701 ; 0,3026]}) : le changement est cohérent avec la mesure actuelle, il ne la
+contredit pas. Le rapport rural/urbain se resserre légèrement, de 2,85 à 2,72 --- SU3 capte du
+découragement en ville, là où le chômage BIT strict est déjà le plus visible.
+
+\textbf{SU1 + SU3} pose en revanche un problème de méthode, visible dans les chiffres. SU3
+\emph{englobe} SU1 : tout ménage privé au titre du chômage BIT l'est aussi au titre de SU3, et se
+voit donc compter deux fois la même privation. Le montage revient à donner un poids de
+$2 \times 0{,}0833 = 0{,}167$ aux ménages à chômeur BIT et de 0,0833 aux autres --- une
+pondération qu'aucun cadrage n'a décidée. Le symptôme est net : la dimension Emploi
+\emph{perd} du poids (18,5~\% $\rightarrow$ 15,0~\%) parce que l'ajout d'un troisième indicateur
+dilue l'emploi de subsistance, et la pauvreté sévère chute de 26,1~\% à 20,9~\% sans qu'aucune
+réalité n'ait changé.
+
+\begin{attention}[Si l'on veut deux indicateurs d'emploi non redondants]
+Le montage propre n'est pas « SU1 + SU3 » mais \textbf{« SU1 + main-d'\oe uvre potentielle »} :
+le second indicateur ne retiendrait alors que les personnes que SU1 ne voit pas --- celles qui
+cherchent sans être disponibles et celles qui sont disponibles sans chercher. Les deux
+indicateurs seraient disjoints et chaque ménage ne serait compté qu'une fois. Cette variante n'est
+pas implémentée à ce jour ; elle s'obtiendrait en remplaçant \col{ind.su3} par
+\col{ind.main\_oeuvre\_potentielle} à l'étape 01.
+\end{attention}
+
 \section{Les arbitrages ouverts}
 
 \begin{enumerate}
-  \item \textbf{Remplacer SU1 par SU3 dans l'indicateur de chômage.} Le périmètre passerait de
-  561 à 1\,219 personnes concernées sur la bande 17-40, et l'effet sur l'indicateur ménage
-  « au moins un » sera mécaniquement plus fort encore. C'est la piste la plus directe pour rendre
-  à la dimension un équilibre entre ses deux jambes.
+  \item \textbf{Retenir SU3 seul plutôt que SU1.} C'est la piste la plus directe pour rendre à la
+  dimension un équilibre entre ses deux jambes, et la seule des deux qui ne compte pas deux fois
+  les mêmes ménages.
 
   \item \textbf{Réexaminer la borne de 40 ans et le seuil de disponibilité.} La première exclut
   les chômeurs plus âgés ; le second, en acceptant la modalité « entre 15 jours et un mois »,

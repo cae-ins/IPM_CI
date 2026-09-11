@@ -23,6 +23,7 @@ Usage :
     python orchestrateur.py                    # les deux sources, tout le pipeline
     python orchestrateur.py --source rgph      # le RGPH seul
     python orchestrateur.py --check            # les auto-contrôles de chaque étape
+    python orchestrateur.py --su1_su3 --su3    # + les variantes Emploi (EHCVM seule)
 """
 import logging
 import os
@@ -110,6 +111,11 @@ SOCLE_COMMUN = [
 # emploient. `chomage_su3` (sous-utilisation SU3, EHCVM) est dans ce cas : il englobe le
 # chômage BIT, les additionner compterait deux fois les mêmes chômeurs.
 HORS_IPM_NATIONAL = ["chomage_su3"]
+
+# Options de l'étape 05 qui ajoutent une variante Emploi. Elles n'ont de sens que sur l'EHCVM
+# et sont retirées du passage sur le RGPH, pour que `python orchestrateur.py --su3` traite les
+# deux sources sans échouer sur celle qui ne sait pas construire SU3.
+OPTIONS_EMPLOI = ("--su1_su3", "--su3")
 
 
 def configurer_logs(logger, fichier=None, niveau=logging.INFO):
@@ -263,13 +269,28 @@ def lancer_source(source, arguments=()):
     return resultat.returncode
 
 
+def options_de(source, options):
+    """Les options applicables à une source : le RGPH ne prend pas les variantes Emploi."""
+    if source == "ehcvm":
+        return options
+    return [o for o in options if o not in OPTIONS_EMPLOI]
+
+
 if __name__ == "__main__":
-    options = ["--check"] if "--check" in sys.argv else []
+    reconnues = ("--check",) + OPTIONS_EMPLOI
+    options = [a for a in sys.argv[1:] if a in reconnues]
+    inconnues = [a for a in sys.argv[1:]
+                 if a.startswith("--") and a not in reconnues + ("--source",)]
+    if inconnues:
+        sys.exit(f"option inconnue : {' '.join(inconnues)} — attendu : "
+                 f"{', '.join(reconnues)}, --source <{'|'.join(SOURCES)}>")
 
     if "--source" in sys.argv:
         # une source précise : on est (ou on devient) le processus de cette source
         demandee = sys.argv[sys.argv.index("--source") + 1]
-        sys.exit(main(options) if demandee == SOURCE else lancer_source(demandee, options))
+        retenues = options_de(demandee, options)
+        sys.exit(main(retenues) if demandee == SOURCE
+                 else lancer_source(demandee, retenues))
 
     if os.environ.get("IPM_SOURCE"):
         sys.exit(main(options))      # appelé par lancer_source : on exécute la chaîne
@@ -277,6 +298,6 @@ if __name__ == "__main__":
     # appel nu : les deux IPM, l'un après l'autre
     for source in SOURCES:
         print(f"\n{'#' * 78}\n### source {source}\n{'#' * 78}")
-        if lancer_source(source, options):
+        if lancer_source(source, options_de(source, options)):
             sys.exit(f"pipeline interrompu sur la source {source}")
     sys.exit(0)

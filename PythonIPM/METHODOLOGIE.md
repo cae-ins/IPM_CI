@@ -317,11 +317,26 @@ chiffre ne peuvent pas s'importer entre eux) et de chef d'orchestre :
 ```
 python pipeline/orchestrateur.py            # enchaîne les étapes -> logs/00_pipeline.log
 python pipeline/orchestrateur.py --check    # les auto-contrôles de chaque étape
+python pipeline/orchestrateur.py --su3      # + la variante Emploi SU3 (EHCVM seule)
 python pipeline/02_construction_matrice_situationnelle.py   # une étape seule
 ```
 
+**Variantes Emploi.** Deux options ajoutent un jeu de sorties à l'étape 05, sans rien changer à
+l'IPM national : `--su1_su3` place la sous-utilisation SU3 **à côté** du chômage BIT (l'Emploi
+passe à trois indicateurs de 0,0833), `--su3` la met **à la place** (0,125). Elles n'existent que
+pour l'EHCVM — le RGPH ne pose aucune question de recherche d'emploi ni de disponibilité, SU3 n'y
+est pas constructible — et l'orchestrateur les retire du passage sur le recensement. L'indicateur
+`chomage_su3` est produit par l'étape 02 dans tous les cas, mais reste **hors de l'IPM national**
+(`orchestrateur.HORS_IPM_NATIONAL`) : il englobe le chômage BIT, les additionner compterait deux
+fois les mêmes ménages. Voir la *Note sur la dimension Emploi* pour les résultats et leur lecture.
+
 Les étapes sont lancées en sous-processus : une étape en échec arrête la chaîne et les suivantes ne
 tournent pas, plutôt que de produire une sortie incomplète.
+
+Une étape **06** hors chaîne (`06_validation_afmpi.py`) recalcule H, A, M₀ et les contributions
+avec le package [`afmpi`](https://github.com/cae-ins/afmpi), implémentation indépendante de la
+méthode Alkire-Foster, et s'arrête si l'écart avec le pipeline dépasse 1e-6. Les deux chemins
+concordent aujourd'hui sur les deux sources, erreur-type de M₀ comprise.
 
 ### Organisation du dossier
 
@@ -415,6 +430,7 @@ médiane de 5 années et un 3ᵉ quartile de 10 ; le nombre de biens possédés 
 | 27 août 2026 | Renoncement aux soins élargi au coût **et** à l'offre (3.06 = 2, 8, 11, 12) | motifs **subis** — coût (trop cher, manque d'argent) ou indisponibilité du service (service spécialisé indisponible, absence de personnel) — ; l'automédication (4) et le « pas nécessaire » (1) relèvent d'un arbitrage, pas d'une contrainte. N'ajoute que 14 personnes et 10 ménages (privation 9,3 %) ; déplace l'IPM de 0,00008 — décision de définition, pas d'effet sur les résultats |
 | 11 septembre 2026 | Pipeline étendu au RGPH 2021, source portée par `IPM_SOURCE` | même méthode Alkire-Foster sur les deux sources ; seule l'étape 01 diffère, le reste du code est commun |
 | 11 septembre 2026 | Conditions de vie du RGPH lues dans `IPM_Data_110924_men.dta` | le fichier individus les porte aussi, mais renseignées pour un tiers des ménages seulement |
+| 11 septembre 2026 | Indicateur `chomage_su3` (sous-utilisation SU3) produit mais hors IPM national, exposé par `--su1_su3` et `--su3` | le chômage BIT ne prive que 6,5 % de la population pour 12,5 % des pondérations et rate les découragés ; SU3 double le périmètre (12,1 %). Ajouté en variante et non dans l'IPM publié : SU3 englobe SU1, le cumul compterait deux fois les mêmes ménages |
 | 11 septembre 2026 | Pondération RGPH = `EW`, non `PROJ24` | `EW` redonne la population du RGPH 2021 à 0,4 % près ; `PROJ24` projette à 2024 (31,9 millions) |
 | 11 septembre 2026 | Dimension Santé du RGPH = mortalité juvénile seule | aucune question de santé au recensement ; conserve les 4 dimensions équipondérées, au prix d'une privation rare (fenêtre de 12 mois et non de 5 ans) |
 | 11 septembre 2026 | Chômage RGPH = `Statut_OQPtbb` (INS) | intègre le reclassement INS des personnes déclarées sans activité mais occupées ; le recalcul brut donnerait 21 % de chômeurs chez les 17-40 ans contre 0,9 % |
