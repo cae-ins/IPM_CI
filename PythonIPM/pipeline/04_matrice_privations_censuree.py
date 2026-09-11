@@ -26,12 +26,12 @@ import time
 
 import pandas as pd
 
-from orchestrateur import (CLE, COLONNES_TECHNIQUES, LOGS, SORTIES_DTA, configurer_logs,
-                           exporter_table, part)
+from orchestrateur import (CLE, COLONNES_TECHNIQUES, LOGS, SORTIES_DTA, SOURCE, configurer_logs,
+                           exporter_table, nom, part)
 
-ENTREE = SORTIES_DTA / "matrice_privations_ponderees.dta"
-NOM_SORTIE = "matrice_privations_censuree"
-JOURNAL = LOGS / "04_matrice_privations_censuree.log"
+ENTREE = SORTIES_DTA / f"{nom('matrice_privations_ponderees')}.dta"
+NOM_SORTIE = nom("matrice_privations_censuree")
+JOURNAL = LOGS / f"04_matrice_privations_censuree_{SOURCE}.log"
 
 # Seuils. k = 1/3 est le seuil de pauvreté multidimensionnelle de l'IPM ; les deux autres
 # servent aux indicateurs complémentaires publiés à côté de M0.

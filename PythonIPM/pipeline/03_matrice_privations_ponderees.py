@@ -1,9 +1,8 @@
 """Étape 03 du pipeline IPM — pondérations w, matrice pondérée et score cᵢ.
 
-Entrée  : matrice_situationnelle_ehcvm2021.dta (étape 02) = la matrice de privation g0,
-          12 965 ménages x 16 indicateurs en 0/1.
-Sorties : vecteur_w                     — le poids de chaque indicateur
-          matrice_privations_ponderees  — g0 pondérée (wⱼ · g0ᵢⱼ) et le score cᵢ
+Entrée  : matrice_situationnelle_<source>.dta (étape 02) = la matrice de privation g0.
+Sorties : vecteur_w_<source>                     — le poids de chaque indicateur
+          matrice_privations_ponderees_<source>  — g0 pondérée (wⱼ · g0ᵢⱼ) et le score cᵢ
 
 Méthode Alkire-Foster (chapitre 4 du guide ODD), dans l'ordre :
 
@@ -29,14 +28,14 @@ import time
 
 import pandas as pd
 
-from orchestrateur import (CLE, COLONNES_TECHNIQUES, LOGS, SORTIES_CSV, SORTIES_DTA,
-                           configurer_logs, exporter_table, part)
+from orchestrateur import (CLE, COLONNES_TECHNIQUES, LOGS, SORTIES_CSV, SORTIES_DTA, SOURCE,
+                           configurer_logs, exporter_table, nom, part)
 
-ENTREE = SORTIES_DTA / "matrice_situationnelle_ehcvm2021.dta"
-ENTREE_Z = SORTIES_CSV / "vecteur_z.csv"
-NOM_W = "vecteur_w"
-NOM_SORTIE = "matrice_privations_ponderees"
-JOURNAL = LOGS / "03_matrice_privations_ponderees.log"
+ENTREE = SORTIES_DTA / f"{nom('matrice_situationnelle')}.dta"
+ENTREE_Z = SORTIES_CSV / f"{nom('vecteur_z')}.csv"
+NOM_W = nom("vecteur_w")
+NOM_SORTIE = nom("matrice_privations_ponderees")
+JOURNAL = LOGS / f"03_matrice_privations_ponderees_{SOURCE}.log"
 
 # Comparaison de flottants : avec 4 dimensions à 0,25 le score peut valoir EXACTEMENT 1/3
 # (0,25 + 2 x 0,041666...), et 0,3333333 < 0,33333333 selon les erreurs d'arrondi.

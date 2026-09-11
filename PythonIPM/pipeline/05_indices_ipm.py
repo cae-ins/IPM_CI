@@ -1,17 +1,26 @@
-"""Étape 05 du pipeline IPM — indices H, A, M0 et désagrégations, pour DEUX variantes.
+"""Étape 05 du pipeline IPM — indices H, A, M0 et désagrégations, pour TROIS variantes.
 
-Un seul code produit les deux indices, qui ne diffèrent que par la liste des dimensions
-retenues :
+Un seul code produit les trois indices, qui ne diffèrent que par le périmètre d'indicateurs
+retenu — dimensions entières, ou liste explicite de colonnes :
 
-    indices_ipm_ci            16 indicateurs, 4 dimensions (Education, Santé, Emploi,
-                              Conditions de vie) — l'IPM national publié.
-    indices_ipm_international 14 indicateurs, 3 dimensions — l'Emploi est retiré, les trois
-                              dimensions restantes sont réequipondérées à 1/3. C'est le
-                              périmètre comparable au niveau international (tableau ODD/PNUD).
+    indices_ipm_ci            tous les indicateurs de la source, 4 dimensions (Education,
+                              Santé, Emploi, Conditions de vie) — l'IPM national publié.
+                              16 indicateurs sur l'EHCVM, 13 sur le RGPH.
+    indices_ipm_international l'Emploi est retiré, les trois dimensions restantes sont
+                              réequipondérées à 1/3. C'est le périmètre comparable au niveau
+                              international (tableau ODD/PNUD).
+    indices_ipm_harmonise     le socle commun aux deux sources : les 12 indicateurs que
+                              l'EHCVM ET le RGPH savent mesurer, en 3 dimensions (la Santé
+                              n'en a aucun de commun). Seule variante dont les niveaux se
+                              comparent d'une source à l'autre — les IPM complets, eux, ne se
+                              comparent pas, chacun exploitant ce que sa source mesure.
 
-Entrées : matrice_situationnelle_ehcvm2021.dta (étape 02) = la matrice de privation g0
-          vecteur_z.csv (étape 02)                        = la dimension de chaque indicateur
-          matrice_privations_censuree.dta (étape 04)      = contrôle de la variante nationale
+Et ces trois variantes sont calculées pour chacune des deux sources : six jeux de sorties en
+tout, distingués par le suffixe du nom de fichier (`_ehcvm2021`, `_rgph2021`).
+
+Entrées : matrice_situationnelle_<source>.dta (étape 02) = la matrice de privation g0
+          vecteur_z_<source>.csv (étape 02)              = la dimension de chaque indicateur
+          matrice_privations_censuree_<source>.dta (04)  = contrôle de la variante nationale
 
 Sorties : pour chaque variante, <nom>.dta / <nom>.csv et un classeur <nom>.xlsx (une feuille
           par objet : Ensemble, Contributions, une par désagrégation), plus
@@ -47,20 +56,28 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-import dictionnaire_ehcvm as dico
-from orchestrateur import (CLE, COLONNES_TECHNIQUES, LOGS, SORTIES_CSV, SORTIES_DTA,
-                           SORTIES_XLSX, configurer_logs, exporter_table, part)
+from orchestrateur import (CLE, COLONNES_TECHNIQUES, LOGS, SOCLE_COMMUN, SORTIES_CSV,
+                           SORTIES_DTA, SORTIES_XLSX, SOURCE, configurer_logs, exporter_table,
+                           nom, part)
 
-ENTREE_G0 = SORTIES_DTA / "matrice_situationnelle_ehcvm2021.dta"
-ENTREE_Z = SORTIES_CSV / "vecteur_z.csv"
-ENTREE_CENSUREE = SORTIES_DTA / "matrice_privations_censuree.dta"
-JOURNAL = LOGS / "05_indices_ipm.log"
+if SOURCE == "rgph":
+    import dictionnaire_rgph as dico
+else:
+    import dictionnaire_ehcvm as dico
 
-# les deux variantes : nom de sortie -> (libellé, dimensions retenues ; None = toutes)
+ENTREE_G0 = SORTIES_DTA / f"{nom('matrice_situationnelle')}.dta"
+ENTREE_Z = SORTIES_CSV / f"{nom('vecteur_z')}.csv"
+ENTREE_CENSUREE = SORTIES_DTA / f"{nom('matrice_privations_censuree')}.dta"
+JOURNAL = LOGS / f"05_indices_ipm_{SOURCE}.log"
+
+# les trois variantes : nom de sortie -> (libellé, dimensions retenues, colonnes retenues).
+# `None` = aucune restriction sur ce critère.
 VARIANTES = {
-    "indices_ipm_ci": ("IPM national — 4 dimensions", None),
-    "indices_ipm_international": ("IPM international — 3 dimensions, sans l'Emploi",
-                                  ["Education", "Sante", "Conditions de vie"]),
+    nom("indices_ipm_ci"): ("IPM national — 4 dimensions", None, None),
+    nom("indices_ipm_international"): ("IPM international — 3 dimensions, sans l'Emploi",
+                                       ["Education", "Sante", "Conditions de vie"], None),
+    nom("indices_ipm_harmonise"): ("IPM harmonisé — socle commun EHCVM/RGPH",
+                                   None, SOCLE_COMMUN),
 }
 
 # Seuils (identiques à l'étape 04). k = 1/3 est le seuil de pauvreté multidimensionnelle ;
@@ -110,18 +127,27 @@ def charger_g0():
     return g0
 
 
-def vecteur_w(dimensions=None, chemin_z=ENTREE_Z):
+def vecteur_w(dimensions=None, colonnes=None, chemin_z=ENTREE_Z):
     """Poids de chaque indicateur : dimensions équipondérées, partage égal à l'intérieur.
 
-    `dimensions` restreint le périmètre (variante internationale) ; None les garde toutes.
-    La liste des indicateurs n'est pas réécrite ici : elle est lue dans le vecteur z produit
-    par l'étape 02, ce qui garantit que w et z portent sur exactement les mêmes colonnes.
+    `dimensions` restreint le périmètre à des dimensions entières (variante internationale),
+    `colonnes` à une liste d'indicateurs (variante harmonisée) ; None les garde toutes. La
+    liste des indicateurs n'est pas réécrite ici : elle est lue dans le vecteur z produit par
+    l'étape 02, ce qui garantit que w et z portent sur exactement les mêmes colonnes.
+
+    Une dimension dont aucun indicateur ne survit au filtre disparaît, et le poids se
+    répartit sur celles qui restent : c'est ce qui arrive à la Santé dans la variante
+    harmonisée, puisque l'EHCVM et le RGPH n'y ont aucun indicateur commun.
     """
     z = pd.read_csv(chemin_z)
     if dimensions is not None:
         inconnues = set(dimensions) - set(z.dimension)
         assert not inconnues, f"dimensions absentes du vecteur z : {sorted(inconnues)}"
         z = z[z.dimension.isin(dimensions)]
+    if colonnes is not None:
+        inconnues = set(colonnes) - set(z.colonne)
+        assert not inconnues, f"indicateurs absents du vecteur z : {sorted(inconnues)}"
+        z = z[z.colonne.isin(colonnes)]
 
     poids_dimension = 1 / z.dimension.nunique()
     w = z[["dimension", "indicateur", "colonne"]].copy()
@@ -457,17 +483,17 @@ def exporter_classeur(table, C, w, nom):
 # --------------------------------------------------------------------------- #
 # une variante de bout en bout
 # --------------------------------------------------------------------------- #
-def calculer_variante(g0, nom, libelle, dimensions):
-    """Le même enchaînement pour les deux indices : w, censure, indices, export."""
+def calculer_variante(g0, nom_variante, libelle, dimensions, colonnes):
+    """Le même enchaînement pour les trois indices : w, censure, indices, export."""
     logger.info("")
     logger.info("=" * 78)
-    logger.info("%s  (%s)", libelle, nom)
+    logger.info("%s  (%s)", libelle, nom_variante)
     logger.info("=" * 78)
 
     logger.info("--- 2. vecteur w et matrice censurée de la variante ---")
-    w = vecteur_w(dimensions)
+    w = vecteur_w(dimensions, colonnes)
     X = matrice_censuree(g0, w)
-    if dimensions is None:
+    if dimensions is None and colonnes is None:
         controler_contre_etape_04(X)
 
     national = indices_nationaux(X)
@@ -477,9 +503,9 @@ def calculer_variante(g0, nom, libelle, dimensions):
     table = assembler(national, D)
 
     logger.info("--- 7. export (Stata + CSV + XLSX) ---")
-    exporter_table(table, nom, logger, index=False)
-    exporter_table(C, nom.replace("indices", "contributions"), logger, index=False)
-    exporter_classeur(table, C, w, nom)
+    exporter_table(table, nom_variante, logger, index=False)
+    exporter_table(C, nom_variante.replace("indices", "contributions"), logger, index=False)
+    exporter_classeur(table, C, w, nom_variante)
     return table, C
 
 
@@ -545,7 +571,8 @@ def verifier():
     assert list(table.columns) == COLONNES_PUBLIEES
     assert table.variable.tolist() == ["Ensemble", "Milieu de résidence", "Milieu de résidence"]
 
-    # --- les deux variantes de pondération, sur un vecteur z factice ---
+    # --- les trois variantes de pondération, sur un vecteur z factice ---
+    DIMENSIONS_INTERNATIONALES = ["Education", "Sante", "Conditions de vie"]
     z = pd.DataFrame({
         "dimension": ["Education"] * 4 + ["Sante"] * 3 + ["Emploi"] * 2
                      + ["Conditions de vie"] * 7,
@@ -556,14 +583,14 @@ def verifier():
     z.to_csv(chemin, index=False)
     try:
         # nationale : 4 dimensions à 0,25 -> Éducation 4 x 0,0625, Emploi 2 x 0,125
-        w4 = vecteur_w(None, chemin).set_index("colonne").poids_indicateur
+        w4 = vecteur_w(chemin_z=chemin).set_index("colonne").poids_indicateur
         assert abs(w4.sum() - 1) < TOLERANCE
         assert abs(w4["i0"] - 0.0625) < TOLERANCE, w4["i0"]
         assert abs(w4["i7"] - 0.125) < TOLERANCE, w4["i7"]
         assert abs(w4["i9"] - 0.25 / 7) < TOLERANCE
 
         # internationale : 3 dimensions à 1/3, l'Emploi disparaît
-        w3 = vecteur_w(VARIANTES["indices_ipm_international"][1], chemin)
+        w3 = vecteur_w(DIMENSIONS_INTERNATIONALES, chemin_z=chemin)
         assert len(w3) == 14, len(w3)
         assert "Emploi" not in set(w3.dimension)
         poids3 = w3.set_index("colonne").poids_indicateur
@@ -578,8 +605,17 @@ def verifier():
         g0.loc["A"] = 1
         g0["ponderation_menage"] = 1.0
         g0["taille_menage"] = 4
-        for dimensions in (None, VARIANTES["indices_ipm_international"][1]):
-            w = vecteur_w(dimensions, chemin)
+        # harmonisée : les 6 indicateurs du socle factice, l'Emploi survit, la Santé non
+        wh = vecteur_w(colonnes=["i0", "i1", "i7", "i9", "i10", "i11"], chemin_z=chemin)
+        assert len(wh) == 6 and "Sante" not in set(wh.dimension), wh
+        poidsh = wh.set_index("colonne").poids_indicateur
+        assert abs(poidsh.sum() - 1) < TOLERANCE
+        assert abs(poidsh["i0"] - 1 / 6) < TOLERANCE, poidsh["i0"]     # Éducation, 2 indic.
+        assert abs(poidsh["i7"] - 1 / 3) < TOLERANCE, poidsh["i7"]     # Emploi, 1 indic.
+        assert abs(poidsh["i9"] - 1 / 9) < TOLERANCE, poidsh["i9"]     # Cadre de vie, 3 indic.
+
+        for dimensions in (None, DIMENSIONS_INTERNATIONALES):
+            w = vecteur_w(dimensions, chemin_z=chemin)
             Y = matrice_censuree(g0, w)
             assert abs(Y.loc["A", "score"] - 1) < TOLERANCE, Y.loc["A", "score"]
             assert Y.loc["B", "score"] == 0
@@ -594,11 +630,12 @@ def verifier():
 def main():
     configurer_logs(logger, JOURNAL)
     debut = time.perf_counter()
-    logger.info("=== étape 05 : indices H, A, M0 — %d variantes ===", len(VARIANTES))
+    logger.info("=== étape 05 : indices H, A, M0 — source %s, %d variantes ===",
+                SOURCE, len(VARIANTES))
 
     g0 = charger_g0()
-    resultats = {nom: calculer_variante(g0, nom, libelle, dimensions)
-                 for nom, (libelle, dimensions) in VARIANTES.items()}
+    resultats = {v: calculer_variante(g0, v, *parametres)
+                 for v, parametres in VARIANTES.items()}
 
     logger.info("")
     logger.info("--- comparaison des variantes ---")
