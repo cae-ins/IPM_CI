@@ -1,8 +1,24 @@
-"""Étape 02 du pipeline IPM — matrice situationnelle X (EHCVM 2021).
+"""Étape 02 du pipeline IPM — matrice situationnelle X (EHCVM 2021 ou RGPH 2021).
 
-Entrée  : preconstruction_matrice_situationnelle.dta (étape 01)
-Sortie  : matrice_situationnelle_ehcvm2021.dta — 12 965 ménages x 16 indicateurs 0/1,
-          plus la pondération et les variables de désagrégation, et rien d'autre.
+Entrée  : preconstruction_matrice_situationnelle_<source>.dta (étape 01)
+Sortie  : matrice_situationnelle_<source>.dta — un ménage par ligne, un indicateur 0/1 par
+          colonne, plus la pondération et les variables de désagrégation, et rien d'autre.
+
+          EHCVM 2021 :    12 965 ménages x 16 indicateurs
+          RGPH 2021  : 5 616 487 ménages x 13 indicateurs
+
+Un seul code pour les deux sources : ce qui change d'une source à l'autre, ce sont les
+énoncés et les seuils, rassemblés dans INDICATEURS_PAR_SOURCE. Le RGPH mesure treize des
+seize indicateurs de l'EHCVM et en apporte un que l'enquête n'a pas :
+
+    absents du RGPH   assurance maladie, insécurité alimentaire et renoncement aux soins
+                      (aucune question de santé dans le recensement), promiscuité (le nombre
+                      de pièces n'est pas collecté)
+    propre au RGPH    mortalité — le décès d'un enfant de moins de 18 ans dans le ménage, seul
+                      indicateur de la dimension Santé côté recensement
+    approché          année de scolarité : le diplôme le plus élevé tient lieu d'années
+                      d'études, et l'eau comme les toilettes perdent leur second critère
+                      (temps de trajet, partage des sanitaires)
 
 Chaque indicateur suit SOIT la proposition nationale, SOIT l'application du PNUD — le choix est
 porté par la constante INDICATEURS et détaillé dans METHODOLOGIE.md :
@@ -27,13 +43,13 @@ from collections import namedtuple
 
 import pandas as pd
 
-from orchestrateur import (CLE, COLONNES_TECHNIQUES, LOGS, SORTIES_DTA, configurer_logs,
-                           exporter_table, part)
+from orchestrateur import (CLE, COLONNES_TECHNIQUES, LOGS, SOCLE_COMMUN, SORTIES_DTA, SOURCE,
+                           configurer_logs, exporter_table, nom, part)
 
-ENTREE = SORTIES_DTA / "preconstruction_matrice_situationnelle.dta"
-NOM_SORTIE = "matrice_situationnelle_ehcvm2021"
-NOM_Z = "vecteur_z"
-JOURNAL = LOGS / "02_construction_matrice_situationnelle.log"
+ENTREE = SORTIES_DTA / f"{nom('preconstruction_matrice_situationnelle')}.dta"
+NOM_SORTIE = nom("matrice_situationnelle")
+NOM_Z = nom("vecteur_z")
+JOURNAL = LOGS / f"02_construction_matrice_situationnelle_{SOURCE}.log"
 
 NATIONALE = "proposition nationale"
 PNUD = "application PNUD"
@@ -58,6 +74,23 @@ SCORE_FIES_MINIMUM = 4                              # insécurité modérée ou 
 # IPM nationaux africains (Éthiopie, Rwanda). Mettre 2 pour la définition OMS, plus exigeante
 # (8,4 % des ménages privés à 3 personnes par pièce, 29,7 % à 2).
 PERSONNES_PAR_PIECE_MAXIMUM = 3
+
+# Modalités adéquates côté RGPH (codes du questionnaire de recensement, voir
+# dictionnaire_rgph.py). Les nomenclatures ne sont pas celles de l'EHCVM : mêmes définitions
+# ODD/PNUD, codes différents.
+RGPH_ECLAIRAGE_ADEQUAT = [1, 2, 3]            # CIE, groupe électrogène, panneau solaire
+RGPH_EAU_AMELIOREE = [1, 2, 3, 4, 5, 7, 10]   # robinet, forage, puits/source protégés, bouteille
+RGPH_SANITAIRE_AMELIORE = [1, 2, 5, 7]        # chasse vers égout ou fosse, latrine ventilée,
+                                              # toilette à compostage
+# Matériaux ADÉQUATS, définis par exclusion comme dans le dofile officiel du RGPH 2021
+# (`rp21_calcul_des_privations.do`) : tout ce qui n'est pas dans ces listes est rudimentaire.
+# Écrire la liste courte plutôt que la longue évite d'oublier une modalité, et reprend la
+# lecture déjà validée sur le recensement — le sol en bois et le mur en tôle y sont comptés
+# comme rudimentaires, conformément à la classification DHS.
+RGPH_SOL_ADEQUAT = [2, 3, 4]                  # ciment, carreau/marbre, moquette/gerflex
+RGPH_TOIT_ADEQUAT = [2, 3, 4]                 # tôle, béton, tuile/éverite
+RGPH_MUR_ADEQUAT = [4, 5, 6]                  # semi-dur, géobéton, dur (ciment, brique)
+RGPH_CUISSON_PROPRE = [2, 4]                  # gaz, électricité
 
 # Lecture de l'indicateur alphabétisation. L'énoncé national dit « UN membre de 17-49 ans ne
 # sait pas lire ou écrire » ; le RGPH 2021 codait « AUCUN membre alphabétisé ». L'écart est
@@ -162,7 +195,92 @@ INDICATEURS = [
                lambda X: X.taille_menage / X.nb_pieces > PERSONNES_PAR_PIECE_MAXIMUM),
 ]
 
-# les 16 colonnes indicateurs, dans l'ordre du tableau de référence
+INDICATEURS_RGPH = [
+    Indicateur("Education", "Fréquentation scolaire", NATIONALE,
+               "Le ménage a un enfant de 6-16 ans qui ne fréquente actuellement pas",
+               "frequentation_scolaire", ["enfants_6_16_non_scolarises"], "enfants_6_16",
+               lambda X: X.enfants_6_16_non_scolarises >= 1),
+    # Le recensement ne demande ni les années d'études ni la classe atteinte : l'énoncé
+    # national « 10 années accomplies » est approché par « au moins le BEPC ».
+    Indicateur("Education", "Année de scolarité", NATIONALE,
+               "Aucun membre du ménage âgé de 17-95 ans n'a un diplôme valant 10 années "
+               "d'études (BEPC ou plus)",
+               "annee_scolarite", ["membres_17_95_dix_annees_etudes"], "membres_17_95",
+               lambda X: X.membres_17_95_dix_annees_etudes == 0),
+    # Même lecture que l'EHCVM, portée par le même drapeau : les deux sources ne peuvent pas
+    # diverger sur ce point sans qu'on le décide. Le dofile officiel du RGPH lit « AUCUN membre
+    # alphabétisé » (33,2 % des ménages) là où l'énoncé national dit « UN membre ne sait pas »
+    # (70,4 %) — c'est l'énoncé littéral qui est retenu, comme dans l'EHCVM.
+    Indicateur("Education", "Alphabétisation", NATIONALE,
+               "Un membre du ménage de 17-49 ans ne sait pas lire ou écrire (français)",
+               "alphabetisation", ["membres_17_49_alphabetises"], "membres_17_49",
+               _prive_alphabetisation),
+    # P20 = 1 « déclaré AVEC extrait d'acte » est la seule modalité non privée : la question
+    # EHCVM (1.05) est « dispose d'un acte de naissance ? », donc « déclaré SANS acte » (2) est
+    # une privation. Le dofile officiel du RGPH mesure la déclaration et non la possession de
+    # l'acte, et ne compte privés que les codes 3 et 8 (9,7 % des ménages contre 15,2 % ici).
+    Indicateur("Education", "Déclaration d'état civil", NATIONALE,
+               "Un membre de 5-15 ans n'a pas d'acte de naissance ou n'est pas déclaré",
+               "etat_civil", ["enfants_5_15_sans_acte"], "enfants_5_15",
+               lambda X: X.enfants_5_15_sans_acte >= 1),
+
+    # Seul indicateur de santé possible dans le recensement, et le seul à n'avoir aucun
+    # équivalent EHCVM : il tient la dimension Santé à lui seul, avec un poids de 1/4.
+    Indicateur("Sante", "Mortalité dans le ménage", PNUD,
+               "Un enfant de moins de 18 ans est décédé dans le ménage au cours des 12 mois "
+               "précédant le recensement",
+               "mortalite", ["deces_moins_18_ans"], None,
+               lambda X: X.deces_moins_18_ans >= 1),
+
+    Indicateur("Emploi", "Chômage", NATIONALE,
+               "Un membre du ménage âgé de 17-40 ans est au chômage",
+               "chomage", ["chomeurs_17_40"], "membres_17_40",
+               lambda X: X.chomeurs_17_40 >= 1),
+    Indicateur("Emploi", "Emploi agricole de subsistance", NATIONALE,
+               "Le chef de ménage est occupé dans une branche agricole, à son compte ou "
+               "comme aide familial",
+               "emploi_subsistance", ["cm_agriculture_subsistance"], None,
+               lambda X: X.cm_agriculture_subsistance >= 1),
+
+    Indicateur("Conditions de vie", "Electricité", NATIONALE,
+               "La source d'éclairage n'est pas : électricité, groupe électrogène ou solaire",
+               "electricite", ["source_eclairage"], None,
+               lambda X: ~X.source_eclairage.isin(RGPH_ECLAIRAGE_ADEQUAT)),
+    Indicateur("Conditions de vie", "Logement", PNUD,
+               "Sol en matériaux naturels et/ou toit et/ou murs en matériaux naturels "
+               "ou rudimentaires",
+               "logement", ["materiau_toit", "materiau_mur", "materiau_sol"], None,
+               lambda X: (~X.materiau_sol.isin(RGPH_SOL_ADEQUAT)
+                          | ~X.materiau_toit.isin(RGPH_TOIT_ADEQUAT)
+                          | ~X.materiau_mur.isin(RGPH_MUR_ADEQUAT))),
+    # Le temps de trajet jusqu'au point d'eau n'est pas demandé au recensement : seul le
+    # premier critère du PNUD (source améliorée au sens des ODD) est appliqué.
+    Indicateur("Conditions de vie", "Eau potable", PNUD,
+               "La source d'eau de boisson n'est pas améliorée (ODD)",
+               "eau_potable", ["source_eau_boisson"], None,
+               lambda X: ~X.source_eau_boisson.isin(RGPH_EAU_AMELIOREE)),
+    Indicateur("Conditions de vie", "Energie de cuisson", NATIONALE,
+               "Le ménage n'utilise pas d'énergie propre pour la cuisson (électricité et gaz)",
+               "energie_cuisson", ["mode_cuisson"], None,
+               lambda X: ~X.mode_cuisson.isin(RGPH_CUISSON_PROPRE)),
+    # Le partage des sanitaires n'est pas demandé : seul le premier critère du PNUD s'applique.
+    Indicateur("Conditions de vie", "Toilette", PNUD,
+               "Installations sanitaires non améliorées (ODD)",
+               "toilette", ["type_sanitaire"], None,
+               lambda X: ~X.type_sanitaire.isin(RGPH_SANITAIRE_AMELIORE)),
+    # Les 8 biens de la définition PNUD sont tous collectés par le recensement, charrette
+    # comprise — c'est l'EHCVM qui en manque un.
+    Indicateur("Conditions de vie", "Biens d'équipement", PNUD,
+               "Le ménage ne possède qu'un seul bien parmi radio, télévision, téléphone, "
+               "ordinateur, charrette, vélo, moto, réfrigérateur, et pas de voiture",
+               "biens_equipement", ["nb_equipements", "possede_voiture"], None,
+               lambda X: (X.nb_equipements <= BIENS_MAXIMUM) & (X.possede_voiture == 0)),
+]
+
+INDICATEURS_PAR_SOURCE = {"ehcvm": INDICATEURS, "rgph": INDICATEURS_RGPH}
+INDICATEURS = INDICATEURS_PAR_SOURCE[SOURCE]
+
+# les colonnes indicateurs, dans l'ordre du tableau de référence
 COLONNES_INDICATEURS = [i.colonne for i in INDICATEURS]
 
 # Vecteur z de la méthode Alkire-Foster : la valeur de coupure de chaque indicateur.
@@ -192,6 +310,22 @@ PARAMETRES_Z = {
     "promiscuite": ("personnes par pièce d'habitation", PERSONNES_PAR_PIECE_MAXIMUM),
 }
 
+# Les indicateurs du RGPH portent les mêmes noms de colonne mais pas toujours la même grandeur
+# ni les mêmes codes : ce qui diffère est redéfini ici, le reste est repris de l'EHCVM.
+PARAMETRES_Z_RGPH = {
+    **PARAMETRES_Z,
+    "annee_scolarite": ("membres 17-95 ans ayant le BEPC ou plus", 1),
+    "mortalite": ("décès d'enfants de moins de 18 ans dans les 12 derniers mois", 1),
+    "electricite": ("codes d'éclairage adéquats", RGPH_ECLAIRAGE_ADEQUAT),
+    "logement": ("codes de matériaux adéquats (sol/toit/mur)",
+                 [RGPH_SOL_ADEQUAT, RGPH_TOIT_ADEQUAT, RGPH_MUR_ADEQUAT]),
+    "eau_potable": ("codes d'eau améliorée (ODD)", RGPH_EAU_AMELIOREE),
+    "energie_cuisson": ("modes de cuisson propres", RGPH_CUISSON_PROPRE),
+    "toilette": ("codes de sanitaires améliorés (ODD)", RGPH_SANITAIRE_AMELIORE),
+}
+if SOURCE == "rgph":
+    PARAMETRES_Z = PARAMETRES_Z_RGPH
+
 
 def vecteur_z():
     """Le vecteur z sous forme de table : un seuil par indicateur, avec sa source."""
@@ -205,6 +339,15 @@ def vecteur_z():
         # en texte : un seuil peut être un nombre, un ensemble de codes ou une liste d'ensembles
         "seuil_z": str(PARAMETRES_Z[i.colonne][1]),
     } for i in INDICATEURS])
+
+# ce que le lecteur doit garder en tête devant les chiffres de la source
+RAPPEL_SOURCE = {
+    "ehcvm": "la mortalité juvénile du tableau n'existe pas dans l'EHCVM, la dimension santé "
+             "est mesurée par l'assurance maladie",
+    "rgph": "le recensement ne pose aucune question de santé ni sur le nombre de pièces : "
+            "assurance maladie, insécurité alimentaire, renoncement aux soins et promiscuité "
+            "sont absents, et la dimension Santé repose sur la seule mortalité",
+}
 
 logger = logging.getLogger("ipm.matrice_situationnelle")
 
@@ -242,7 +385,12 @@ def calculer_indicateurs(P):
                       if c not in P.columns]
         assert not manquantes, f"{ind.libelle} : colonnes absentes de la préconstruction : {manquantes}"
 
-        X[ind.colonne] = ind.regle(P).fillna(False).astype(int)
+        # « Un ménage non concerné n'est pas privé » : si AUCUNE des situations de l'indicateur
+        # n'est renseignée, le ménage n'a pas été interrogé dessus et reste non privé. Sans ce
+        # garde-fou, une règle en `~...isin(...)` rendrait privé tout ménage manquant — cas des
+        # 88 000 ménages du RGPH absents du fichier des conditions de vie.
+        renseigne = P[ind.situation].notna().any(axis=1)
+        X[ind.colonne] = (ind.regle(P).fillna(False) & renseigne).astype(int)
 
         logger.info("  %-22s [%s] %-22s privés : %s | pondéré population : %.1f %%",
                     ind.libelle, ind.source[:11], ind.colonne,
@@ -255,8 +403,7 @@ def calculer_indicateurs(P):
     sources = pd.Series([i.source for i in INDICATEURS]).value_counts()
     logger.info("%d indicateurs calculés : %s", len(INDICATEURS),
                 ", ".join(f"{n} {s}" for s, n in sources.items()))
-    logger.info("rappel : la mortalité juvénile du tableau n'existe pas dans l'EHCVM, "
-                "la dimension santé est mesurée par l'assurance maladie")
+    logger.info("rappel : %s", RAPPEL_SOURCE[SOURCE])
 
     presentes = [c for c in COLONNES_TECHNIQUES if c in P.columns]
     logger.info("variables de pondération et de désagrégation conservées : %s",
@@ -293,6 +440,8 @@ def exporter(X, nom=NOM_SORTIE):
 def verifier():
     """Deux ménages aux privations connues : privé partout, privé nulle part."""
     configurer_logs(logger, niveau=logging.WARNING)
+    if SOURCE == "rgph":
+        return verifier_rgph()
 
     P = pd.DataFrame({
         "source_eclairage": [4, 1],                 # lampe à pile / réseau
@@ -330,10 +479,47 @@ def verifier():
     print("auto-contrôle 02 : OK")
 
 
+def verifier_rgph():
+    """Mêmes deux ménages, en codes de recensement."""
+    P = pd.DataFrame({
+        "source_eclairage": [4, 1],                 # lampe à pétrole / électricité CIE
+        "materiau_toit": [1, 3], "materiau_mur": [3, 6], "materiau_sol": [1, 2],
+        "source_eau_boisson": [9, 1],               # eau de surface / robinet dans le logement
+        "mode_cuisson": [1, 2],                     # bois de chauffe / gaz
+        "type_sanitaire": [9, 2],                   # pas de toilettes / chasse vers fosse
+        "nb_equipements": [1, 6], "possede_voiture": [0, 1],
+        "enfants_6_16": [2, 2], "enfants_6_16_non_scolarises": [1, 0],
+        "membres_17_95": [2, 2], "membres_17_95_dix_annees_etudes": [0, 2],
+        "membres_17_49": [2, 2], "membres_17_49_alphabetises": [0, 2],
+        "membres_17_40": [1, 1], "chomeurs_17_40": [1, 0],
+        "enfants_5_15": [1, 1], "enfants_5_15_sans_acte": [1, 0],
+        "deces_moins_18_ans": [1, 0],
+        "cm_agriculture_subsistance": [1, 0],
+        "ponderation_menage": [1.0, 1.0], "taille_menage": [4, 4],
+    }, index=["A", "B"])
+
+    X = calculer_indicateurs(P)
+    assert X.loc["A", COLONNES_INDICATEURS].tolist() == [1] * len(INDICATEURS), X.loc["A"]
+    assert X.loc["B", COLONNES_INDICATEURS].tolist() == [0] * len(INDICATEURS), X.loc["B"]
+    assert len(INDICATEURS) == 13, len(INDICATEURS)
+    # les quatre indicateurs sans équivalent au recensement ont bien disparu
+    absents = {"assurance_maladie", "insecurite_alimentaire", "renoncement_soins", "promiscuite"}
+    assert not absents & set(COLONNES_INDICATEURS)
+    # un ménage absent du fichier ménages (conditions de vie manquantes) n'est pas privé
+    sans_logement = P.assign(source_eclairage=[float("nan")] * 2,
+                             nb_equipements=[float("nan")] * 2)
+    assert calculer_indicateurs(sans_logement).electricite.tolist() == [0, 0]
+    # le socle commun aux deux sources est bien inclus dans les indicateurs du RGPH
+    assert not set(SOCLE_COMMUN) - set(COLONNES_INDICATEURS)
+
+    print("auto-contrôle 02 RGPH : OK")
+
+
 def main():
     configurer_logs(logger, JOURNAL)
     debut = time.perf_counter()
-    logger.info("=== étape 02 : matrice situationnelle X (16 indicateurs) ===")
+    logger.info("=== étape 02 : matrice situationnelle X — source %s, %d indicateurs ===",
+                SOURCE, len(INDICATEURS))
 
     P = charger_preconstruction()
     journaliser_vecteur_z()
