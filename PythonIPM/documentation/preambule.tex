@@ -33,18 +33,27 @@
 \newtcolorbox{attention}[1][]{
   colback=white, colframe=alerte, boxrule=0.6pt, arc=2pt,
   left=8pt, right=8pt, top=6pt, bottom=6pt,
-  fonttitle=\bfseries, coltitle=alerte, title={#1}
+  % le bandeau de titre a déjà la couleur d'alerte en fond : un titre `coltitle=alerte`
+  % écrirait du rouge sur du rouge. On garde le blanc par défaut, comme l'encadré « retenir ».
+  fonttitle=\bfseries, title={#1}
 }
 
 \newcommand{\col}[1]{\texttt{#1}}
-\newcommand{\ipm}{M\textsubscript{0}}
+% \ensuremath et non \textsubscript : \ipm est employé aussi bien dans le texte que dans les
+% formules, et « M\textsubscript{0} » placé en mode mathématique est une erreur — silencieuse en
+% PDF, mais qui fait échouer la conversion vers Word.
+\newcommand{\ipm}{\ensuremath{M_{0}}}
 
 \setlist[itemize]{itemsep=2pt, topsep=4pt}
 \setlist[description]{style=nextline, leftmargin=1.2cm, itemsep=5pt}
 
+% La source du document apparaît en tête de chaque page. Les documents RGPH la redéfinissent
+% par \renewcommand{\source}{...} AVANT \begin{document}.
+\newcommand{\source}{EHCVM 2021}
+
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\small\itshape IPM Côte d'Ivoire --- EHCVM 2021}
+\fancyhead[L]{\small\itshape IPM Côte d'Ivoire --- \source}
 \fancyhead[R]{\small\thepage}
 \renewcommand{\headrulewidth}{0.3pt}
 
