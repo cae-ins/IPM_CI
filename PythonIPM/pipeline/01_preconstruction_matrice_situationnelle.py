@@ -13,7 +13,7 @@ Garder l'effectif concerné À CÔTÉ de l'effectif défavorable est le point im
 qui permet à l'étape 02 de distinguer « non privé » de « non concerné » sans revenir aux
 données individuelles.
 
-Sortie : preconstruction_matrice_situationnelle.dta (12 965 ménages).
+Sortie : preconstruction_matrice_situationnelle_ehcvm2021.dta (12 965 ménages).
 
 Usage :
     python 01_preconstruction_matrice_situationnelle.py
@@ -27,10 +27,12 @@ import numpy as np
 import pandas as pd
 
 import dictionnaire_ehcvm as dico
-from orchestrateur import (CLE, COLONNES_TECHNIQUES, DATA, LOGS, configurer_logs,
-                           exporter_table, part)
+from orchestrateur import (CLE, COLONNES_TECHNIQUES, DATA, LOGS, SOURCE, configurer_logs,
+                           exporter_table, nom, part)
 
-NOM_SORTIE = "preconstruction_matrice_situationnelle"
+assert SOURCE == "ehcvm", "cette étape est celle de l'EHCVM : lancer avec IPM_SOURCE=ehcvm"
+
+NOM_SORTIE = nom("preconstruction_matrice_situationnelle")
 JOURNAL = LOGS / "01_preconstruction_matrice_situationnelle.log"
 
 # tranches d'âge, telles que définies dans le tableau de référence (proposition nationale)
