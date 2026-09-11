@@ -105,6 +105,13 @@ SOCLE_COMMUN = [
 ]
 
 
+# Indicateurs produits par l'étape 02 mais HORS de l'IPM national : ils existent dans la
+# matrice de privation et dans le vecteur z, et seules les variantes qui les nomment les
+# emploient. `chomage_su3` (sous-utilisation SU3, EHCVM) est dans ce cas : il englobe le
+# chômage BIT, les additionner compterait deux fois les mêmes chômeurs.
+HORS_IPM_NATIONAL = ["chomage_su3"]
+
+
 def configurer_logs(logger, fichier=None, niveau=logging.INFO):
     """Console (niveau demandé) + fichier de log détaillé (DEBUG)."""
     logger.setLevel(logging.DEBUG)

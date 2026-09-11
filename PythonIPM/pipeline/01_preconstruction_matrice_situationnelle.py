@@ -44,6 +44,11 @@ TRANCHES = {
     "acte_naissance": (5, 15),
 }
 
+# Question 4.18 : « ne veut pas travailler ». La main-d'œuvre potentielle suppose le DÉSIR
+# d'emploi (BIT, 19e CIST) : ces personnes en sont exclues, leur réponse contredisant de
+# toute façon la disponibilité qu'elles déclarent par ailleurs.
+NE_VEUT_PAS_TRAVAILLER = 3
+
 # années d'études accomplies AVANT d'entrer dans le niveau (questions 2.29 et 2.14)
 ANNEES_AVANT_NIVEAU = {
     1: 0,   # maternelle
@@ -219,6 +224,15 @@ def calculer_situations_individuelles(ind):
     disponible = ind.delai_disponibilite.isin([1, 2, 3]) | (ind.disponible_emploi == 1)
     ind["chomeur_bit"] = sans_emploi & recherche & disponible
 
+    # Main-d'œuvre potentielle : ceux qui veulent travailler sans réunir les trois critères.
+    # Deux branches symétriques — cherche sans être disponible, ou disponible sans chercher
+    # (c'est là que loge le découragement). SU3 = chômage BIT + main-d'œuvre potentielle.
+    veut_travailler = ind.raison_non_recherche != NE_VEUT_PAS_TRAVAILLER
+    ind["main_oeuvre_potentielle"] = sans_emploi & (
+        (recherche & ~disponible)
+        | (~recherche & (ind.disponible_emploi == 1) & veut_travailler))
+    ind["su3"] = ind.chomeur_bit | ind.main_oeuvre_potentielle
+
     logger.info("chômage BIT : sans emploi %s, dont en recherche %s, dont disponibles %s",
                 part(sans_emploi.sum(), len(ind)),
                 part((sans_emploi & recherche).sum(), sans_emploi.sum()),
@@ -226,6 +240,16 @@ def calculer_situations_individuelles(ind):
     a, b = TRANCHES["chomage"]
     cible = ind.age.between(a, b)
     logger.info("chômeurs parmi les %d-%d ans : %s", a, b,
+                part((cible & ind.chomeur_bit).sum(), cible.sum()))
+
+    cherche_non_dispo = sans_emploi & recherche & ~disponible
+    dispo_non_chercheur = ind.main_oeuvre_potentielle & ~recherche
+    logger.info("main-d'œuvre potentielle : cherche sans être disponible %s, "
+                "disponible sans chercher %s",
+                part(cherche_non_dispo.sum(), len(ind)),
+                part(dispo_non_chercheur.sum(), len(ind)))
+    logger.info("SU3 parmi les %d-%d ans : %s (SU1 : %s)", a, b,
+                part((cible & ind.su3).sum(), cible.sum()),
                 part((cible & ind.chomeur_bit).sum(), cible.sum()))
 
     # renoncement aux soins : malade (3.01), non consulté (3.05), pour une raison subie —
@@ -279,6 +303,8 @@ def agreger_par_menage(ind):
     situations[f"membres_{a_cho}_{b_cho}"] = ind.age.between(a_cho, b_cho)
     situations[f"chomeurs_{a_cho}_{b_cho}"] = (
         situations[f"membres_{a_cho}_{b_cho}"] & ind.chomeur_bit)
+    situations[f"chomeurs_su3_{a_cho}_{b_cho}"] = (
+        situations[f"membres_{a_cho}_{b_cho}"] & ind.su3)
     situations[f"enfants_{a_act}_{b_act}"] = ind.age.between(a_act, b_act)
     situations[f"enfants_{a_act}_{b_act}_sans_acte"] = (
         situations[f"enfants_{a_act}_{b_act}"] & (ind.acte_naissance != 1))
@@ -480,13 +506,15 @@ def verifier():
         "lit_francais": [0.0, 1.0, 1.0, 0.0],
         "ecrit_francais": [0.0, 1.0, 0.0, 0.0],
         # emploi : P2 chômeur BIT à 38 ans (hors de l'ancienne tranche 16-35, dans 17-40),
-        # P3 sans emploi mais sans recherche
+        # P4 ne cherche pas mais se déclare disponible faute d'emploi -> main-d'œuvre
+        # potentielle, donc SU3 mais pas SU1
         "a_travaille_7j": [1.0, 0.0, 1.0, 0.0],
         "emploi_mais_absent_7j": [2.0, 2.0, 2.0, 2.0],
-        "recherche_emploi_30j_a": [np.nan, 1.0, 2.0, np.nan],
+        "recherche_emploi_30j_a": [np.nan, 1.0, 2.0, 2.0],
         "recherche_emploi_30j_b": [np.nan, np.nan, np.nan, np.nan],
-        "disponible_emploi": [np.nan, np.nan, np.nan, np.nan],
+        "disponible_emploi": [np.nan, np.nan, np.nan, 1.0],
         "delai_disponibilite": [np.nan, 1.0, np.nan, np.nan],
+        "raison_non_recherche": [np.nan, np.nan, np.nan, 12.0],
         "acte_naissance": [2.0, 1.0, 1.0, 1.0],
         "assurance_maladie": [2.0, 2.0, 1.0, 2.0],
         # santé : P1 malade et renonce faute d'argent, P2 malade mais a consulté,
@@ -514,6 +542,14 @@ def verifier():
     assert ind.scolarise.tolist() == [False, False, False, True]
     assert ind.alphabetise.tolist() == [False, True, False, False]
     assert ind.chomeur_bit.tolist() == [False, True, False, False]
+    # SU3 = chômage BIT + main-d'œuvre potentielle : P2 par le chômage, P4 par la disponibilité
+    assert ind.main_oeuvre_potentielle.tolist() == [False, False, False, True]
+    assert ind.su3.tolist() == [False, True, False, True]
+    # « ne veut pas travailler » (4.18 = 3) sort de la main-d'œuvre potentielle : le désir
+    # d'emploi fait partie de la définition
+    refus = calculer_situations_individuelles(
+        ind.assign(raison_non_recherche=[np.nan, np.nan, np.nan, float(NE_VEUT_PAS_TRAVAILLER)]))
+    assert refus.su3.tolist() == [False, True, False, False], refus.su3.tolist()
     assert ind.renonce_aux_soins.tolist() == [True, False, False, False]
     # les motifs d'offre comptent au même titre que le coût, l'automédication non
     motifs = ind.assign(raison_non_consultation=[11.0, np.nan, 12.0, np.nan])
@@ -530,6 +566,7 @@ def verifier():
     assert m2.membres_17_49 == 1 and m2.membres_17_49_alphabetises == 0
     # le chômeur a 38 ans : compté dans la tranche 17-40 de la proposition nationale
     assert m1.membres_17_40 == 1 and m1.chomeurs_17_40 == 1
+    assert m1.chomeurs_su3_17_40 == 1
     assert m2.chomeurs_17_40 == 0
     assert m1.enfants_5_15_sans_acte == 1 and m2.enfants_5_15_sans_acte == 0
     assert m1.membres_assures == 0 and m2.membres_assures == 1

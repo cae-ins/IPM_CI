@@ -56,9 +56,9 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from orchestrateur import (CLE, COLONNES_TECHNIQUES, LOGS, SOCLE_COMMUN, SORTIES_CSV,
-                           SORTIES_DTA, SORTIES_XLSX, SOURCE, configurer_logs, exporter_table,
-                           nom, part)
+from orchestrateur import (CLE, COLONNES_TECHNIQUES, HORS_IPM_NATIONAL, LOGS, SOCLE_COMMUN,
+                           SORTIES_CSV, SORTIES_DTA, SORTIES_XLSX, SOURCE, configurer_logs,
+                           exporter_table, nom, part)
 
 if SOURCE == "rgph":
     import dictionnaire_rgph as dico
@@ -73,11 +73,23 @@ JOURNAL = LOGS / f"05_indices_ipm_{SOURCE}.log"
 # les trois variantes : nom de sortie -> (libellé, dimensions retenues, colonnes retenues).
 # `None` = aucune restriction sur ce critère.
 VARIANTES = {
-    nom("indices_ipm_ci"): ("IPM national — 4 dimensions", None, None),
+    nom("indices_ipm_ci"): ("IPM national — 4 dimensions", None, None, HORS_IPM_NATIONAL),
     nom("indices_ipm_international"): ("IPM international — 3 dimensions, sans l'Emploi",
-                                       ["Education", "Sante", "Conditions de vie"], None),
+                                       ["Education", "Sante", "Conditions de vie"], None, []),
     nom("indices_ipm_harmonise"): ("IPM harmonisé — socle commun EHCVM/RGPH",
-                                   None, SOCLE_COMMUN),
+                                   None, SOCLE_COMMUN, []),
+}
+
+# Variantes Emploi, ajoutées par option (EHCVM seulement : le recensement n'a pas de quoi
+# construire SU3). `--su1_su3` garde le chômage BIT ET lui adjoint SU3 ; `--su3` remplace l'un
+# par l'autre. Sans option, aucune n'est calculée et l'IPM publié est celui d'avant.
+VARIANTES_EMPLOI = {
+    "--su1_su3": (nom("indices_ipm_su1_su3"),
+                  ("IPM — Emploi à 3 indicateurs : chômage BIT, SU3, emploi de subsistance",
+                   None, None, [])),
+    "--su3": (nom("indices_ipm_su3"),
+              ("IPM — SU3 en remplacement du chômage BIT",
+               None, None, ["chomage"])),
 }
 
 # Seuils (identiques à l'étape 04). k = 1/3 est le seuil de pauvreté multidimensionnelle ;
@@ -127,11 +139,13 @@ def charger_g0():
     return g0
 
 
-def vecteur_w(dimensions=None, colonnes=None, chemin_z=ENTREE_Z):
+def vecteur_w(dimensions=None, colonnes=None, exclusions=(), chemin_z=ENTREE_Z):
     """Poids de chaque indicateur : dimensions équipondérées, partage égal à l'intérieur.
 
     `dimensions` restreint le périmètre à des dimensions entières (variante internationale),
-    `colonnes` à une liste d'indicateurs (variante harmonisée) ; None les garde toutes. La
+    `colonnes` à une liste d'indicateurs (variante harmonisée) ; None les garde toutes.
+    `exclusions` retire des indicateurs nommés — c'est par là que l'IPM national se débarrasse
+    de `chomage_su3`, et la variante `--su3` du chômage BIT qu'il remplace. La
     liste des indicateurs n'est pas réécrite ici : elle est lue dans le vecteur z produit par
     l'étape 02, ce qui garantit que w et z portent sur exactement les mêmes colonnes.
 
@@ -148,6 +162,9 @@ def vecteur_w(dimensions=None, colonnes=None, chemin_z=ENTREE_Z):
         inconnues = set(colonnes) - set(z.colonne)
         assert not inconnues, f"indicateurs absents du vecteur z : {sorted(inconnues)}"
         z = z[z.colonne.isin(colonnes)]
+    # une exclusion portant sur un indicateur que la source ne produit pas est sans effet :
+    # `chomage_su3` n'existe que côté EHCVM, et l'IPM national du RGPH l'exclut pour rien.
+    z = z[~z.colonne.isin(exclusions)]
 
     poids_dimension = 1 / z.dimension.nunique()
     w = z[["dimension", "indicateur", "colonne"]].copy()
@@ -483,7 +500,7 @@ def exporter_classeur(table, C, w, nom):
 # --------------------------------------------------------------------------- #
 # une variante de bout en bout
 # --------------------------------------------------------------------------- #
-def calculer_variante(g0, nom_variante, libelle, dimensions, colonnes):
+def calculer_variante(g0, nom_variante, libelle, dimensions, colonnes, exclusions):
     """Le même enchaînement pour les trois indices : w, censure, indices, export."""
     logger.info("")
     logger.info("=" * 78)
@@ -491,9 +508,9 @@ def calculer_variante(g0, nom_variante, libelle, dimensions, colonnes):
     logger.info("=" * 78)
 
     logger.info("--- 2. vecteur w et matrice censurée de la variante ---")
-    w = vecteur_w(dimensions, colonnes)
+    w = vecteur_w(dimensions, colonnes, exclusions)
     X = matrice_censuree(g0, w)
-    if dimensions is None and colonnes is None:
+    if nom_variante == nom("indices_ipm_ci"):
         controler_contre_etape_04(X)
 
     national = indices_nationaux(X)
@@ -614,6 +631,13 @@ def verifier():
         assert abs(poidsh["i7"] - 1 / 3) < TOLERANCE, poidsh["i7"]     # Emploi, 1 indic.
         assert abs(poidsh["i9"] - 1 / 9) < TOLERANCE, poidsh["i9"]     # Cadre de vie, 3 indic.
 
+        # exclusion : retirer un indicateur redistribue le poids DANS sa dimension
+        wx = vecteur_w(exclusions=["i7"], chemin_z=chemin).set_index("colonne").poids_indicateur
+        assert "i7" not in wx.index and len(wx) == 15
+        assert abs(wx.sum() - 1) < TOLERANCE
+        assert abs(wx["i8"] - 0.25) < TOLERANCE, wx["i8"]   # seul rescapé de l'Emploi
+        assert abs(wx["i0"] - 0.0625) < TOLERANCE           # les autres dimensions inchangées
+
         for dimensions in (None, DIMENSIONS_INTERNATIONALES):
             w = vecteur_w(dimensions, chemin_z=chemin)
             Y = matrice_censuree(g0, w)
@@ -627,15 +651,29 @@ def verifier():
     print("auto-contrôle 05 : OK")
 
 
-def main():
+def variantes_demandees(arguments):
+    """Les trois variantes de référence, plus celles que les options ajoutent."""
+    variantes = dict(VARIANTES)
+    for option, (nom_variante, parametres) in VARIANTES_EMPLOI.items():
+        if option not in arguments:
+            continue
+        assert SOURCE == "ehcvm", (
+            f"{option} n'existe que pour l'EHCVM : le RGPH ne pose aucune question de "
+            "recherche d'emploi ni de disponibilité, SU3 n'y est pas constructible")
+        variantes[nom_variante] = parametres
+    return variantes
+
+
+def main(arguments=()):
     configurer_logs(logger, JOURNAL)
     debut = time.perf_counter()
+    variantes = variantes_demandees(arguments)
     logger.info("=== étape 05 : indices H, A, M0 — source %s, %d variantes ===",
-                SOURCE, len(VARIANTES))
+                SOURCE, len(variantes))
 
     g0 = charger_g0()
     resultats = {v: calculer_variante(g0, v, *parametres)
-                 for v, parametres in VARIANTES.items()}
+                 for v, parametres in variantes.items()}
 
     logger.info("")
     logger.info("--- comparaison des variantes ---")
@@ -653,4 +691,4 @@ if __name__ == "__main__":
     if "--check" in sys.argv:
         verifier()
     else:
-        main()
+        main(sys.argv[1:])

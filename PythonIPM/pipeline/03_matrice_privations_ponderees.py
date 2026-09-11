@@ -28,8 +28,8 @@ import time
 
 import pandas as pd
 
-from orchestrateur import (CLE, COLONNES_TECHNIQUES, LOGS, SORTIES_CSV, SORTIES_DTA, SOURCE,
-                           configurer_logs, exporter_table, nom, part)
+from orchestrateur import (CLE, COLONNES_TECHNIQUES, HORS_IPM_NATIONAL, LOGS, SORTIES_CSV,
+                           SORTIES_DTA, SOURCE, configurer_logs, exporter_table, nom, part)
 
 ENTREE = SORTIES_DTA / f"{nom('matrice_situationnelle')}.dta"
 ENTREE_Z = SORTIES_CSV / f"{nom('vecteur_z')}.csv"
@@ -55,6 +55,12 @@ def vecteur_w(chemin_z=ENTREE_Z):
     """
     logger.info("--- 1. vecteur w des pondérations ---")
     z = pd.read_csv(chemin_z)
+    # cette étape est celle de l'IPM national : les indicateurs de variante en sont exclus,
+    # sinon la matrice censurée de l'étape 04 ne correspondrait plus à celle de l'étape 05.
+    hors = z[z.colonne.isin(HORS_IPM_NATIONAL)].colonne.tolist()
+    if hors:
+        logger.info("indicateurs hors IPM national, écartés : %s", ", ".join(hors))
+        z = z[~z.colonne.isin(HORS_IPM_NATIONAL)]
     dimensions = z.dimension.unique()
     poids_dimension = 1 / len(dimensions)
 

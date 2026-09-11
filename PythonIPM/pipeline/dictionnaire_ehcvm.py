@@ -113,6 +113,7 @@ INDIVIDUS = {
     "s04q12": "raison_non_travail_7j",     # 4.12
     "s04q15": "recherche_emploi_30j_a",    # 4.15 (branche : n'a pas travaillé)
     "s04q17": "recherche_emploi_30j_b",    # 4.17 (branche : sans emploi)
+    "s04q18": "raison_non_recherche",      # 4.18 (posée aux non-chercheurs)
     "s04q19": "disponible_emploi",         # 4.19 (posé aux non-chercheurs)
     "s04q20": "delai_disponibilite",       # 4.20 (posé si 4.17 ou 4.19 = oui)
     "s04q21": "mois_sans_emploi",          # 4.21
