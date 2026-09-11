@@ -1,0 +1,483 @@
+\documentclass[11pt,a4paper]{article}
+\input{preambule}
+\renewcommand{\source}{RGPH 2021}
+
+\title{\bfseries Lecture des sorties\\[4pt]
+\large Ce que contiennent les classeurs de l'IPM, et comment les lire\\[2pt]
+\large RGPH 2021}
+\author{Pipeline \col{PythonIPM} --- IPM Côte d'Ivoire}
+\date{Septembre 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent Ce document accompagne les classeurs produits par l'étape 05 du pipeline sur le
+recensement. Il décrit ce qu'on y trouve, ce qui diffère des sorties de l'EHCVM, et propose une
+lecture commentée des chiffres --- national, territorial, par indicateur --- avec les précautions
+qui s'attachent à chacun. Les définitions colonne par colonne sont communes aux deux sources et
+figurent dans le \emph{Dictionnaire des sorties} de l'EHCVM ; on n'y revient ici que là où le
+recensement change quelque chose.
+\end{abstract}
+
+\begin{retenir}[Où trouver le chiffre que je cherche]
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\textbf{La question} & \textbf{Où regarder} \\[2pt]
+L'IPM de la Côte d'Ivoire ? & \col{indices\_ipm\_ci\_rgph2021.xlsx}, feuille \textsf{Ensemble} \\
+L'IPM d'une sous-préfecture ? & feuille \textsf{Sous-préfecture ou commune} \\
+Quel territoire pèse le plus ? & \col{contribution\_M0} de la feuille correspondante \\
+Quel indicateur pèse le plus ? & feuille \textsf{Contributions} \\
+Le chiffre est-il publiable ? & \col{M0\_cv} --- au-delà de 0,20, s'abstenir \\
+Comparer au chiffre de l'EHCVM ? & \col{indices\_ipm\_harmonise\_*} des deux sources \\
+\end{tabular}
+\end{center}
+\end{retenir}
+
+\tableofcontents
+\bigskip
+
+\section{Ce que le pipeline a produit}
+
+Trois classeurs, de structure identique, qui ne diffèrent que par le périmètre d'indicateurs.
+
+\begin{center}
+\small
+\begin{tabular}{@{}l r r >{\RaggedRight}p{6.0cm}@{}}
+\toprule
+\textbf{Classeur} & \textbf{Ind.} & \textbf{Dim.} & \textbf{Ce qu'il mesure} \\
+\midrule
+\col{indices\_ipm\_ci\_rgph2021} & 13 & 4 & l'\textbf{IPM national} appliqué au recensement --- le
+  chiffre de référence \\
+\col{indices\_ipm\_international\_rgph2021} & 11 & 3 & le périmètre comparable au niveau
+  international : l'Emploi est retiré \\
+\col{indices\_ipm\_harmonise\_rgph2021} & 12 & 3 & le \textbf{socle commun} avec l'EHCVM : la
+  seule variante comparable d'une source à l'autre \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+À côté des classeurs, chaque variante est aussi écrite en \col{.dta} et \col{.csv}, accompagnée de
+sa table \col{contributions\_\dots}. Les tables de travail --- \col{preconstruction\_\dots},
+\col{matrice\_situationnelle\_\dots}, \col{matrice\_privations\_ponderees\_\dots},
+\col{matrice\_privations\_censuree\_\dots} --- ne sont écrites qu'en \col{.dta} : à 5,6 millions de
+lignes, leur doublon texte pèserait plusieurs gigaoctets que personne ne lit.
+
+\begin{retenir}[Un suffixe par source]
+Tous les fichiers portent le suffixe de leur source : \col{\_rgph2021} ou \col{\_ehcvm2021}. Les
+deux séries cohabitent dans le même dossier \col{sorties/} sans se recouvrir. Un fichier sans
+suffixe provient d'une exécution antérieure à l'extension du pipeline au recensement.
+\end{retenir}
+
+\section{Huit feuilles, et non neuf}
+
+\begin{center}
+\begin{tabular}{@{}llr@{}}
+\toprule
+\textbf{Feuille} & \textbf{Une ligne =} & \textbf{Lignes} \\
+\midrule
+\textsf{Ensemble} & la Côte d'Ivoire entière & 1 \\
+\textsf{Contributions} & un indicateur & 13 \\
+\textsf{Ponderations} & un indicateur : sa dimension et son poids $w_j$ & 13 \\
+\textsf{Milieu de résidence} & urbain, semi-urbain ou rural & 3 \\
+\textsf{Région} & une des 33 régions & 33 \\
+\textsf{Département} & un des 111 départements & 111 \\
+\textsf{Sous-préfecture ou commune} & une des 519 sous-préfectures & 519 \\
+\textsf{Taille du ménage} & une classe de taille & 5 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Trois différences avec les sorties de l'EHCVM.
+
+\begin{description}
+  \item[Pas de feuille \textsf{Sexe du chef de ménage}.] Le sexe n'est pas dans l'extrait de
+    recensement transmis. La désagrégation est simplement absente ; le pipeline la signale dans son
+    journal plutôt que de produire une feuille vide.
+
+  \item[Trois milieux au lieu de deux.] Le recensement distingue l'\textbf{urbain}, le
+    \textbf{semi-urbain} et le \textbf{rural}, là où l'enquête n'en code que deux. Le semi-urbain
+    n'a pas d'équivalent dans les sorties EHCVM : ne pas additionner les deux séries.
+
+  \item[Un territoire plus fin.] 111 départements et 519 sous-préfectures ou communes, contre 108 et
+    442 dans l'enquête. L'écart tient au découpage administratif retenu et au fait que le
+    recensement atteint des localités qu'un échantillon ne touche pas.
+\end{description}
+
+\section{Trois colonnes qui ne se lisent pas comme dans l'enquête}
+
+Les colonnes sont les mêmes et les formules sont les mêmes. Trois d'entre elles changent de sens
+parce que la source change de nature.
+
+\begin{description}
+  \item[\col{menages}] n'est plus un effectif d'échantillon mais un \textbf{effectif réel}. La
+    feuille \textsf{Ensemble} affiche 5\,616\,487 : ce sont tous les ménages du pays, pas un
+    sous-ensemble tiré au sort. La sous-préfecture médiane en compte 5\,224, la plus petite 597.
+    Cette colonne ne sert donc plus à juger de la robustesse d'un chiffre --- pour cela, voir
+    \col{grappes} et \col{M0\_cv}.
+
+  \item[\col{grappes}] compte les \textbf{zones de dénombrement}, l'unité de collecte du
+    recensement, au nombre de 28\,329. Elle ne désigne plus une unité primaire de sondage, puisqu'il
+    n'y a pas de tirage. Elle conserve son rôle dans le calcul de la variance : c'est à cette maille
+    que les erreurs de dénombrement se corrèlent.
+
+  \item[\col{population}] vaut 29\,276\,660 sur la feuille \textsf{Ensemble}. C'est le résultat de
+    l'application du taux net de couverture post-censitaire (\col{EW}) aux 27\,984\,405 individus
+    recensés. Le chiffre publié du RGPH 2021 est 29\,389\,150 : l'écart est de 0,4~\%.
+\end{description}
+
+\begin{attention}[Comment lire un intervalle de confiance sur un recensement]
+Les colonnes \col{M0\_ic\_bas}, \col{M0\_ic\_haut}, \col{M0\_erreur\_type} et \col{M0\_cv} sont
+calculées exactement comme sur l'enquête. Mais leur sens change : elles ne mesurent
+\textbf{pas une incertitude d'échantillonnage} --- il n'y a pas d'échantillon --- mais la
+\textbf{dispersion du phénomène entre zones de dénombrement}.
+
+Elles restent utiles, et pour une raison précise : elles disent si une sous-préfecture au chiffre
+extrême l'est réellement, ou si son chiffre est porté par deux ou trois zones atypiques. Elles sont,
+par construction, bien plus étroites que celles de l'EHCVM --- l'IPM national est donné à
+[0,1645 ; 0,1684] contre [0,2701 ; 0,3026] sur l'enquête. \textbf{Ne pas en conclure que le
+recensement est « douze fois plus précis »} : les deux grandeurs ne mesurent pas la même chose.
+\end{attention}
+
+\section{Lecture du chiffre national}
+
+\begin{center}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+& $H$ & $A$ & \ipm \\
+\midrule
+IPM national (13 indicateurs, 4 dimensions) & \textbf{38,8~\%} & \textbf{0,4287} &
+  \textbf{0,1664} \\
+\quad IC 95~\% & [38,4 ; 39,3] & [0,4281 ; 0,4294] & [0,1645 ; 0,1684] \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{retenir}[Les trois phrases à retenir]
+\begin{itemize}
+  \item \textbf{38,8~\%} de la population ivoirienne --- 11,4 millions de personnes --- vit dans un
+        ménage qui cumule au moins un tiers des privations pondérées.
+  \item Ces personnes subissent en moyenne \textbf{42,9~\%} des privations pondérées possibles.
+  \item L'indice qui combine les deux vaut \textbf{0,1664}.
+\end{itemize}
+\end{retenir}
+
+À côté du seuil, deux indicateurs complémentaires : \textbf{20,7~\%} de la population est
+\emph{vulnérable} --- un score entre 0,2 et 1/3, donc juste sous le seuil --- et \textbf{7,8~\%} est
+en \emph{pauvreté sévère}, avec un score d'au moins 0,5.
+
+\begin{attention}[Ce chiffre ne se compare pas à l'IPM de l'EHCVM]
+L'IPM national calculé sur l'enquête vaut 0,2863, celui-ci 0,1664. L'écart n'est pas une
+contradiction entre deux mesures : les deux indices ne portent pas sur les mêmes indicateurs.
+
+Le recensement ne pose aucune question de santé. Sa dimension Santé ne tient qu'à la mortalité
+--- une privation qui ne touche que 1,1~\% des ménages --- et cette dimension porte pourtant
+\textbf{un quart du poids}. Un ménage du recensement ne peut donc pratiquement pas dépasser un
+score de 0,75, et beaucoup de ménages que l'enquête classerait pauvres restent sous le seuil.
+
+Pour comparer les deux sources, il faut passer par le classeur \col{indices\_ipm\_harmonise\_*}
+(section~\ref{sec:harmonise}).
+\end{attention}
+
+\section{Lecture territoriale}
+
+\subsection{Le milieu de résidence}
+
+\begin{center}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+\textbf{Milieu} & \textbf{Part pop.} & $H$ & \ipm & \textbf{Contrib.} & \textbf{Vulnér.} &
+  \textbf{Sévère} \\
+\midrule
+Urbain & 44,8~\% & 5,4~\% & 0,0212 & 5,7~\% & 17,7~\% & 0,5~\% \\
+Semi-urbain & 9,4~\% & 41,0~\% & 0,1705 & 9,7~\% & \textbf{34,2~\%} & 6,4~\% \\
+Rural & 45,8~\% & 71,1~\% & 0,3075 & \textbf{84,7~\%} & 20,9~\% & 15,3~\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+C'est le résultat le plus net des sorties. Le rural et l'urbain pèsent le même poids démographique
+--- 45,8~\% contre 44,8~\% --- mais le rural porte \textbf{84,7~\%} de la pauvreté
+multidimensionnelle du pays, contre 5,7~\% pour l'urbain. Le rapport des \ipm{} est de un à quinze.
+
+Le semi-urbain mérite une lecture à part. Son \ipm{} est intermédiaire, mais c'est le milieu où la
+\textbf{vulnérabilité est la plus forte} : 34,2~\% de sa population a un score entre 0,2 et 1/3,
+contre 17,7~\% en urbain et 20,9~\% en rural. Autrement dit, une part inhabituellement large de sa
+population est juste sous le seuil --- une population que peu de choses sépareraient du basculement.
+
+\subsection{Les régions}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Région} & \textbf{Part pop.} & $H$ & \ipm & \textbf{Contribution} \\
+\midrule
+\multicolumn{5}{@{}l}{\itshape Les cinq plus faibles} \\
+District autonome d'Abidjan & 21,5~\% & 1,8~\% & 0,0069 & 0,9~\% \\
+District autonome de Yamoussoukro & 1,4~\% & 18,7~\% & 0,0755 & 0,6~\% \\
+Sud-Comoé & 2,7~\% & 28,1~\% & 0,1181 & 1,9~\% \\
+Gbêkê & 4,6~\% & 30,2~\% & 0,1279 & 3,5~\% \\
+La Mé & 2,5~\% & 32,2~\% & 0,1324 & 2,0~\% \\
+\addlinespace
+\multicolumn{5}{@{}l}{\itshape Les cinq plus élevées} \\
+Gbôklé & 1,6~\% & 65,1~\% & 0,2804 & 2,6~\% \\
+Béré & 1,7~\% & 66,9~\% & 0,2843 & 2,9~\% \\
+Bafing & 0,9~\% & 69,5~\% & 0,3139 & 1,7~\% \\
+Folon & 0,5~\% & 76,2~\% & 0,3275 & 1,0~\% \\
+Bounkani & 1,5~\% & 76,5~\% & 0,3654 & 3,2~\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+L'écart va de 0,0069 à 0,3654 : un rapport de \textbf{un à cinquante-trois}. Abidjan concentre
+21,5~\% de la population du pays et moins de 1~\% de sa pauvreté multidimensionnelle.
+
+\begin{retenir}[Ne pas confondre \ipm{} et contribution]
+Bounkani a l'\ipm{} le plus élevé du pays (0,3654) mais ne contribue qu'à 3,2~\% de l'indice
+national, parce qu'elle ne pèse que 1,5~\% de la population. \ipm{} dit \emph{où la pauvreté est la
+plus intense} ; \col{contribution\_M0} dit \emph{où se trouve le plus de pauvreté}. La première
+oriente le ciblage, la seconde le volume des moyens.
+\end{retenir}
+
+\subsection{Départements et sous-préfectures}
+
+C'est la raison d'être du calcul sur recensement. À la maille du \textbf{département}, l'\ipm{} va
+d'Abidjan (0,0069) à Téhini (0,4191), en passant par Sipilou (0,3760) et Kong (0,3699). À celle de
+la \textbf{sous-préfecture ou commune}, il va du Plateau (0,0015) à Santa de Ouaninou (0,4752), où
+92,6~\% de la population est multidimensionnellement pauvre --- suivie de Niamoué (0,4748) et Gogo
+(0,4747).
+
+\begin{attention}[Dix-neuf sous-préfectures à ne pas publier telles quelles]
+Sur les 519 modalités de la feuille \textsf{Sous-préfecture ou commune}, \textbf{19 dépassent un
+coefficient de variation de 20~\%}. Elles représentent ensemble 1,55~\% de la population. Les plus
+imprécises sont Plateau (CV 39~\%, 8 zones de dénombrement), Oress-Krobou (38~\%, 6 zones) et
+Toukouzou (30~\%, 3 zones).
+
+Le point commun est le petit nombre de zones de dénombrement, pas le petit nombre de ménages :
+Plateau compte 1\,584 ménages, mais tous issus de 8 zones seulement. La colonne \col{grappes} est
+donc le bon signal d'alerte, pas \col{menages}.
+
+Toutes les autres mailles --- ensemble, milieu, 33 régions, 111 départements, classes de taille ---
+sont sous le seuil de 20~\%, sans exception.
+\end{attention}
+
+\subsection{La taille du ménage}
+
+\begin{center}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Taille} & \textbf{Part pop.} & $H$ & \ipm & \textbf{Contribution} \\
+\midrule
+1-2 personnes & 8,4~\% & 20,9~\% & 0,0825 & 4,2~\% \\
+3-4 & 17,8~\% & 28,8~\% & 0,1187 & 12,7~\% \\
+5-6 & 22,3~\% & 34,9~\% & 0,1491 & 19,9~\% \\
+7-9 & 22,2~\% & 40,5~\% & 0,1747 & 23,3~\% \\
+10 et plus & 29,3~\% & 51,8~\% & 0,2266 & \textbf{39,9~\%} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{attention}[Une pente en partie mécanique]
+La relation est monotone, mais une partie en est un artefact de définition. Plusieurs indicateurs
+sont formulés en « \emph{au moins un} membre » --- au moins un enfant non scolarisé, au moins un
+chômeur, au moins un membre non alphabétisé. Un ménage de dix personnes a mécaniquement plus de
+chances d'en compter un qu'un ménage de deux, à conditions de vie identiques.
+
+Cette feuille se lit donc comme une description, non comme une causalité : elle ne dit pas que
+« les grands ménages sont plus pauvres », mais que « la pauvreté mesurée par cet indice se
+concentre dans les grands ménages ».
+\end{attention}
+
+\section{Lecture de la feuille \textsf{Contributions}}
+
+Cette feuille répond à une seule question : \emph{quel indicateur fait l'indice ?} Sa colonne de
+contribution somme à 1.
+
+\begin{center}
+\small
+\begin{tabular}{@{}llrrr@{}}
+\toprule
+\textbf{Dimension} & \textbf{Indicateur} & $w_j$ & \textbf{Priv. censurée} &
+  \textbf{Contribution} \\
+\midrule
+Emploi & Emploi de subsistance & 0,1250 & 35,7~\% & \textbf{26,8~\%} \\
+Éducation & Alphabétisation & 0,0625 & 36,3~\% & 13,6~\% \\
+Éducation & Année de scolarité & 0,0625 & 35,6~\% & 13,4~\% \\
+Cond. de vie & Énergie de cuisson & 0,0417 & 37,8~\% & 9,5~\% \\
+Éducation & Fréquentation scolaire & 0,0625 & 23,2~\% & 8,7~\% \\
+Cond. de vie & Toilette & 0,0417 & 29,4~\% & 7,4~\% \\
+Éducation & État civil & 0,0625 & 13,1~\% & 4,9~\% \\
+Cond. de vie & Logement & 0,0417 & 18,9~\% & 4,7~\% \\
+Cond. de vie & Eau potable & 0,0417 & 11,2~\% & 2,8~\% \\
+Cond. de vie & Électricité & 0,0417 & 9,9~\% & 2,5~\% \\
+Cond. de vie & Biens d'équipement & 0,0417 & 9,3~\% & 2,3~\% \\
+Emploi & Chômage & 0,1250 & 2,4~\% & 1,8~\% \\
+Santé & Mortalité & 0,2500 & 1,0~\% & \textbf{1,6~\%} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{center}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Dimension} & \textbf{Poids nominal} & \textbf{Contribution réelle} \\
+\midrule
+Éducation & 25~\% & 40,6~\% \\
+Conditions de vie & 25~\% & 29,2~\% \\
+Emploi & 25~\% & 28,6~\% \\
+Santé & 25~\% & \textbf{1,6~\%} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{retenir}[Ce que « privation censurée » veut dire]
+\col{taux\_privation\_censure} n'est pas le taux de privation brut : c'est la privation
+\textbf{des seuls ménages pauvres}. C'est pour cette raison que les deux ne coïncident pas ---
+l'énergie de cuisson prive 62,7~\% de la population, mais 37,8~\% en privation censurée. La
+contribution se lit sur cette seconde grandeur : c'est elle qui décompose \ipm{}.
+\end{retenir}
+
+Deux lectures s'imposent devant cette feuille.
+
+\begin{attention}[La dimension Santé est presque inerte]
+Un poids nominal de 25~\%, une contribution réelle de 1,6~\%. La dimension ne tient qu'à la
+mortalité : le recensement ne pose aucune autre question de santé, et la mortalité n'y est relevée
+que sur douze mois quand l'IPM mondial en retient soixante. S'y ajoute que l'âge au décès est
+inconnu pour 27,1~\% des décès enregistrés.
+
+Conséquence pratique : l'IPM RGPH se comporte, pour l'essentiel, comme un indice à trois dimensions
+dont la quatrième plafonne le score à 0,75. C'est la principale réserve à formuler devant le
+chiffre de 0,1664.
+\end{attention}
+
+\begin{attention}[L'emploi de subsistance porte plus du quart de l'indice]
+26,8~\% de \ipm{} sur un seul indicateur --- et c'est celui dont la mesure est la plus approximative.
+Le recensement ne demande pas si le chef de ménage travaille « sur son propre champ » : on retient
+donc le chef occupé dans une branche agricole, à son compte ou comme aide familial.
+
+Deux effets se conjuguent pour lui donner ce poids : la dimension Emploi ne compte que deux
+indicateurs, chacun à 0,125 ; et le chômage ne prive que 2,4~\% des ménages pauvres, laissant
+l'emploi de subsistance porter la dimension presque seul.
+
+Si l'approximation devait être resserrée, c'est plus du quart de l'indice qui se déplacerait. C'est
+le premier point à réexaminer avant publication.
+\end{attention}
+
+\section{Comparer le recensement et l'enquête}
+\label{sec:harmonise}
+
+Les deux IPM nationaux ne se comparent pas. Le classeur \col{indices\_ipm\_harmonise\_*} existe pour
+cela : il restreint le calcul au \textbf{socle commun} --- les douze indicateurs que les deux
+sources savent mesurer --- en trois dimensions à 1/3. La dimension Santé disparaît : l'enquête et le
+recensement n'ont pas un seul indicateur de santé en commun.
+
+\begin{center}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+& $H$ & $A$ & \ipm \\
+\midrule
+EHCVM 2021 & 53,5~\% & 0,5113 & \textbf{0,2737} \\
+RGPH 2021 & 52,0~\% & 0,5157 & \textbf{0,2680} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{retenir}[Le meilleur contrôle de cohérence disponible]
+À indicateurs identiques, une enquête par sondage de 12\,965 ménages et un recensement exhaustif de
+5,6 millions de ménages, collectés la même année par deux dispositifs entièrement différents,
+donnent \textbf{0,2737} et \textbf{0,2680} --- soit \textbf{2~\% d'écart}. L'incidence diffère de
+1,5 point, l'intensité de 0,004.
+\end{retenir}
+
+La décomposition confirme l'accord indicateur par indicateur.
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Contribution à \ipm} & \textbf{EHCVM} & \textbf{RGPH} \\
+\midrule
+Emploi de subsistance & 23,3~\% & 26,6~\% \\
+Année de scolarité & 14,2~\% & 14,1~\% \\
+Alphabétisation & 13,6~\% & 14,5~\% \\
+Énergie de cuisson & 10,1~\% & 10,0~\% \\
+Toilette & 9,6~\% & 7,5~\% \\
+Fréquentation scolaire & 8,2~\% & 8,7~\% \\
+État civil & 7,2~\% & 4,5~\% \\
+Eau potable & 3,5~\% & 2,7~\% \\
+Biens d'équipement & 3,3~\% & 2,5~\% \\
+Logement & 3,2~\% & 4,6~\% \\
+Chômage & 2,0~\% & 2,1~\% \\
+Électricité & 1,8~\% & 2,3~\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Les deux seuls écarts notables sont ceux qu'on attend. La \textbf{toilette} pèse moins au
+recensement (7,5~\% contre 9,6~\%) parce qu'il ne mesure pas le partage des sanitaires, second
+critère de la définition PNUD. L'\textbf{état civil} pèse moins également (4,5~\% contre 7,2~\%) :
+la possession d'un acte de naissance est mieux renseignée au recensement.
+
+\begin{attention}[Ce que la variante harmonisée ne dit pas]
+Elle valide la \emph{cohérence} des deux sources, pas l'IPM du pays. L'indice national de référence
+reste celui de l'EHCVM, à seize indicateurs ($\ipm = 0{,}2863$). La variante harmonisée sert au
+contrôle et à la comparaison entre sources ; elle n'a pas vocation à être publiée comme l'indice
+de la Côte d'Ivoire.
+\end{attention}
+
+\section{Six précautions avant de citer un chiffre}
+
+\begin{enumerate}
+  \item \textbf{Ne pas comparer l'IPM RGPH (0,1664) à l'IPM EHCVM (0,2863).} Passer par la variante
+        harmonisée. La différence de niveau vient de la dimension Santé, pas d'un désaccord entre
+        les deux sources.
+
+  \item \textbf{Vérifier \col{M0\_cv} avant de citer une sous-préfecture.} Dix-neuf des 519 sont
+        au-delà de 20~\%. Le signal d'alerte est la colonne \col{grappes}, pas \col{menages}.
+
+  \item \textbf{Ne pas lire les intervalles de confiance comme une précision d'échantillonnage.}
+        Ils mesurent une dispersion entre zones de dénombrement. Leur étroitesse ne rend pas le
+        recensement « plus précis » que l'enquête.
+
+  \item \textbf{Distinguer \ipm{} et \col{contribution\_M0}.} Le premier localise l'intensité, le
+        second le volume. Bounkani a le premier, le rural le second.
+
+  \item \textbf{Ne pas additionner les milieux des deux sources.} Le semi-urbain du recensement n'a
+        pas d'équivalent dans l'enquête.
+
+  \item \textbf{Signaler les trois approximations} quand le chiffre est publié : l'année de
+        scolarité mesurée par le diplôme, l'emploi de subsistance approché par la branche et le
+        statut, l'eau et la toilette amputées de leur second critère. Elles sont détaillées dans la
+        \emph{Méthodologie de calcul sur le RGPH 2021}.
+\end{enumerate}
+
+\section{Les autres sorties}
+
+\begin{description}
+  \item[\col{vecteur\_z\_rgph2021}] les treize indicateurs avec, pour chacun, sa dimension, l'énoncé
+    exact appliqué, la source de la définition (proposition nationale ou application PNUD) et la
+    valeur du seuil. C'est le document à consulter pour savoir ce qu'un indicateur mesure
+    précisément.
+
+  \item[\col{vecteur\_w\_rgph2021}] le poids $w_j$ de chaque indicateur et le poids de sa dimension.
+    Somme à 1.
+
+  \item[\col{matrice\_situationnelle\_rgph2021}] la matrice de privation $g^0$ : une ligne par
+    ménage, une colonne 0/1 par indicateur, plus la pondération et les variables de désagrégation.
+    C'est le fichier à reprendre pour toute analyse qui sortirait du cadre des classeurs --- un
+    croisement inédit, une carte, un profil de privations.
+
+  \item[\col{matrice\_privations\_ponderees\_rgph2021} et \col{\dots\_censuree\_\dots}] les états
+    intermédiaires du calcul : $g^0$ pondérée et score $c_i$ pour la première, matrice censurée au
+    seuil $k$ et statuts pauvre / vulnérable / sévère pour la seconde. Elles servent au contrôle et
+    à la reproduction pas à pas.
+
+  \item[\col{preconstruction\_matrice\_situationnelle\_rgph2021}] les situations brutes, avant
+    application de tout seuil : pour chaque indicateur, l'effectif \emph{concerné} à côté de
+    l'effectif \emph{défavorable}. C'est là qu'on va pour savoir combien de ménages n'étaient pas
+    concernés par un indicateur, ou pour recalculer un taux avec un autre seuil.
+\end{description}
+
+\end{document}

@@ -1,0 +1,640 @@
+\documentclass[11pt,a4paper]{article}
+\input{preambule}
+\renewcommand{\source}{RGPH 2021}
+
+\title{\bfseries L'indice de pauvreté multidimensionnelle de la Côte d'Ivoire\\[4pt]
+\large Méthodologie de calcul sur le RGPH 2021}
+\author{Pipeline \col{PythonIPM}}
+\date{Septembre 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent Ce document décrit la construction de l'indice de pauvreté multidimensionnelle (IPM) de
+la Côte d'Ivoire à partir du Recensement général de la population et de l'habitation (RGPH) 2021.
+Il est le pendant du document consacré à l'EHCVM 2021 : même méthode d'Alkire-Foster, mêmes
+conventions de calcul, même chaîne de traitement. Ce qui change tient aux données — un recensement
+exhaustif de 28 millions d'individus, au questionnaire beaucoup plus court qu'une enquête ménages.
+Le document se concentre donc sur ce qui est propre au recensement : les indicateurs qu'il permet
+de mesurer et ceux qu'il interdit, les approximations retenues, la réconciliation avec la
+production Stata antérieure, et la variante harmonisée qui rend les deux sources comparables.
+\end{abstract}
+
+\begin{retenir}[Les résultats en six lignes]
+\begin{itemize}
+  \item \textbf{38,8~\%} de la population ivoirienne vit dans un ménage multidimensionnellement
+        pauvre, soit 11,4 millions de personnes --- IC 95~\% : [38,4~\% ; 39,3~\%].
+  \item Ces personnes cumulent en moyenne \textbf{42,9~\%} des privations pondérées possibles.
+  \item L'indice qui combine les deux vaut $\ipm = \mathbf{0{,}1664}$, IC 95~\%
+        [0,1645 ; 0,1684].
+  \item Le milieu rural rassemble \textbf{84,7~\%} de la pauvreté pour 45,8~\% de la population ;
+        l'urbain en porte 5,7~\% pour 44,8~\% de la population.
+  \item L'écart entre régions va de 0,007 (Abidjan) à 0,365 (Bounkani), soit un rapport de
+        un à cinquante-trois.
+  \item Sur le socle commun avec l'EHCVM, les deux sources se rejoignent :
+        $\ipm = 0{,}2680$ au recensement contre $0{,}2737$ à l'enquête, soit 2~\% d'écart
+        (section~\ref{sec:harmonise}).
+\end{itemize}
+\end{retenir}
+
+\tableofcontents
+\bigskip
+
+\section{Pourquoi calculer l'IPM sur un recensement}
+
+L'EHCVM interroge 12\,965 ménages. C'est assez pour un indice national et pour les 33 régions,
+mais la précision se dégrade dès qu'on descend plus bas : beaucoup de sous-préfectures n'y sont
+représentées que par une poignée de grappes.
+
+Le RGPH, lui, dénombre \textbf{tous} les ménages du pays. Il ouvre donc ce que l'enquête ne peut
+pas offrir : une carte de la pauvreté multidimensionnelle à la maille de la sous-préfecture et de
+la commune, avec des effectifs qui la rendent publiable presque partout.
+
+La contrepartie est le questionnaire. Un recensement doit être administré à trente millions de
+personnes : il est court. Il ne pose aucune question de santé, aucune sur le nombre de pièces du
+logement, aucune sur le nombre d'années d'études effectivement accomplies. Trois indicateurs de
+l'IPM national y sont donc impossibles, un quatrième aussi, et deux autres ne peuvent être
+qu'approchés.
+
+\begin{retenir}[Le partage des rôles]
+L'EHCVM donne l'indice \emph{le plus complet} --- seize indicateurs, dont la santé et
+l'alimentation. Le RGPH donne l'indice \emph{le plus fin géographiquement} --- 519
+sous-préfectures et communes contre 442 sur un échantillon. Les deux ne se remplacent pas, ils se
+complètent.
+\end{retenir}
+
+\section{Les données}
+
+Le RGPH 2021 couvre \textbf{5\,616\,487 ménages} et \textbf{27\,984\,405 individus} recensés, soit
+\textbf{29\,276\,660 personnes} une fois la correction de couverture appliquée. L'extrait utilisé
+tient en trois fichiers.
+
+\begin{center}
+\begin{tabular}{@{}llr>{\RaggedRight}p{5.6cm}@{}}
+\toprule
+\textbf{Fichier} & \textbf{Une ligne =} & \textbf{Lignes} & \textbf{Ce qu'on y prend} \\
+\midrule
+\col{IPM\_Data\_191125} & un individu & 27\,984\,405 & âge, éducation, emploi, état civil \\
+\col{IPM\_Data\_110924\_men} & un ménage (le chef) & 5\,528\,535 & logement, eau, énergie,
+  sanitaires, biens \\
+\col{MORTALITE\_RP2021} & un décès & 269\,901 & dimension Santé \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Pourquoi deux fichiers plutôt qu'un}
+
+Le fichier individus porte lui aussi les variables de logement et de biens d'équipement. Mais
+elles n'y sont renseignées que pour \textbf{un tiers des ménages} : une fusion incomplète en amont
+les a perdues pour les deux autres tiers. Les lire là reviendrait à priver de conditions de vie
+deux ménages sur trois.
+
+Elles sont donc lues dans le fichier ménages, où elles sont complètes, et rattachées au ménage par
+l'\col{INDIV\_ID} de son chef. Restent \textbf{87\,952 ménages}, soit 1,6~\%, présents dans le
+fichier individus et absents du fichier ménages : conformément à la convention du pipeline, ils ne
+sont privés sur aucun indicateur de conditions de vie.
+
+\subsection{Les trois clés de jointure}
+
+\begin{description}
+  \item[\col{ID\_Menage}] rassemble les individus d'un même ménage, à l'intérieur du fichier
+    individus.
+  \item[\col{INDIV\_ID} du chef] rattache le ménage à sa ligne du fichier ménages.
+  \item[la clé géographique complète] (\col{REGION} \dots{} \col{P10}, douze variables) rattache le
+    ménage à ses décès. C'est le seul lien possible : le fichier de mortalité ne porte ni
+    \col{INDIV\_ID} ni \col{ID\_Menage}.
+\end{description}
+
+\subsection{La pondération}
+
+Un recensement se veut exhaustif, mais aucun ne l'est parfaitement. L'Enquête post-censitaire
+mesure le taux de couverture atteint ; la variable \col{EW} en porte la correction, comprise entre
+1,020 et 1,057 selon la strate.
+
+Appliquée, elle donne une population de \textbf{29,28 millions}, à 0,4~\% du chiffre publié du RGPH
+2021 (29\,389\,150). C'est le contrôle qui valide le choix de la variable.
+
+\begin{attention}[Ne pas confondre \col{EW} et \col{PROJ24}]
+La base porte une seconde pondération, \col{PROJ24}, dite « de ratissage », comprise entre 1,109 et
+1,153. Elle projette les effectifs à 2024 et donnerait 31,9 millions de personnes. Elle n'est pas
+retenue : l'IPM publié ici décrit la Côte d'Ivoire \emph{de 2021}.
+\end{attention}
+
+\subsection{La grappe : une zone de dénombrement}
+
+Les intervalles de confiance de la méthode agrègent la variance à l'unité primaire de sondage.
+Un recensement n'en a pas, à proprement parler : il n'y a pas de tirage. On retient la
+\textbf{zone de dénombrement} --- \col{SOUSPREFID} $\times$ \col{P\_ZC} $\times$ \col{P05} --- soit
+\textbf{28\,329 unités}, qui est l'unité de collecte et la maille à laquelle les erreurs de
+dénombrement se corrèlent.
+
+\begin{retenir}[Comment lire un intervalle de confiance sur un recensement]
+Il ne mesure pas une incertitude d'échantillonnage --- il n'y en a pas --- mais la dispersion du
+phénomène entre zones de dénombrement. Il reste utile pour juger si une sous-préfecture au chiffre
+extrême est réellement extrême ou portée par quelques zones atypiques. Il est, par construction,
+bien plus étroit que celui de l'EHCVM.
+\end{retenir}
+
+\subsection{Unité de construction, unité de comptage}
+
+Inchangé par rapport à l'EHCVM : le score se calcule par ménage, l'indice se lit en personnes.
+Chaque ménage $i$ compte pour
+\[
+n_i \;=\; \col{taille\_menage}_i \times \col{ponderation\_menage}_i .
+\]
+
+\section{Les treize indicateurs}
+\label{sec:indicateurs}
+
+Quatre dimensions équipondérées à 0,25, comme dans l'IPM national. Le poids d'une dimension se
+partage à parts égales entre ses indicateurs : une dimension à un seul indicateur lui donne donc
+tout son poids.
+
+\begin{center}
+\small
+\begin{tabular}{@{}l>{\RaggedRight}p{5.0cm}r r@{}}
+\toprule
+\textbf{Dimension} & \textbf{Indicateur} & \textbf{Poids $w_j$} & \textbf{Privés} \\
+\midrule
+Éducation (0,25) & Fréquentation scolaire & 0,0625 & 35,6~\% \\
+                 & Année de scolarité & 0,0625 & 63,2~\% \\
+                 & Alphabétisation & 0,0625 & 70,4~\% \\
+                 & Déclaration d'état civil & 0,0625 & 15,2~\% \\
+\addlinespace
+Santé (0,25) & Mortalité dans le ménage & 0,2500 & 1,1~\% \\
+\addlinespace
+Emploi (0,25) & Chômage & 0,1250 & 5,9~\% \\
+              & Emploi agricole de subsistance & 0,1250 & 46,0~\% \\
+\addlinespace
+Conditions de vie (0,25) & Électricité & 0,0417 & 11,5~\% \\
+                         & Logement & 0,0417 & 25,0~\% \\
+                         & Eau potable & 0,0417 & 14,3~\% \\
+                         & Énergie de cuisson & 0,0417 & 62,7~\% \\
+                         & Toilette & 0,0417 & 45,1~\% \\
+                         & Biens d'équipement & 0,0417 & 18,2~\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent « Privés » est la part de la \emph{population} vivant dans un ménage privé sur
+l'indicateur.
+
+\subsection{Ce que le recensement mesure comme l'enquête}
+
+Sept indicateurs sont transposés sans perte : fréquentation scolaire, alphabétisation, état civil,
+chômage, électricité, énergie de cuisson et logement. Seuls les codes de nomenclature changent.
+
+Un indicateur y gagne même en fidélité. La définition PNUD des biens d'équipement compte
+« radio, télévision, téléphone, ordinateur, charrette, vélo, moto ou réfrigérateur ». La section 12
+de l'EHCVM ne propose pas la charrette : l'indice y porte sur sept biens. Le recensement, lui,
+demande le « véhicule à traction animale » : les \textbf{huit biens y sont tous}.
+
+\subsection{Les deux approximations}
+
+\begin{description}
+  \item[Année de scolarité.] L'énoncé national dit « aucun membre de 17-95 ans n'a complété dix
+    années d'études ». Le recensement ne demande ni les années d'études ni la classe atteinte : il
+    ne demande que le \textbf{diplôme le plus élevé}. Le seuil est donc porté sur le diplôme --- le
+    BEPC ou plus vaut dix années accomplies. L'approximation est bonne à l'échelle du pays : 63,2~\%
+    de privés au recensement contre 62,9~\% à l'enquête, où les années d'études sont reconstruites.
+    Elle l'est moins individuellement : on peut avoir fait la troisième sans obtenir le BEPC.
+
+  \item[Emploi agricole de subsistance.] L'énoncé national vise le chef de ménage dont l'activité se
+    limite à l'agriculture sur son propre champ. Le recensement ne demande pas « sur son propre
+    champ ». On retient donc le chef occupé dans une \textbf{branche agricole} (divisions 01 à 03 de
+    la NAEMA) \textbf{à son compte ou comme aide familial} --- ce qui exclut le salariat,
+    l'apprentissage et les employeurs. 46,0~\% de privés, contre 40,5~\% à l'enquête.
+\end{description}
+
+\subsection{Les deux indicateurs amputés d'un critère}
+
+L'eau potable de la définition PNUD est privée si la source n'est pas améliorée au sens des ODD
+\emph{ou} si elle est à trente minutes ou plus aller-retour. La toilette est privée si les
+installations ne sont pas améliorées \emph{ou} si elles sont partagées. Le recensement ne demande
+ni le temps de trajet, ni le partage : seul le premier critère s'applique dans les deux cas.
+
+L'effet est massif sur la toilette --- 45,1~\% de privés au recensement contre 67,2~\% à l'enquête,
+où le partage des sanitaires pèse lourd en milieu urbain. Il est plus modéré sur l'eau : 14,3~\%
+contre 20,9~\%.
+
+\subsection{Les quatre indicateurs impossibles}
+
+Le recensement ne pose \textbf{aucune question de santé} : ni assurance maladie, ni module de
+sécurité alimentaire, ni recours aux soins. Il ne demande pas non plus le \textbf{nombre de pièces}
+du logement, ce qui interdit la promiscuité. Quatre indicateurs de l'IPM national disparaissent
+donc : assurance maladie, insécurité alimentaire, renoncement aux soins et promiscuité.
+
+\subsection{L'indicateur propre au recensement : la mortalité}
+\label{sec:mortalite}
+
+La dimension Santé serait vide sans le fichier de mortalité, qui recense les décès survenus dans le
+ménage au cours des douze mois précédant le recensement. On retient le décès d'un
+\textbf{enfant de moins de 18 ans} : c'est la borne de l'IPM mondial, et celle du traitement Stata
+antérieur du RGPH 2021.
+
+\begin{attention}[Une privation rare, qui porte pourtant le quart du poids]
+Seuls \textbf{1,1~\%} des ménages sont privés sur cet indicateur, et il est seul dans sa dimension :
+son poids $w_j$ vaut 0,25. La dimension Santé ne contribue donc qu'à \textbf{1,6~\%} de \ipm{}
+pour un poids nominal de 25~\%, et le score d'un ménage ne peut pratiquement pas dépasser 0,75.
+C'est la première raison pour laquelle l'IPM RGPH complet est structurellement plus bas que l'IPM
+EHCVM, et pourquoi les deux ne se comparent pas en niveau.
+
+Deux facteurs se cumulent. L'IPM mondial retient une fenêtre de \textbf{cinq ans} là où le
+recensement n'en couvre qu'\textbf{une}. Et l'âge au décès est inconnu pour 27,1~\% des décès
+enregistrés, qui ne peuvent donc pas être comptés.
+\end{attention}
+
+\section{Le calcul}
+
+Identique à celui de l'EHCVM --- le code des étapes 02 à 05 est littéralement le même fichier. On
+en rappelle ici les quatre temps ; le détail des formules figure dans le document méthodologique
+de l'EHCVM.
+
+\begin{enumerate}
+  \item \textbf{Matrice de privation $g^0$.} Le vecteur de seuils $z$ est appliqué aux situations
+        brutes : une colonne 0/1 par indicateur, 1 = privé.
+  \item \textbf{Pondération et score.} $c_i = \sum_j w_j\, g^0_{ij}$, entre 0 et 1.
+  \item \textbf{Censure au seuil $k = 1/3$.} Les privations des ménages non pauvres sont remises à
+        zéro, ce qui rend \ipm{} décomposable par indicateur.
+  \item \textbf{Indices.}
+        \[
+        H = \frac{\sum_i n_i \mathbf{1}(c_i \geq k)}{\sum_i n_i}, \qquad
+        A = \frac{\sum_i n_i c_i(k)}{\sum_i n_i \mathbf{1}(c_i \geq k)}, \qquad
+        \ipm = H \times A .
+        \]
+\end{enumerate}
+
+Trois variantes sont produites à chaque exécution : l'IPM national à quatre dimensions, l'IPM
+international à trois dimensions (sans l'Emploi), et l'IPM harmonisé décrit en
+section~\ref{sec:harmonise}.
+
+\section{Résultats}
+
+\subsection{L'indice national}
+
+\begin{center}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Variante} & $H$ & $A$ & \ipm \\
+\midrule
+IPM national --- 4 dimensions, 13 indicateurs & 38,8~\% & 0,4287 & \textbf{0,1664} \\
+IPM international --- 3 dimensions, sans l'Emploi & 36,1~\% & 0,4301 & 0,1553 \\
+IPM harmonisé --- socle commun EHCVM/RGPH & 52,0~\% & 0,5157 & 0,2680 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent Sur l'IPM national, \textbf{20,7~\%} de la population est vulnérable ($0{,}2 \le c_i <
+1/3$) et \textbf{7,8~\%} en pauvreté sévère ($c_i \ge 0{,}5$).
+
+\subsection{Le milieu de résidence}
+
+Le recensement distingue trois milieux là où l'enquête n'en code que deux.
+
+\begin{center}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+\textbf{Milieu} & \textbf{Part pop.} & $H$ & $A$ & \ipm & \textbf{Contribution} \\
+\midrule
+Urbain & 44,8~\% & 5,4~\% & 0,3943 & 0,0212 & 5,7~\% \\
+Semi-urbain & 9,4~\% & 41,0~\% & 0,4157 & 0,1705 & 9,7~\% \\
+Rural & 45,8~\% & 71,1~\% & 0,4328 & 0,3075 & \textbf{84,7~\%} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+C'est le résultat le plus net du calcul. Le rural porte \textbf{84,7~\%} de la pauvreté
+multidimensionnelle pour 45,8~\% de la population ; l'urbain en porte 5,7~\% pour une part de
+population presque identique. Le rapport des \ipm{} entre rural et urbain est de \textbf{un à
+quinze} (0,3075 contre 0,0212), contre un à trois dans l'EHCVM (0,4354 contre 0,1525) : le
+recensement fait ressortir un contraste que l'échantillon lissait.
+
+Le semi-urbain, que l'enquête ne distingue pas, occupe une position intermédiaire cohérente --- et
+c'est le milieu où la \textbf{vulnérabilité} est la plus forte (34,2~\% contre 17,7~\% en urbain) :
+une population nombreuse y est juste sous le seuil.
+
+\subsection{Le territoire}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Région} & \textbf{Part pop.} & $H$ & \ipm & \textbf{Contribution} \\
+\midrule
+\multicolumn{5}{@{}l}{\itshape Les cinq plus faibles} \\
+District autonome d'Abidjan & 21,5~\% & 1,8~\% & 0,0069 & 0,9~\% \\
+District autonome de Yamoussoukro & 1,4~\% & 18,7~\% & 0,0755 & 0,6~\% \\
+Sud-Comoé & 2,7~\% & 28,1~\% & 0,1181 & 1,9~\% \\
+Gbêkê & 4,6~\% & 30,2~\% & 0,1279 & 3,5~\% \\
+La Mé & 2,5~\% & 32,2~\% & 0,1324 & 2,0~\% \\
+\addlinespace
+\multicolumn{5}{@{}l}{\itshape Les cinq plus élevées} \\
+Gbôklé & 1,6~\% & 65,1~\% & 0,2804 & 2,6~\% \\
+Béré & 1,7~\% & 66,9~\% & 0,2843 & 2,9~\% \\
+Bafing & 0,9~\% & 69,5~\% & 0,3139 & 1,7~\% \\
+Folon & 0,5~\% & 76,2~\% & 0,3275 & 1,0~\% \\
+Bounkani & 1,5~\% & 76,5~\% & 0,3654 & 3,2~\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+L'écart va de 0,0069 à 0,3654, soit un rapport de \textbf{un à cinquante-trois}. Abidjan tire seule
+la moyenne nationale vers le bas : 21,5~\% de la population du pays, moins de 1~\% de sa pauvreté
+multidimensionnelle.
+
+À la maille du département, l'écart va d'Abidjan (\ipm{} = 0,0069) à Téhini (0,4191), et à celle de
+la sous-préfecture, du Plateau (0,0015) à Santa de Ouaninou (0,4752), où 92,6~\% de la population
+est multidimensionnellement pauvre. C'est cette granularité qui justifie le calcul sur recensement.
+
+\subsection{La taille du ménage}
+
+\begin{center}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Taille} & \textbf{Part pop.} & $H$ & \ipm & \textbf{Contribution} \\
+\midrule
+1-2 personnes & 8,4~\% & 20,9~\% & 0,0825 & 4,2~\% \\
+3-4 & 17,8~\% & 28,8~\% & 0,1187 & 12,7~\% \\
+5-6 & 22,3~\% & 34,9~\% & 0,1491 & 19,9~\% \\
+7-9 & 22,2~\% & 40,5~\% & 0,1747 & 23,3~\% \\
+10 et plus & 29,3~\% & 51,8~\% & 0,2266 & \textbf{39,9~\%} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+La relation est monotone et forte. Elle doit se lire avec précaution : un grand ménage a
+mécaniquement plus de chances de compter au moins un enfant non scolarisé ou au moins un chômeur,
+puisque plusieurs indicateurs sont formulés en « au moins un membre ». Une partie de la pente est
+donc un artefact de la définition, pas un fait sur les grands ménages.
+
+\subsection{Ce que pèse réellement chaque dimension}
+
+\begin{center}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Dimension} & \textbf{Poids nominal} & \textbf{Contribution à \ipm} \\
+\midrule
+Éducation & 25~\% & 40,6~\% \\
+Conditions de vie & 25~\% & 29,2~\% \\
+Emploi & 25~\% & 28,6~\% \\
+Santé & 25~\% & \textbf{1,6~\%} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Les quatre indicateurs qui portent l'indice sont l'emploi agricole de subsistance (26,8~\%),
+l'alphabétisation (13,6~\%), l'année de scolarité (13,4~\%) et l'énergie de cuisson (9,5~\%). Le
+chômage (1,8~\%) et la mortalité (1,6~\%) n'y pèsent presque rien, alors qu'ils portent ensemble
+0,375 de poids nominal.
+
+\begin{attention}[L'emploi de subsistance domine l'indice]
+Cet indicateur est à la fois le \textbf{premier contributeur} à \ipm{} (26,8~\%) et celui qui repose
+sur l'\textbf{approximation la plus lâche} (section~\ref{sec:indicateurs}). Deux effets se
+conjuguent : la dimension Emploi ne compte que deux indicateurs, donc chacun pèse 0,125 ; et le
+chômage ne prive presque personne, laissant l'emploi de subsistance porter seul la dimension.
+
+C'est le point à réexaminer en priorité. Si la substitution de « branche agricole $\times$
+indépendant ou aide familial » à « son propre champ » est jugée trop large, c'est plus du quart de
+l'indice qui se déplace.
+\end{attention}
+
+\section{Réconciliation avec la production Stata antérieure}
+\label{sec:stata}
+
+Le RGPH 2021 avait déjà été traité en Stata (\col{rp21\_calcul\_des\_privations.do}), avec une
+sortie conservée. Chaque règle de ce programme a été rejouée sur les données afin de séparer ce qui
+relève d'un écart de définition de ce qui relèverait d'une erreur.
+
+\begin{retenir}[Le résultat du contrôle]
+\textbf{Aucune erreur.} Appliquée telle quelle, chaque règle Stata est reproduite à 0,1 point près
+par le pipeline. Tous les écarts de résultat sont des choix de définition, documentés ci-dessous.
+\end{retenir}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrr>{\RaggedRight}p{4.6cm}@{}}
+\toprule
+\textbf{Indicateur} & \textbf{Stata} & \textbf{Règle rejouée} & \textbf{Retenu} & \textbf{Écart dû à} \\
+\midrule
+Fréquentation scolaire & 30,10~\% & 30,14~\% & 35,60~\% & version en 6-14 ans ; le programme
+  \emph{courant} dit 6-16, comme ici \\
+Année de scolarité & 63,05~\% & 63,15~\% & 63,17~\% & --- \\
+Alphabétisation & 30,10~\% & 33,15~\% & 70,43~\% & lecture de l'énoncé \\
+Chômage & 2,58~\% & 5,27~\% & 5,92~\% & tranche 16-35 contre 17-40 \\
+État civil & 9,65~\% & 9,73~\% & 15,22~\% & déclaration contre possession \\
+Électricité & 11,59~\% & --- & 11,5~\% & --- \\
+Eau potable & 14,43~\% & --- & 14,3~\% & --- \\
+Énergie de cuisson & 63,40~\% & --- & 62,7~\% & --- \\
+Logement & 25,25~\% & --- & 25,0~\% & --- \\
+Biens d'équipement & 18,72~\% & --- & 18,2~\% & --- \\
+Mortalité & 1,121~\% & --- & 1,1~\% & --- \\
+Toilette & 33,09~\% & 46,55~\% & 45,1~\% & \textbf{non réconcilié} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Trois corrections apportées après cette comparaison}
+
+Toutes dans le sens du programme Stata officiel.
+
+\begin{enumerate}
+  \item \textbf{Mortalité : moins de 18 ans}, et non moins de 5. C'est la borne du programme
+        \emph{et} celle de l'IPM mondial. Le taux passe de 0,7~\% à 1,1~\%, soit exactement le
+        1,121~\% de la sortie Stata.
+  \item \textbf{Logement : matériaux définis par exclusion}, comme le programme. Est rudimentaire
+        tout ce qui n'est ni ciment, carreau ou moquette (sol), ni tôle, béton ou tuile (toit), ni
+        semi-dur, géobéton ou dur (mur). Cela ajoute le sol en bois et le mur en tôle, conformément
+        à la classification DHS. Le taux passe de 24,0~\% à 25,0~\%, contre 25,25~\% en Stata.
+  \item \textbf{Diplôme :} le code 22 « Autres à préciser » compte au-dessus du seuil, comme le
+        programme (0,02 point).
+\end{enumerate}
+
+\subsection{Quatre écarts maintenus}
+
+Le cadrage retenu est celui de l'EHCVM : là où les deux se contredisent, c'est l'énoncé national
+qui tranche.
+
+\begin{description}
+  \item[Alphabétisation.] Le programme RGPH code « \textbf{aucun} membre alphabétisé » (33,2~\%) ;
+    l'énoncé national dit « \textbf{un} membre ne sait pas lire ou écrire » (70,4~\%). L'énoncé
+    littéral est appliqué, aux deux sources, par un drapeau unique dans le code : elles ne peuvent
+    pas diverger sur ce point sans qu'on le décide.
+
+  \item[État civil.] La question de l'EHCVM (1.05) est « dispose d'un acte de naissance ? ». La
+    modalité RGPH « déclaré \emph{sans} acte de naissance » est donc une privation. Le programme
+    Stata mesure la déclaration et non la possession, et ne compte privés que « non déclaré » et
+    « ne sait pas ». La lecture retenue (15,2~\%) est aussi la plus proche de l'EHCVM (26,3~\%).
+
+  \item[Chômage sur les 17-40 ans], énoncé du tableau national, contre 16-35 dans le programme
+    RGPH. La \emph{variable} de statut, elle, a été validée : \col{Statut\_OQPtbb} ne diffère de la
+    construction du programme --- les trois critères du BIT, sans emploi, en recherche, disponible
+    --- que sur 18\,910 individus sur 28 millions, soit 0,07~\%. L'autre variable de la base,
+    \col{Statut\_OQPtb}, donnerait 21,6~\% de ménages privés : elle n'intègre pas le reclassement
+    des personnes déclarées sans activité mais en réalité occupées, et n'est pas retenue.
+
+  \item[Emploi agricole de subsistance], absent de l'IPM RGPH officiel mais présent dans les seize
+    indicateurs de l'EHCVM : il est donc calculé, par approximation.
+\end{description}
+
+\subsection{Un écart non réconcilié : la toilette}
+
+La règle est identique de part et d'autre, le fichier source est le même, et pourtant la sortie
+Stata donne 33,09~\% quand le pipeline donne 46,55~\% avant convention sur les manquants.
+
+Aucune version du programme présente dans le dépôt ne produit 33~\%. La liste qui ajouterait la
+chasse d'eau à l'air libre et vers un lieu inconnu donnerait 34,19~\%, soit l'ordre de grandeur de
+la sortie Stata : celle-ci provient vraisemblablement d'un millésime antérieur du code ou des
+données.
+
+\begin{attention}[Point à confirmer auprès de l'INS]
+La valeur retenue ici est celle du programme \emph{courant}. Elle est cohérente avec l'EHCVM, qui
+donne 67,2~\% en ajoutant le critère de partage des sanitaires, absent du recensement. Mais
+l'origine du 33,09~\% n'est pas établie et mérite d'être élucidée avant publication.
+\end{attention}
+
+\subsection{Ce qui n'est pas comparable, et pourquoi}
+
+Le programme Stata construit un IPM à \textbf{cinq dimensions équipondérées à 0,2} --- Éducation,
+Emploi, Conditions de vie, Santé et \textbf{Identification}, l'état civil y étant une dimension à
+part entière --- et remplace les valeurs manquantes par une privation.
+
+Le pipeline suit le cadrage EHCVM : \textbf{quatre dimensions à 0,25}, l'état civil rangé dans
+l'Éducation, et un ménage dont aucune situation n'est renseignée compté non privé. Les
+$H = 0{,}100$ et $\ipm = 0{,}045$ de la sortie Stata ne se comparent donc pas aux
+$H = 0{,}388$ et $\ipm = 0{,}166$ produits ici.
+
+\section{La variante harmonisée : comparer les deux sources}
+\label{sec:harmonise}
+
+Les IPM complets des deux sources ne se comparent pas en niveau : chacun exploite ce que sa source
+mesure, et la dimension Santé du recensement --- la seule mortalité, privation à 1,1~\% --- absorbe
+un quart du poids pour presque rien.
+
+Le pipeline produit donc, pour chaque source, une variante restreinte au \textbf{socle commun} :
+les douze indicateurs que l'EHCVM \emph{et} le RGPH savent mesurer. La dimension Santé n'en a aucun
+--- l'enquête et le recensement n'ont pas un seul indicateur de santé en commun --- la variante
+compte donc \textbf{trois dimensions à 1/3} : Éducation (4 indicateurs), Emploi (2) et Conditions
+de vie (6).
+
+\begin{center}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+& $H$ & $A$ & \ipm \\
+\midrule
+EHCVM 2021 & 53,5~\% & 0,5113 & \textbf{0,2737} \\
+RGPH 2021 & 52,0~\% & 0,5157 & \textbf{0,2680} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{retenir}[Le meilleur contrôle de cohérence disponible]
+À indicateurs identiques, une enquête par sondage de 12\,965 ménages et un recensement exhaustif de
+5,6 millions de ménages, collectés la même année par deux dispositifs différents, donnent
+\textbf{0,2737 et 0,2680} : \textbf{2~\% d'écart}. L'incidence diffère de 1,5 point, l'intensité de
+0,004.
+\end{retenir}
+
+La décomposition confirme l'accord indicateur par indicateur. Les contributions à \ipm{} se
+suivent de près : emploi de subsistance 23,3~\% contre 26,6~\%, année de scolarité 14,2~\% contre
+14,1~\%, alphabétisation 13,6~\% contre 14,5~\%, énergie de cuisson 10,1~\% contre 10,0~\%.
+
+Les deux seuls écarts notables sont ceux qu'on attend : la \textbf{toilette} (9,6~\% contre 7,5~\%),
+puisque le recensement ne mesure pas le partage des sanitaires, et l'\textbf{état civil} (7,2~\%
+contre 4,5~\%).
+
+\begin{attention}[Ce que la variante harmonisée ne dit pas]
+Elle valide la \emph{cohérence} des deux sources, pas l'IPM national. Celui-ci reste l'indice à
+seize indicateurs de l'EHCVM ($\ipm = 0{,}2863$). La variante harmonisée sert au contrôle et à la
+comparaison ; elle n'a pas vocation à être publiée comme l'indice du pays.
+\end{attention}
+
+\section{Le traitement des valeurs manquantes}
+
+La convention du pipeline est inchangée : \textbf{un ménage non concerné, ou dont la situation n'est
+pas renseignée, n'est pas privé}.
+
+Elle prend une importance particulière sur le recensement, où 1,6~\% des ménages n'ont pas de ligne
+dans le fichier des conditions de vie. Une règle formulée par exclusion --- « privé si la source
+d'éclairage n'est pas parmi les modalités adéquates » --- rendrait mécaniquement privés tous ces
+ménages, puisqu'une valeur manquante n'appartient à aucune liste.
+
+Le pipeline pose donc un garde-fou explicite : si \textbf{aucune} des situations qui composent un
+indicateur n'est renseignée, le ménage n'est pas privé sur cet indicateur. Il reste privé s'il est
+seulement partiellement renseigné --- un ménage sans toilettes n'a pas de réponse à la question du
+partage, mais son type de sanitaire suffit à le classer.
+
+\begin{attention}[Une divergence de convention avec le programme Stata]
+Le programme Stata fait l'inverse : il remplace tout manquant par une privation. Sur les 1,6~\% de
+ménages concernés, les deux conventions donnent des résultats opposés. Celle du pipeline traite le
+défaut d'appariement comme ce qu'il est --- une donnée absente --- et non comme une privation
+constatée.
+\end{attention}
+
+\section{Le pipeline}
+
+Le calcul est mené par la même chaîne que l'EHCVM. La source est portée par la variable
+d'environnement \col{IPM\_SOURCE}, qui détermine le dossier de données, la clé du ménage, les
+variables de désagrégation disponibles et le suffixe de tous les fichiers produits.
+
+\begin{center}
+\small
+\begin{tabular}{@{}l>{\RaggedRight}p{5.4cm}>{\RaggedRight}p{5.0cm}@{}}
+\toprule
+\textbf{Étape} & \textbf{Fichier} & \textbf{Sortie} \\
+\midrule
+01 & \col{01\_rgph\_preconstruction\_\dots} & situations brutes, 5\,616\,487 $\times$ 29 \\
+02 & \col{02\_construction\_\dots} & 13 indicateurs 0/1 \\
+03 & \col{03\_matrice\_privations\_\dots} & $w_j$, $g^0$ pondérée, score $c_i$ \\
+04 & \col{04\_matrice\_privations\_\dots} & censure au seuil $k$ \\
+05 & \col{05\_indices\_ipm} & $H$, $A$, \ipm{}, désagrégations, contributions \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Seule l'étape 01 est propre au recensement : elle lit des bases sans rapport avec celles de
+l'enquête. À partir de l'étape 02, le code est strictement commun --- il ne travaille plus que sur
+des colonnes de situation normalisées, et ne sait pas de quelle source elles viennent. C'est ce qui
+garantit que les deux IPM sont calculés par la même méthode, et non par deux implémentations qui
+se ressemblent.
+
+\begin{verbatim}
+python pipeline/orchestrateur.py                  # les deux IPM
+python pipeline/orchestrateur.py --source rgph    # le RGPH seul
+python pipeline/orchestrateur.py --check          # les auto-contrôles
+\end{verbatim}
+
+L'étape 01 lit le fichier individus par morceaux de trois millions de lignes : vingt-huit millions
+de lignes ne tiennent pas en mémoire. Un ménage coupé entre deux morceaux ne pose pas de problème,
+chaque morceau étant agrégé séparément avant que les agrégats ne soient resommés par ménage. La
+chaîne complète s'exécute en un peu plus de deux minutes et écrit 2,2~Go de tables de travail.
+
+Chaque étape dispose d'un auto-contrôle qui rejoue sa logique sur un mini-jeu de données aux
+résultats connus, et chaque exécution vérifie par assertion que $\ipm = H \times A$, que les
+contributions somment à 1, et que les \ipm{} de groupe pondérés par leur part de population
+redonnent l'\ipm{} national.
+
+\section{Limites}
+
+\begin{enumerate}
+  \item \textbf{La dimension Santé ne tient qu'à un fil.} Un indicateur, une privation à 1,1~\%,
+        une fenêtre de douze mois au lieu de cinq ans, et 27,1~\% d'âges au décès inconnus. Elle
+        porte 25~\% du poids nominal et 1,6~\% de l'indice
+        (section~\ref{sec:mortalite}).
+  \item \textbf{L'emploi de subsistance domine l'indice} tout en reposant sur l'approximation la
+        plus lâche : 26,8~\% de \ipm{}.
+  \item \textbf{L'année de scolarité est mesurée par le diplôme}, ce qui est juste en moyenne mais
+        faux individuellement.
+  \item \textbf{L'eau et la toilette perdent leur second critère}, ce qui abaisse mécaniquement les
+        deux taux par rapport à l'enquête.
+  \item \textbf{Le taux de privation de la toilette n'est pas réconcilié} avec la production
+        antérieure (section~\ref{sec:stata}).
+  \item \textbf{Le sexe du chef de ménage n'est pas dans l'extrait}, ce qui prive d'une
+        désagrégation disponible sur l'EHCVM.
+  \item \textbf{Les intervalles de confiance ne mesurent pas une incertitude d'échantillonnage}
+        mais une dispersion entre zones de dénombrement. Dix-neuf sous-préfectures sur 519
+        dépassent un coefficient de variation de 20~\% et ne devraient pas être publiées telles
+        quelles.
+\end{enumerate}
+
+\end{document}
