@@ -1,0 +1,337 @@
+\documentclass[11pt,a4paper]{article}
+\input{preambule}
+
+\title{\bfseries Note sur la dimension Emploi\\[4pt]
+\large Ce que mesure l'indicateur de chômage, et ce qu'il laisse de côté}
+\author{Pipeline \col{PythonIPM} --- IPM Côte d'Ivoire, EHCVM 2021}
+\date{Septembre 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent La dimension Emploi de l'IPM ivoirien repose sur deux indicateurs de poids égal, dont
+l'un --- le chômage --- ne prive que 6,5~\% de la population et n'apporte que 1,6~\% de l'\ipm{}.
+Cette note documente précisément ce que recouvre la formule « au chômage au sens du BIT » telle
+qu'elle est implémentée, met au jour cinq décisions que l'énoncé ne mentionne pas, puis distingue
+les trois notions que l'on confond couramment --- le chômage BIT, la sous-utilisation de la
+main-d'\oe uvre (SU1 à SU4) et le NEET. Elle chiffre chacune sur l'EHCVM et conclut sur les
+arbitrages ouverts.
+\end{abstract}
+
+\section{Le point de départ}
+
+Le tableau de référence national place dans la dimension Emploi deux indicateurs, à
+\textbf{0,125} chacun :
+
+\begin{description}
+  \item[Chômage] « Un membre du ménage âgé de 17-40 ans est au chômage » --- au sens du BIT.
+  \item[Emploi agricole de subsistance] « Le chef de ménage est occupé mais son activité se
+  limite à l'agriculture sur son propre champ, sans salariat, apprentissage ni commerce ».
+\end{description}
+
+Leurs rendements sont sans commune mesure. À poids identique, l'emploi de subsistance prive
+40,5~\% de la population et apporte \textbf{16,9~\%} de l'\ipm{} ; le chômage prive 6,5~\% et
+apporte \textbf{1,6~\%}. Le second indicateur porte à lui seul 91~\% de la dimension. Cette note
+explique pourquoi.
+
+\section{Ce que « chômage au sens du BIT » recouvre exactement}
+
+La construction se fait en trois temps : un test individuel à trois critères, un filtre d'âge,
+puis une règle d'agrégation au ménage.
+
+\subsection{Le test individuel}
+
+Au niveau de chaque membre du ménage, dans
+\col{01\_preconstruction\_matrice\_situationnelle.py} :
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{2.2cm}p{7.4cm}p{2.6cm}@{}}
+\toprule
+\textbf{Critère BIT} & \textbf{Questions EHCVM mobilisées} & \textbf{Condition} \\
+\midrule
+Sans emploi & 4.10 « a travaillé $\ge$ 1 h les 7 derniers jours » (qui résume 4.06 champ,
+4.07 commerce, 4.08 salariat, 4.09 apprentissage) et 4.11 « possède un emploi mais en était
+absent » & ni l'un ni l'autre \\
+En recherche & 4.15 ou 4.17 « a cherché un emploi rémunéré au cours des 30 derniers jours » &
+oui explicite \\
+Disponible & 4.20 « quand sera-t-il disponible » $\in$ \{immédiatement ; dans 15 jours ;
+entre 15 jours et un mois\} ou 4.19 « est néanmoins disponible tout de suite » & oui explicite \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Les trois conditions sont \textbf{cumulatives}. L'entonnoir, sur les 64\,491 individus de
+l'enquête : \textbf{45\,808 sans emploi} (71,0~\%), dont \textbf{999 en recherche} (2,2~\%), dont
+\textbf{740 disponibles} (74,1~\%).
+
+\subsection{Le filtre d'âge et l'agrégation}
+
+La tranche retenue est \textbf{17-40 ans}. L'âge est l'âge déclaré (question 1.04a, renseigné pour
+6~\% des membres), à défaut l'année d'enquête moins l'année de naissance. Il reste
+\textbf{561 chômeurs BIT sur 19\,814 personnes de 17-40 ans}, soit 2,8~\%.
+
+Le ménage est déclaré privé si \textbf{au moins un} de ses membres de 17-40 ans est chômeur BIT :
+\textbf{476 ménages sur 12\,965}, soit 3,7~\% des ménages et \textbf{6,5~\% de la population}
+--- l'écart entre les deux tient à ce que les ménages concernés sont plus grands que la moyenne.
+
+\begin{retenir}[La chaîne complète en une phrase]
+Est privé le ménage qui compte au moins une personne de 17 à 40 ans qui n'a pas travaillé une
+seule heure la semaine passée, \emph{et} a fait une démarche de recherche dans les 30 derniers
+jours, \emph{et} se déclare disponible sous un mois.
+\end{retenir}
+
+\section{Cinq décisions que l'énoncé ne mentionne pas}
+
+\begin{description}
+  \item[Un ménage sur cinq ne peut structurellement pas être privé.] \textbf{2\,397 ménages}
+  (18,5~\%) n'ont aucun membre de 17-40 ans. Ils sont classés \emph{non privés}, en application de
+  la convention générale du pipeline (« un ménage non concerné n'est pas privé »). C'est un choix
+  cohérent, mais pas neutre : un ménage de personnes âgées est hors d'atteinte de cet indicateur.
+  À noter que le champ \col{eligibilite = membres\_17\_40}, déclaré dans la définition de
+  l'indicateur, n'est \textbf{jamais utilisé dans le calcul} --- il ne figure que dans les
+  journaux. Il documente une intention qui n'est pas implémentée.
+
+  \item[Le traitement des valeurs manquantes est asymétrique.] Le critère « sans emploi » s'écrit
+  en négation (\col{!= 1}), de sorte qu'une valeur manquante y est comptée comme un « oui » :
+  \textbf{9\,575 individus} sont réputés sans emploi alors que 4.10 ou 4.11 n'est pas renseigné
+  chez eux. Les critères de recherche et de disponibilité, eux, exigent un « oui » explicite. Les
+  trois conditions étant cumulatives, la permissivité du premier est intégralement neutralisée par
+  la sévérité des deux autres et le résultat final est juste --- mais l'équilibre tient à
+  l'enchaînement, non à une décision explicite.
+
+  \item[La disponibilité retenue est plus large que le standard BIT.] Le BIT demande une
+  disponibilité sous \emph{deux semaines}. Le code accepte aussi la modalité 3 de la question 4.20,
+  « entre 15 jours et un mois ».
+
+  \item[Un chercheur sur quatre est écarté sur la disponibilité] (999 $\rightarrow$ 740). Pour qui
+  a répondu oui à 4.15 ou 4.17, la disponibilité ne peut être établie que par 4.20, la question
+  4.19 n'étant posée qu'aux non-chercheurs. Une non-réponse à 4.20 fait sortir la personne du
+  chômage. C'est le point où la mesure est la plus restrictive.
+
+  \item[La borne de 40 ans] exclut par construction tout chômeur de 41 ans et plus.
+\end{description}
+
+\section{Trois notions distinctes, trois dénominateurs}
+
+On parle couramment de « trois définitions du chômage ». Il n'y en a qu'une. Autour d'elle
+gravitent une \emph{famille} de mesures de sous-utilisation de la main-d'\oe uvre, et un
+indicateur de jeunesse qui ne relève pas du marché du travail. Ce qui les sépare n'est pas le
+numérateur, c'est le \textbf{dénominateur}.
+
+\subsection{Le cadre : cinq blocs}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Bloc} & \textbf{Effectif} & \textbf{Part} \\
+\midrule
+Occupés & 18\,468 & 51,9~\% \\
+Chômeurs BIT & 674 & 1,9~\% \\
+\cmidrule(r){1-3}
+\emph{\quad = main-d'\oe uvre} & \emph{19\,142} & \emph{53,7~\%} \\
+\addlinespace
+Cherche mais n'est pas disponible & 246 & 0,7~\% \\
+Est disponible mais ne cherche pas & 572 & 1,6~\% \\
+\cmidrule(r){1-3}
+\emph{\quad = main-d'\oe uvre potentielle} & \emph{818} & \emph{2,3~\%} \\
+\addlinespace
+Autres inactifs & 15\,655 & 44,0~\% \\
+\midrule
+\textbf{Population de 15 ans et plus} & \textbf{35\,615} & \textbf{100~\%} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{SU1 --- le taux de chômage}
+
+\[ \mathrm{SU1} = \frac{\text{chômeurs}}{\text{occupés} + \text{chômeurs}}
+   = \frac{674}{19\,142} = 3{,}5~\% \]
+
+Il répond à la question : \emph{parmi ceux qui sont sur le marché du travail, combien n'y trouvent
+pas de place ?} Deux mécanismes le tirent vers le bas dans une économie comme celle de la Côte
+d'Ivoire, l'un au numérateur, l'autre au dénominateur.
+
+Au \textbf{numérateur}, le critère de recherche active : renoncer, c'est sortir du chômage. Là où
+chercher coûte du transport et où l'offre institutionnelle est peu accessible, l'abandon fait
+disparaître statistiquement le problème.
+
+Au \textbf{dénominateur}, et c'est le plus lourd, le critère d'\emph{une heure} : est occupé
+quiconque a travaillé au moins une heure dans la semaine, y compris sur son propre champ et sans
+rémunération. Sur l'EHCVM, \textbf{8\,135 personnes --- 44,0~\% des occupés --- n'ont fait que du
+champ}, rien d'autre.
+
+\begin{retenir}[Ce que SU1 dit et ne dit pas]
+Un SU1 de 3,5~\% ne signifie pas que le marché du travail se porte bien. Il signifie que peu de
+personnes se trouvent dans la configuration précise « sans aucune activité \emph{et} en recherche
+\emph{et} disponible ». Dans une économie à dominante agricole et informelle, cette configuration
+est rare par construction.
+\end{retenir}
+
+\subsection{SU3 --- chômage et main-d'\oe uvre potentielle}
+
+Le BIT (19\textsuperscript{e} CIST, 2013) définit quatre mesures de sous-utilisation, SU1 à SU4
+(LU1 à LU4 en anglais), en cercles concentriques : SU1 le chômage ; SU2 y ajoute le sous-emploi
+lié au temps ; SU3 y ajoute la main-d'\oe uvre potentielle ; SU4 réunit les trois.
+
+La \textbf{main-d'\oe uvre potentielle} rassemble ceux qui veulent travailler sans réunir les trois
+critères, en deux branches symétriques : ceux qui \emph{cherchent sans être disponibles} (246) et
+ceux qui \emph{sont disponibles sans chercher} (572) --- c'est là que loge le découragement.
+
+\[ \mathrm{SU3} = \frac{\text{chômeurs} + \text{main-d'\oe uvre potentielle}}
+                       {\text{main-d'\oe uvre} + \text{main-d'\oe uvre potentielle}}
+   = \frac{674 + 818}{19\,142 + 818} = \frac{1\,492}{19\,960} = 7{,}5~\% \]
+
+Le \textbf{dénominateur change lui aussi} : SU3 n'est pas SU1 avec un numérateur élargi, mais une
+reconstruction des deux termes. On ne passe donc pas de l'un à l'autre par une règle de trois.
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Champ} & \textbf{SU1} & \textbf{SU3} & \textbf{Rapport} \\
+\midrule
+15 ans et plus & 3,5~\% & 7,5~\% & $\times$ 2,1 \\
+17-40 ans (bande de l'IPM) & 5,5~\% & 11,3~\% & $\times$ 2,0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Qui compose la main-d'\oe uvre potentielle}
+
+La question 4.18 (raison principale de non-recherche) identifie les 572 personnes de la seconde
+branche :
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Raison de non-recherche (4.18)} & \textbf{Effectif} & \textbf{Part} \\
+\midrule
+Ménagère & 185 & 32,3~\% \\
+\textbf{Manque d'emploi} & 102 & 17,8~\% \\
+Attend le démarrage de sa propre entreprise & 81 & 14,2~\% \\
+\textbf{Ne sait pas comment chercher} & 61 & 10,7~\% \\
+Étudiant / Élève & 56 & 9,8~\% \\
+Attend la réponse à une demande d'emploi & 50 & 8,7~\% \\
+Ne veut pas travailler & 21 & 3,7~\% \\
+Autres (maladie, âge, retraite, handicap) & 16 & 2,8~\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Les deux lignes en gras --- 163 personnes, 28~\% de la branche --- constituent le
+\textbf{découragement au sens propre} : disponibles, mais convaincus qu'il n'y a rien à trouver ou
+ne sachant pas s'y prendre. SU1 les classe parmi les inactifs, au même titre qu'un rentier.
+
+Deux réserves sur cette liste. Les ménagères et les étudiants y figurent parce qu'ils ont déclaré
+être disponibles --- ce qui est conforme au BIT, qui n'exclut personne sur le statut, mais pèse
+42~\% de la branche. Et les 21 « ne veut pas travailler » sont en contradiction avec leur propre
+déclaration de disponibilité : ils seraient à retirer lors de la construction.
+
+\subsection{NEET --- un objet différent}
+
+\emph{Not in Employment, Education or Training} : les 15-24 ans qui ne sont ni en emploi, ni en
+études, ni en formation. C'est l'indicateur \textbf{ODD 8.6.1}. Son dénominateur n'est pas la
+population active mais \textbf{l'ensemble des jeunes}. Un NEET peut être chômeur, découragé,
+femme au foyer ou malade : l'indicateur ne mesure pas une offre de travail non satisfaite, il
+mesure une \textbf{déconnexion} --- des jeunes qui n'accumulent de capital humain ni par l'école
+ni par l'emploi.
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll r@{}}
+\toprule
+& \textbf{Question posée} & \textbf{Dénominateur} & \textbf{EHCVM} \\
+\midrule
+SU1 / BIT & Qui, sur le marché, n'y trouve pas de place ? & main-d'\oe uvre & 3,5~\% \\
+SU3 & Qui veut travailler sans y parvenir ? & + main-d'\oe uvre potentielle & 7,5~\% \\
+NEET & Quels jeunes ne construisent rien ? & population des 15-24 ans & $\approx$ 40~\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Ce qui est constructible sur l'EHCVM}
+
+\subsection{SU3 : oui, intégralement}
+
+Toutes les composantes sont présentes. Les taux de réponse apparemment faibles de 4.15 (24~\%),
+4.19 (52~\%) et 4.18 (57~\%) chez les 15-24 ans relèvent du \textbf{routage du questionnaire} et
+non de la non-réponse : 4.19 n'est posée qu'aux non-chercheurs, par construction. Les deux
+branches de la main-d'\oe uvre potentielle se reconstituent sans approximation, et 4.18 permet
+d'isoler proprement les découragés.
+
+\subsection{SU2 et SU4 : non}
+
+Le sous-emploi lié au temps demande, outre les heures travaillées --- disponibles via 4.36
+(jours par mois) et 4.37 (heures par jour) ---, la question « souhaitiez-vous travailler
+davantage ? ». Elle ne figure pas dans le questionnaire. SU2 et SU4 sont donc hors de portée.
+
+\subsection{NEET : partiellement}
+
+\begin{description}
+  \item[L'emploi] est renseigné à 100~\% par 4.10.
+  \item[L'éducation] pose une difficulté de vague. La question 2.08a (scolarisé en 2021/22)
+  n'existe \textbf{qu'en vague 2} --- 0~\% de réponses en vague 1. Il faut passer par 2.12
+  (scolarisé en 2020/21), présente dans les deux vagues à 66~\%. Vérification faite, les valeurs
+  manquantes de 2.12 correspondent \emph{exactement} aux 3\,320 jeunes n'ayant jamais fréquenté
+  l'école (question 2.03), à 17 cas résiduels près : ils sont donc non scolarisés par déduction,
+  et la couverture est en réalité complète. Le décalage d'une année scolaire, lui, demeure.
+  \item[La formation] n'est pas mesurée. Les questions 2.05 et 2.06 identifient bien une
+  « formation professionnelle » non formelle, mais au passé et sans période de référence : c'est
+  un \emph{a déjà suivi}, non un \emph{suit actuellement}. Et l'apprentissage (4.09) est déjà
+  compté comme un emploi.
+\end{description}
+
+\begin{attention}[Un NEET EHCVM serait en réalité un « NEE »]
+Ni en emploi, ni en études --- sans le volet formation. Sur cette base approchée, 4\,079 jeunes
+sur 10\,078 sont concernés, soit \textbf{40,5~\% des 15-24 ans}. Le chiffre surestime le NEET
+d'autant que des jeunes sont en formation professionnelle en cours ; les questions 2.05 et 2.06
+permettent d'en majorer le biais, à défaut de le corriger.
+\end{attention}
+
+\section{Les arbitrages ouverts}
+
+\begin{enumerate}
+  \item \textbf{Remplacer SU1 par SU3 dans l'indicateur de chômage.} Le périmètre passerait de
+  561 à 1\,219 personnes concernées sur la bande 17-40, et l'effet sur l'indicateur ménage
+  « au moins un » sera mécaniquement plus fort encore. C'est la piste la plus directe pour rendre
+  à la dimension un équilibre entre ses deux jambes.
+
+  \item \textbf{Réexaminer la borne de 40 ans et le seuil de disponibilité.} La première exclut
+  les chômeurs plus âgés ; le second, en acceptant la modalité « entre 15 jours et un mois »,
+  s'écarte déjà du standard BIT --- autant le trancher explicitement.
+
+  \item \textbf{Implémenter le champ d'éligibilité, ou le retirer.} En l'état, il est déclaré mais
+  inopérant. Le conserver sans l'appliquer entretient une ambiguïté sur le traitement des
+  18,5~\% de ménages sans membre de 17-40 ans.
+
+  \item \textbf{Ne pas substituer le NEET au chômage.} Il mesure autre chose --- un risque de
+  pauvreté future plutôt qu'une privation présente --- et resterait incomplet faute du volet
+  formation. S'il devait entrer dans l'IPM, ce serait comme indicateur supplémentaire assumé, non
+  comme un chômage élargi.
+\end{enumerate}
+
+\begin{retenir}[SU3 et emploi de subsistance sont complémentaires, pas redondants]
+SU3 corrige le \emph{numérateur} du chômage : il récupère ceux que le critère de recherche
+écartait. Il ne touche pas au dénominateur --- les 8\,135 personnes qui ne font que du champ
+restent comptées comme occupées. C'est précisément ce que l'indicateur d'emploi agricole de
+subsistance capte déjà, en tenant lieu du SU2 que l'enquête ne permet pas de construire. Les deux
+indicateurs de la dimension attaquent donc deux bouts opposés du même problème, et le
+renforcement de l'un n'empiète pas sur l'autre.
+\end{retenir}
+
+Comme pour la dimension Santé, ces arbitrages relèvent du cadrage et non de la technique : le
+critère de chômage se modifie en quelques lignes dans
+\col{pipeline/01\_preconstruction\_matrice\_situationnelle.py}, et la règle du ménage dans
+\col{pipeline/02\_construction\_matrice\_situationnelle.py}.
+
+\vfill
+\noindent\rule{\linewidth}{0.4pt}\\[2pt]
+\small
+Documents associés : \emph{Note sur la dimension Santé}, \emph{Méthodologie de calcul} et
+\emph{Dictionnaire des sorties}.
+
+\end{document}
