@@ -1,0 +1,332 @@
+\documentclass[11pt,a4paper]{article}
+\input{preambule}
+\renewcommand{\source}{PND 2026-2030 / EHCVM vs RGPH}
+
+\title{\bfseries EHCVM ou RGPH : quel IPM sert le mieux le PND 2026-2030 ?\\[4pt]
+\large Analyse comparative et recommandation}
+\author{Pipeline \col{PythonIPM}}
+\date{Septembre 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent Deux indices de pauvreté multidimensionnelle ont été calculés pour la Côte d'Ivoire sur
+l'année 2021 : l'un sur l'EHCVM, enquête auprès de 12 965 ménages, l'autre sur le RGPH, recensement
+exhaustif de 5,6 millions de ménages. Ce document les confronte au Plan National de Développement
+2026-2030 et tranche : lequel est le plus aligné, lequel aide le mieux, et comment les employer
+ensemble. Il suppose connus les deux documents d'analyse qui le précèdent, mais peut se lire seul.
+\end{abstract}
+
+\begin{retenir}[La recommandation en une page]
+\textbf{L'IPM EHCVM est le plus aligné sur le PND} : il couvre onze des vingt-deux cibles contre
+sept, il est seul à mesurer les quatre cibles santé et nutrition du Pilier 4, seul à porter la
+pauvreté monétaire, et seul à pouvoir être actualisé avant 2030. Si un seul indice devait être
+retenu comme \emph{l'indice du PND}, c'est celui-là.
+
+\textbf{Mais l'IPM RGPH est celui qui aide le mieux à agir} : il est seul à rendre opérationnels
+trois instruments centraux du plan --- les Pôles Économiques Compétitifs, le registre social unifié
+et le ciblage des 827 000 ménages de filets sociaux --- que l'enquête ne peut pas servir du tout.
+
+\textbf{La recommandation n'est donc pas de choisir}, mais de répartir les rôles :
+\begin{itemize}
+  \item l'\textbf{EHCVM} tient le cadre de résultats --- la valeur 2021, la cible 2030, les points
+        d'étape ;
+  \item le \textbf{RGPH} tient la carte et le registre --- où investir, quels ménages servir ;
+  \item la \textbf{variante harmonisée} fait le pont, et le fait bien : à indicateurs identiques,
+        les deux sources donnent $\ipm = 0{,}2737$ et $0{,}2680$, soit 2~\% d'écart.
+\end{itemize}
+\end{retenir}
+
+\tableofcontents
+\bigskip
+
+\section{Deux questions, pas une}
+
+Le PND 2026-2030 pose au statisticien deux questions de nature différente, et l'essentiel de la
+comparaison tient à ce qu'aucune source ne répond bien aux deux.
+
+\begin{description}
+  \item[Mesurer.] \emph{Où en est-on, et où en sera-t-on en 2030 ?} Le plan fixe des cibles
+    chiffrées, pilier par pilier, avec une valeur de départ et une valeur d'arrivée. Y répondre
+    demande un indicateur dont le contenu recoupe ces cibles, et qui puisse être recalculé en cours
+    de plan.
+  \item[Cibler.] \emph{Où faut-il investir, et quels ménages faut-il servir ?} Le Pilier 5 veut
+    une « cartographie fine » pour ses Pôles Économiques Compétitifs, le Pilier 6 un « registre
+    social unifié », le Pilier 4 une liste de 827 000 ménages. Y répondre demande une base
+    exhaustive, ou au moins une maille territoriale très fine.
+\end{description}
+
+\begin{retenir}[Le partage naturel]
+Une enquête par sondage est faite pour mesurer : questionnaire long, indicateurs riches, répétée
+dans le temps. Un recensement est fait pour dénombrer : questionnaire court, indicateurs pauvres,
+mais exhaustif et localisé. Le PND a besoin des deux, et la comparaison qui suit ne fait que le
+chiffrer.
+\end{retenir}
+
+\section{Couverture des cibles du PND}
+
+\subsection{Le décompte}
+
+Vingt-deux cibles et orientations du PND peuvent être éclairées par un indice de pauvreté. Le
+tableau ci-dessous en donne la couverture par source.
+
+\begin{center}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Nature de la prise} & \textbf{EHCVM} & \textbf{RGPH} \\
+\midrule
+Directe & \textbf{11} & 7 \\
+Approchée & 0 & 2 \\
+Indirecte & 3 & 2 \\
+Partielle & 2 & 0 \\
+Opérationnelle (ciblage) & 0 & \textbf{3} \\
+Aucune & 6 & 8 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Les cibles que l'une seule mesure}
+
+C'est là que se joue l'essentiel. Onze cibles sont couvertes par une source et pas par
+l'autre : sept par la seule EHCVM, quatre par le seul RGPH.
+
+\begin{center}
+\small
+\begin{tabular}{@{}>{\RaggedRight}p{7.4cm}cc@{}}
+\toprule
+\textbf{Cible ou orientation du PND} & \textbf{EHCVM} & \textbf{RGPH} \\
+\midrule
+Enrôlés à la CMU de 20 à 30 millions (P.~4) & \textbf{oui} & non \\
+Protection sociale de 27 à 50~\% (P.~4) & \textbf{oui} & non \\
+Population à moins de 5 km d'un centre de santé, 82 à 100~\% (P.~4) & \textbf{oui} & non \\
+Retard de croissance des moins de 5 ans, 21,4 à 18~\% (P.~4) & \textbf{oui} & non \\
+Indice de l'écart genre, 0,655 à 0,7 (P.~4) & \textbf{oui} & non \\
+Habitat décent : densité d'occupation (P.~5) & \textbf{oui} & non \\
+Croisement avec la pauvreté monétaire (objectif général) & \textbf{oui} & non \\
+\addlinespace
+Espérance de vie de 62,3 à 65 ans (P.~4) & non & \textbf{oui} \\
+Pôles Économiques Compétitifs, villes secondaires (P.~5) & non & \textbf{oui} \\
+Registre social unifié pour le ciblage (P.~6) & non & \textbf{oui} \\
+827 000 ménages bénéficiaires des filets sociaux (P.~4) & non & \textbf{oui} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{retenir}[Lecture]
+L'EHCVM gagne sur le \textbf{contenu} du Pilier 4 : quatre cibles santé et nutrition, plus le genre,
+que le recensement ne peut pas approcher, parce qu'il ne pose aucune question de santé.
+
+Le RGPH gagne sur les \textbf{instruments} des Piliers 5 et 6 : la cartographie, le registre, le
+ciblage --- trois orientations qui ne sont pas des cibles chiffrées mais des dispositifs à
+construire, et qu'une enquête par sondage ne peut pas alimenter.
+\end{retenir}
+
+\section{La finesse territoriale : l'écart est massif}
+
+Le Pilier 5 entend « une répartition optimale et équitable des investissements publics et privés »
+fondée sur une « cartographie fine ». La question est donc : à quelle maille chaque source
+produit-elle un chiffre publiable ?
+
+Convention usuelle : une estimation dont le coefficient de variation dépasse 20~\% n'est pas
+publiable.
+
+\begin{center}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+& \multicolumn{2}{c}{\textbf{EHCVM}} & \multicolumn{2}{c}{\textbf{RGPH}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+\textbf{Maille} & \textbf{Modalités} & \textbf{Non publ.} & \textbf{Modalités} &
+  \textbf{Non publ.} \\
+\midrule
+Région & 33 & 0 & 33 & 0 \\
+Département & 108 & 15 & 111 & \textbf{0} \\
+Sous-préfecture ou commune & 442 & \textbf{92} & 519 & \textbf{19} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{attention}[Le chiffre qui tranche le Pilier 5]
+Les 92 sous-préfectures non publiables de l'EHCVM représentent \textbf{47,9~\% de la population}
+ivoirienne. Les 19 du RGPH en représentent \textbf{1,55~\%}.
+
+Autrement dit : fonder une allocation d'investissements à la maille de la sous-préfecture sur
+l'EHCVM reviendrait à ne rien pouvoir dire, de façon publiable, sur la moitié du pays. Le
+recensement ramène cette zone d'ombre à un cinquantième.
+\end{attention}
+
+Le coefficient de variation médian donne la même lecture en continu : 15,4~\% contre 9,0~\% à la
+sous-préfecture, 12,3~\% contre 5,0~\% au département.
+
+\section{Le suivi dans le temps : l'écart est tout aussi massif, en sens inverse}
+
+\begin{attention}[Le recensement ne dira pas si le PND a réussi]
+Le RGPH est décennal : le prochain n'interviendra pas avant la fin du plan. L'IPM RGPH fournit une
+valeur de départ, très détaillée, mais aucune évolution.
+
+L'EHCVM est une enquête répétée --- 2018, 2021, et une vague dans l'intervalle du plan. C'est la
+seule des deux sources capable d'alimenter en progrès le cadre de gouvernance que le PND met en
+place.
+\end{attention}
+
+Pour un plan quinquennal assorti de cibles datées, c'est un argument qui ne se compense pas : un
+indice qu'on ne peut recalculer qu'une fois n'est pas un indicateur de suivi.
+
+\section{Ce que les deux mesurent également bien}
+
+Sept indicateurs sont communs aux deux sources avec une définition quasi identique. Les taux de
+privation se suivent de près, ce qui valide les deux calculs l'un par l'autre.
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+\textbf{Indicateur} & \textbf{EHCVM} & \textbf{RGPH} & \textbf{Commentaire} \\
+\midrule
+Année de scolarité & 62,9~\% & 63,2~\% & le diplôme approche bien les années d'études \\
+Énergie de cuisson & 66,3~\% & 62,7~\% & --- \\
+Emploi de subsistance & 40,5~\% & 46,0~\% & approximation côté RGPH \\
+Fréquentation scolaire & 31,9~\% & 35,6~\% & --- \\
+Biens d'équipement & 21,7~\% & 18,2~\% & le RGPH mesure les 8 biens, l'EHCVM 7 \\
+Logement & 17,3~\% & 25,0~\% & nomenclatures de matériaux différentes \\
+Électricité & 9,3~\% & 11,5~\% & --- \\
+Chômage & 6,5~\% & 5,9~\% & --- \\
+\addlinespace
+Eau potable & 20,9~\% & 14,3~\% & le RGPH perd le temps de trajet \\
+Toilette & 67,2~\% & 45,1~\% & le RGPH perd le partage des sanitaires \\
+Alphabétisation & 62,9~\% & 70,4~\% & --- \\
+État civil & 26,3~\% & 15,2~\% & --- \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Le test de cohérence : la variante harmonisée}
+
+Le pipeline produit, pour chaque source, une variante restreinte au socle des douze indicateurs
+communs. C'est la seule comparaison légitime entre les deux.
+
+\begin{center}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+& $H$ & $A$ & \ipm \\
+\midrule
+EHCVM 2021 & 53,5~\% & 0,5113 & \textbf{0,2737} \\
+RGPH 2021 & 52,0~\% & 0,5157 & \textbf{0,2680} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{retenir}[Un résultat qui compte pour le PND]
+À indicateurs identiques, une enquête par sondage et un recensement exhaustif, collectés la même
+année par deux dispositifs entièrement différents, donnent \textbf{2~\% d'écart}.
+
+Conséquence pratique : la carte territoriale du recensement et le tableau de bord de l'enquête
+peuvent être utilisés \emph{ensemble} sans craindre qu'ils racontent deux histoires différentes.
+C'est ce qui rend l'architecture recommandée ci-dessous opérationnelle et non seulement
+théorique.
+\end{retenir}
+
+\section{Le verdict}
+
+\subsection{Lequel est le plus aligné ?}
+
+\textbf{L'IPM EHCVM}, et pour trois raisons qui se cumulent.
+
+\begin{enumerate}
+  \item \textbf{Il couvre plus de cibles} : onze contre sept en prise directe, sur des cibles
+        chiffrées assorties d'une valeur de départ et d'une valeur 2030.
+  \item \textbf{Il couvre le cœur du Pilier 4} --- le pilier du capital humain, celui où se
+        concentrent les cibles sociales du plan. Les quatre cibles santé et nutrition (CMU,
+        protection sociale, accès aux soins, retard de croissance) sont hors de portée du
+        recensement.
+  \item \textbf{Il est actualisable}. Un cadre de résultats a besoin d'un indicateur qu'on peut
+        recalculer ; le recensement ne le permettra pas avant 2031.
+\end{enumerate}
+
+\subsection{Lequel aide le mieux ?}
+
+\textbf{Cela dépend de ce qu'on appelle aider}, et la réponse honnête est qu'ils aident à deux
+moments différents du cycle de la politique publique.
+
+\begin{center}
+\small
+\begin{tabular}{@{}>{\RaggedRight}p{4.6cm}>{\RaggedRight}p{4.6cm}>{\RaggedRight}p{4.6cm}@{}}
+\toprule
+\textbf{Moment} & \textbf{Ce que le PND demande} & \textbf{Source} \\
+\midrule
+Cadrer & fixer la cible de pauvreté à 2030, que le plan a laissée en blanc &
+  EHCVM \\
+Répartir & allouer les investissements du Pilier 5 entre territoires & \textbf{RGPH} \\
+Cibler & constituer le registre social unifié, servir 827 000 ménages & \textbf{RGPH} \\
+Suivre & mesurer les progrès à mi-parcours et en 2030 & EHCVM \\
+Rendre compte & documenter l'atteinte des cibles du cadre de résultats & EHCVM \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{attention}[Ce que choisir une seule source coûterait]
+\textbf{Ne garder que l'EHCVM} : le Pilier 5 perdrait sa base statistique --- près de la moitié de
+la population dans une zone dont l'IPM n'est pas publiable --- et le registre social unifié du
+Pilier 6 devrait être construit sans information de privation.
+
+\textbf{Ne garder que le RGPH} : le plan perdrait toute mesure de la santé, de la nutrition, de la
+protection sociale et du genre, c'est-à-dire la plus grande partie des cibles sociales du Pilier 4,
+et n'aurait aucun moyen de constater ses progrès avant 2031.
+\end{attention}
+
+\section{Architecture recommandée}
+
+\subsection{Les trois rôles}
+
+\begin{description}
+  \item[L'EHCVM tient le cadre de résultats.] $\ipm = 0{,}2863$ en 2021 devient la valeur de
+    départ ; une cible 2030 est fixée, comblant la seule absence de valeur chiffrée parmi les
+    objectifs majeurs du plan ; onze cibles sectorielles sont suivies sur une série unique et
+    cohérente plutôt que sur onze statistiques éparses.
+
+  \item[Le RGPH tient la carte et le registre.] Un IPM publiable pour 111 départements et 500
+    sous-préfectures fonde la planification spatiale du Pilier 5. Les 5,6 millions de ménages, dont
+    1 751 746 pauvres et 285 115 en pauvreté sévère, chacun avec son score et sa localisation,
+    fondent le registre social du Pilier 6 et le ciblage des filets sociaux.
+
+  \item[La variante harmonisée fait le pont.] Elle garantit que les deux instruments parlent de la
+    même chose. Elle sert aussi de contrôle : si un futur IPM EHCVM s'écartait fortement de la
+    trajectoire, la comparaison harmonisée dirait s'il s'agit d'un effet réel ou d'un artefact de
+    mesure.
+\end{description}
+
+\subsection{Ce qu'il reste à faire}
+
+\begin{enumerate}
+  \item \textbf{Faire adopter une cible d'IPM à 2030} dans le cadre de gouvernance du PND. C'est la
+        seule action qui transforme un travail statistique en instrument de pilotage.
+  \item \textbf{Publier la carte RGPH} à la maille du département et de la sous-préfecture, en
+        signalant les 19 sous-préfectures non publiables.
+  \item \textbf{Arbitrer les deux points méthodologiques ouverts} avant toute publication : le taux
+        de privation de la toilette au RGPH, non réconcilié avec la production Stata antérieure, et
+        l'approximation de l'emploi agricole de subsistance, qui porte à elle seule 26,8~\% de
+        l'indice RGPH.
+  \item \textbf{Reprendre le croisement monétaire / multidimensionnel} sur la méthode officielle de
+        calcul du taux de pauvreté, pour documenter l'objectif général du plan.
+  \item \textbf{Prévoir le recalcul de l'IPM EHCVM} sur la prochaine vague d'enquête, aux mêmes
+        définitions --- le pipeline le permet sans modification.
+\end{enumerate}
+
+\section{Limites de cette comparaison}
+
+\begin{enumerate}
+  \item \textbf{Le décompte des cibles est un jugement, pas une mesure.} Classer une prise en
+        « directe », « approchée » ou « indirecte » suppose d'apprécier la proximité entre un
+        indicateur de ménage et une cible souvent formulée en taux individuel. Un autre analyste
+        aboutirait à un décompte voisin, pas identique.
+  \item \textbf{Le PND ne contient aucune cible d'IPM.} L'alignement établi ici est un alignement de
+        contenu. Rien dans le plan n'engage à retenir cet indice.
+  \item \textbf{Les deux IPM complets ne sont pas comparables en niveau}, la dimension Santé du
+        RGPH étant presque inerte. Toutes les comparaisons de niveau de ce document passent par la
+        variante harmonisée.
+  \item \textbf{Les cibles du PND ont des années de référence hétérogènes} (2021, 2023, 2024, 2025)
+        alors que les deux IPM sont datés de 2021. Les écarts à la cible ne sont donc pas des
+        écarts à la valeur de départ officielle.
+\end{enumerate}
+
+\end{document}

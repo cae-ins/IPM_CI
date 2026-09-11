@@ -1,0 +1,309 @@
+\documentclass[11pt,a4paper]{article}
+\input{preambule}
+\renewcommand{\source}{PND 2026-2030 / IPM EHCVM 2021}
+
+\title{\bfseries L'IPM calculé sur l'EHCVM 2021 au service du PND 2026-2030\\[4pt]
+\large Analyse d'alignement}
+\author{Pipeline \col{PythonIPM}}
+\date{Septembre 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent Ce document confronte l'indice de pauvreté multidimensionnelle calculé sur l'EHCVM 2021
+au Plan National de Développement 2026-2030. Il ne juge ni le plan ni l'indice : il établit, cible
+par cible, ce que l'un permet de mesurer de l'autre, ce qu'il ne permet pas, et l'usage auquel il
+se prête le mieux dans le dispositif de suivi du PND. Un document jumeau traite de l'IPM calculé
+sur le RGPH 2021 ; un troisième les compare et conclut.
+\end{abstract}
+
+\begin{retenir}[La conclusion en cinq lignes]
+\begin{itemize}
+  \item L'IPM EHCVM couvre \textbf{onze des vingt-deux cibles} du PND qu'un indice de pauvreté
+        peut mesurer --- la couverture la plus large des deux sources.
+  \item Il est \textbf{le seul} à mesurer la Couverture Maladie Universelle, la sécurité
+        nutritionnelle, l'accès effectif aux soins et la protection sociale : quatre cibles
+        chiffrées du Pilier 4 auxquelles le recensement ne donne aucune prise.
+  \item Il est \textbf{le seul} à porter la pauvreté monétaire et la pauvreté multidimensionnelle
+        dans la même base, ce dont l'objectif « baisser significativement le taux de pauvreté » a
+        besoin.
+  \item Il est \textbf{répété dans le temps} : c'est la seule source capable de dire, en 2028 puis
+        en 2030, si le PND a produit ses effets.
+  \item Il ne sert en revanche \textbf{pas le ciblage territorial} du Pilier 5 : la moitié de la
+        population vit dans une sous-préfecture dont l'IPM n'est pas publiable.
+\end{itemize}
+\end{retenir}
+
+\tableofcontents
+\bigskip
+
+\section{Ce que le PND demande à un indice de pauvreté}
+
+Le PND 2026-2030 vise à « Bâtir une Grande Nation Stable, Ambitieuse et Solidaire ». Parmi ses
+objectifs généraux figure de \textbf{« baisser significativement le taux de pauvreté »} --- et
+c'est le seul des objectifs majeurs qui ne soit assorti d'aucune valeur cible à 2030, là où le
+revenu intermédiaire supérieur, les trois millions d'emplois décents, l'Indice de Capital Humain à
+0,7 et les IDE à 3,3~\% du PIB le sont tous.
+
+\begin{retenir}[Une cible manquante, et l'occasion qu'elle ouvre]
+Le PND documente la trajectoire de la pauvreté monétaire --- 55,4~\% en 2011, 44,4~\% en 2015,
+39,4~\% en 2018, 37,5~\% en 2021 --- mais ne fixe pas de valeur à atteindre en 2030. Un indice de
+pauvreté multidimensionnelle est précisément l'instrument qui permettrait de la poser, et de la
+suivre sur une grandeur qui ne dépend pas des seuls prix.
+\end{retenir}
+
+Le plan formule par ailleurs, pilier par pilier, des cibles chiffrées assorties d'une valeur de
+départ et d'une valeur 2030. Ce sont elles qui donnent la mesure de l'alignement : un indice est
+utile au PND dans l'exacte mesure où ses indicateurs recoupent ces cibles.
+
+\section{La correspondance, cible par cible}
+\label{sec:correspondance}
+
+Les seize indicateurs de l'IPM EHCVM se rapportent aux cibles du PND comme suit. La colonne
+« Aujourd'hui » donne la part de la population vivant dans un ménage privé sur l'indicateur.
+
+\subsection{Pilier 4 --- Capital humain, compétences et emplois décents}
+
+\begin{center}
+\small
+\begin{tabular}{@{}>{\RaggedRight}p{5.3cm}>{\RaggedRight}p{4.6cm}rc@{}}
+\toprule
+\textbf{Cible PND à 2030} & \textbf{Indicateur IPM} & \textbf{Auj.} & \textbf{Prise} \\
+\midrule
+Analphabétisme adultes 51,1 $\to$ 45~\% & Alphabétisation & 62,9~\% & directe \\
+Analphabétisme 15-24 ans 37,6 $\to$ 20~\% & Alphabétisation & 62,9~\% & directe \\
+Achèvement 1\textsuperscript{er} cycle secondaire
+  81,14 $\to$ 89~\% & Année de scolarité & 62,9~\% & directe \\
+Personnes à moins de 5 km d'un centre de santé 82 $\to$ 100~\% &
+  Renoncement aux soins, motif d'indisponibilité de l'offre & 9,0~\% & directe \\
+Enrôlés à la CMU 20 $\to$ 30 millions & Assurance maladie & 90,2~\% & directe \\
+Couverture par la protection sociale 27 $\to$ 50~\% & Assurance maladie & 90,2~\% & directe \\
+Chômage et main-d'œuvre potentielle (SU3) 12,9 $\to$ 8,9~\% & Chômage & 6,5~\% & directe \\
+Retard de croissance des moins de 5 ans 21,4 $\to$ 18~\% &
+  Insécurité alimentaire (FIES) & 40,8~\% & indirecte \\
+Espérance de vie 62,3 $\to$ 65 ans & --- & --- & aucune \\
+Indice de l'écart genre 0,655 $\to$ 0,7 &
+  désagrégation par sexe du chef de ménage & --- & partielle \\
+827 000 ménages bénéficiaires des filets sociaux &
+  identification des ménages pauvres & --- & partielle \\
+Préscolaire 11 $\to$ 25~\% ; EFTP 6,2 $\to$ 15~\% ; IPS primaire & --- & --- & aucune \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Pilier 5 --- Infrastructures, pôles régionaux et transition écologique}
+
+\begin{center}
+\small
+\begin{tabular}{@{}>{\RaggedRight}p{5.3cm}>{\RaggedRight}p{4.6cm}rc@{}}
+\toprule
+\textbf{Cible PND à 2030} & \textbf{Indicateur IPM} & \textbf{Auj.} & \textbf{Prise} \\
+\midrule
+Accès à une source d'eau améliorée 81 $\to$ 90~\% & Eau potable & 20,9~\% & directe \\
+Accès à l'assainissement amélioré 37 $\to$ 70~\% & Toilette & 67,2~\% & directe \\
+Accès universel à l'électricité d'ici 2030, en priorité
+  dans les quartiers précaires & Électricité & 9,3~\% & directe \\
+Habitat décent (défi n\textsuperscript{o}~5 du diagnostic stratégique) &
+  Logement, Promiscuité & 17,3~\% ; 12,5~\% & directe \\
+Population utilisant internet 40,7 $\to$ 60~\% & Biens d'équipement & 21,7~\% & indirecte \\
+Pôles économiques compétitifs, villes secondaires, réduction des
+  inégalités régionales & désagrégation territoriale & --- & faible \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Piliers 2, 3 et 6}
+
+\begin{center}
+\small
+\begin{tabular}{@{}>{\RaggedRight}p{5.3cm}>{\RaggedRight}p{4.6cm}rc@{}}
+\toprule
+\textbf{Cible ou orientation PND} & \textbf{Indicateur IPM} & \textbf{Auj.} & \textbf{Prise} \\
+\midrule
+Enregistrement des naissances 56,6 $\to$ 100~\% (P.~6) &
+  Déclaration d'état civil & 26,3~\% & directe \\
+NNI 27,78 $\to$ 100~\% (P.~6) & Déclaration d'état civil & 26,3~\% & indirecte \\
+Modernisation de l'agriculture et productivité (P.~2) ;
+  réduction de l'informalité (P.~3) &
+  Emploi agricole de subsistance & 40,5~\% & directe \\
+Énergie de cuisson propre (transition écologique, P.~5) &
+  Énergie de cuisson & 66,3~\% & directe \\
+Registre social unifié pour le ciblage (P.~6) & --- & --- & aucune \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{retenir}[Le décompte]
+Sur les vingt-deux cibles et orientations du PND qu'un indice de pauvreté peut éclairer, l'IPM
+EHCVM en couvre \textbf{onze de façon directe}, trois de façon indirecte, deux partiellement, et
+laisse six hors de portée.
+\end{retenir}
+
+\section{Les quatre apports que l'EHCVM est seul à fournir}
+
+\subsection{La Couverture Maladie Universelle et la protection sociale}
+
+Le PND fixe deux cibles chiffrées sur ce terrain : porter les enrôlés à la CMU de 20 à 30 millions,
+et la couverture par un dispositif de protection sociale de 27 à 50~\%. L'indicateur
+\col{assurance\_maladie} de l'IPM les mesure directement, à l'échelle du ménage.
+
+Le chiffre qu'il donne est d'ailleurs le plus frappant de tout l'indice : \textbf{90,2~\% de la
+population vit dans un ménage dont aucun membre n'est couvert}. C'est un ordre de grandeur que la
+cible CMU du PND --- 30 millions d'enrôlés sur une population de 29,8 millions --- laisse penser
+atteignable, à condition de distinguer l'enrôlement de la couverture effective.
+
+\subsection{La sécurité nutritionnelle}
+
+Le PND fait de la sécurité nutritionnelle un axe stratégique à part entière du Pilier 4, avec une
+cible sur le retard de croissance des moins de 5 ans (21,4 $\to$ 18~\%) et une insistance sur les
+« 2 000 premiers jours de vie ».
+
+L'EHCVM ne mesure pas l'anthropométrie, mais elle porte l'échelle FIES de la FAO, sur laquelle
+l'IPM construit son indicateur d'insécurité alimentaire : \textbf{40,8~\% de la population vit dans
+un ménage en insécurité alimentaire modérée ou sévère}. Ce n'est pas le retard de croissance, mais
+c'est la mesure du déterminant immédiat que le PND cherche à traiter.
+
+\subsection{L'accès effectif aux soins}
+
+La cible « porter la proportion de personnes vivant à moins de 5 km d'un établissement de santé de
+82 à 100~\% » est une cible d'offre. L'indicateur \col{renoncement\_soins} mesure le résultat de
+cette offre du point de vue du ménage : un membre a eu un problème de santé, n'a pas consulté, et
+a cité comme raison le coût ou \textbf{l'indisponibilité du service ou du personnel}.
+
+C'est ce second motif qui intéresse directement le PND : il mesure le déficit d'offre là où il est
+subi, et non la distance théorique à un établissement.
+
+\subsection{Le genre et la pauvreté monétaire}
+
+Deux capacités de désagrégation et de croisement complètent le tableau.
+
+Le \textbf{sexe du chef de ménage} est disponible dans l'EHCVM, ce qui permet de servir la cible
+« indice de l'écart genre 0,655 $\to$ 0,7 » sur le terrain de la pauvreté multidimensionnelle.
+
+Surtout, l'EHCVM porte dans la même base la \textbf{consommation des ménages} : c'est elle qui
+produit le taux de pauvreté monétaire cité par le PND. Les deux pauvretés peuvent donc être
+croisées ménage par ménage.
+
+\begin{center}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+& \textbf{Pauvre au sens de l'IPM} & \textbf{Non pauvre IPM} \\
+\midrule
+Pauvre monétaire & 26,2~\% & 4,2~\% \\
+Non pauvre monétaire & 31,7~\% & 37,8~\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+La lecture est nette : \textbf{86~\% des pauvres monétaires sont aussi pauvres au sens
+multidimensionnel}, mais \textbf{31,7 points de population sont privés sans être pauvres
+monétairement}. Autrement dit, une politique qui ne suivrait que le revenu manquerait près d'un
+tiers de la population que le PND entend servir.
+
+\begin{attention}[Un calcul à consolider avant publication]
+Le croisement ci-dessus applique directement le seuil de pauvreté national (\col{zref}) à la
+dépense par tête (\col{pcexp}) de la base ménage. Il donne un taux de pauvreté monétaire de
+30,5~\%, contre les \textbf{37,5~\%} publiés et repris par le PND. L'écart tient vraisemblablement
+aux déflateurs spatiaux et temporels appliqués par l'INS, qui ne sont pas dans la base.
+
+La \emph{structure} du croisement --- un recouvrement fort mais partiel, une pauvreté
+multidimensionnelle bien plus large que la monétaire --- est robuste à cet écart. Les
+\emph{niveaux} des quatre cases ne doivent pas être publiés tels quels sans que la méthode
+officielle de calcul du taux monétaire ait été reprise.
+\end{attention}
+
+\section{Ce que l'IPM EHCVM ne peut pas faire pour le PND}
+
+\subsection{Le ciblage territorial du Pilier 5}
+
+Le Pilier 5 repose sur une « planification spatiale des investissements, fondée sur une
+cartographie fine des potentialités économiques régionales », sur des Pôles Économiques Compétitifs
+et sur le développement des villes secondaires. Le Pilier 6 prévoit un « registre social unifié
+visant à renforcer l'inclusion et le ciblage des politiques publiques ». Le Pilier 4 fixe un
+objectif de 827 000 ménages bénéficiaires de transferts monétaires.
+
+Ces trois orientations demandent une information à la maille du territoire et, pour la dernière, à
+la maille du ménage. L'EHCVM est un échantillon de 12 965 ménages : elle ne peut satisfaire ni
+l'une ni l'autre.
+
+\begin{attention}[La moitié de la population hors de portée d'un chiffre publiable]
+Sur les 442 sous-préfectures et communes que l'EHCVM permet de distinguer, \textbf{92 --- soit
+47,9~\% de la population} --- ont un IPM dont le coefficient de variation dépasse 20~\% : le
+chiffre existe, mais il n'est pas publiable.
+
+À la maille du département, 15 des 108 sont dans ce cas, couvrant 7,1~\% de la population.
+
+Autrement dit : l'EHCVM donne un IPM solide pour le pays, pour les deux milieux et pour les 33
+régions, mais elle ne peut pas fonder une allocation d'investissements à la maille où le Pilier 5
+entend la conduire.
+\end{attention}
+
+\subsection{Les cibles hors champ}
+
+Six cibles du PND restent sans prise : l'espérance de vie, le taux net de scolarisation au
+préscolaire, la part de l'EFTP dans le secondaire, l'indice de parité filles/garçons dans le
+primaire, le NNI et le registre social unifié. Les quatre premières relèvent de statistiques
+sectorielles ; les deux dernières, d'un système d'information administratif.
+
+\section{L'usage auquel l'IPM EHCVM se prête}
+
+\subsection{Le tableau de bord du cadre de résultats}
+
+C'est son emploi naturel. Onze cibles du PND, réparties sur quatre piliers, peuvent être suivies
+sur un indicateur unique, décomposable, dont la contribution de chaque dimension est explicite.
+
+\begin{center}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Dimension} & \textbf{Poids nominal} & \textbf{Contribution à \ipm} \\
+\midrule
+Éducation & 25~\% & 32,3~\% \\
+Santé & 25~\% & 27,9~\% \\
+Conditions de vie & 25~\% & 21,3~\% \\
+Emploi & 25~\% & 18,5~\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent Un gouvernement qui veut savoir quel levier déplacerait le plus l'indice dispose là de la
+réponse, et elle est directement transposable en priorités de pilier.
+
+\subsection{Le suivi dans le temps --- l'argument décisif}
+
+Le PND court sur cinq ans et prévoit un cadre de gouvernance chargé d'en mesurer les progrès. Or
+l'EHCVM est une \textbf{enquête répétée} : elle existe pour 2018 et 2021, et une nouvelle vague
+interviendra dans l'intervalle du plan.
+
+C'est la seule des deux sources qui permette de dire, à mi-parcours puis en 2030, si les cibles ont
+été atteintes. Le recensement, décennal, ne le permettra pas avant le plan suivant.
+
+\begin{retenir}[Trois emplois immédiats]
+\begin{enumerate}
+  \item \textbf{Poser la cible manquante.} L'objectif « baisser significativement le taux de
+        pauvreté » peut être chiffré sur \ipm{} = 0,2863 (2021), avec une valeur 2030 explicite.
+  \item \textbf{Alimenter le cadre de résultats} sur les onze cibles à prise directe, en une seule
+        série cohérente plutôt qu'en onze statistiques sectorielles.
+  \item \textbf{Arbitrer entre piliers} au vu des contributions : la dimension Santé pèse 28,4~\%
+        de l'indice, la dimension Emploi 18,2~\%.
+\end{enumerate}
+\end{retenir}
+
+\section{Limites de cette analyse}
+
+\begin{enumerate}
+  \item \textbf{Les correspondances ne sont pas des identités.} « Alphabétisation » au sens de
+        l'IPM est un indicateur de ménage --- un membre de 17-49 ans ne sait pas lire ou écrire le
+        français --- tandis que la cible PND porte sur un taux individuel. Les deux évoluent dans
+        le même sens sans être le même nombre.
+  \item \textbf{La dimension Santé de l'IPM EHCVM est portée à 93,4~\% des ménages par l'assurance
+        maladie}, ce qui en fait un indicateur peu discriminant (voir la \emph{Note sur la
+        dimension santé}). Son poids dans l'indice doit être lu avec cette réserve.
+  \item \textbf{Le croisement monétaire / multidimensionnel} n'est pas reproduit sur la méthode
+        officielle de calcul du taux de pauvreté monétaire.
+  \item \textbf{Le PND ne contient pas de cible d'IPM.} L'alignement établi ici est un alignement
+        de \emph{contenu}, pas une correspondance institutionnelle : il resterait à faire adopter
+        l'indice dans le cadre de gouvernance du plan.
+\end{enumerate}
+
+\end{document}

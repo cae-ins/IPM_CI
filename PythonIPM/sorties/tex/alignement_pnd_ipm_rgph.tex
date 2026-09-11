@@ -1,0 +1,358 @@
+\documentclass[11pt,a4paper]{article}
+\input{preambule}
+\renewcommand{\source}{PND 2026-2030 / IPM RGPH 2021}
+
+\title{\bfseries L'IPM calculé sur le RGPH 2021 au service du PND 2026-2030\\[4pt]
+\large Analyse d'alignement}
+\author{Pipeline \col{PythonIPM}}
+\date{Septembre 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent Ce document confronte l'indice de pauvreté multidimensionnelle calculé sur le
+Recensement général de la population et de l'habitation 2021 au Plan National de Développement
+2026-2030. Il établit, cible par cible, ce que l'un permet de mesurer de l'autre, ce qu'il ne
+permet pas, et l'usage auquel il se prête le mieux. Un document jumeau traite de l'IPM calculé sur
+l'EHCVM 2021 ; un troisième les compare et conclut.
+\end{abstract}
+
+\begin{retenir}[La conclusion en cinq lignes]
+\begin{itemize}
+  \item L'IPM RGPH couvre \textbf{sept des vingt-deux cibles} du PND qu'un indice de pauvreté peut
+        mesurer --- moins que l'enquête, faute de toute question de santé.
+  \item Il est en revanche \textbf{le seul} à rendre opérationnels trois instruments centraux du
+        plan : les \textbf{Pôles Économiques Compétitifs} du Pilier 5, le \textbf{registre social
+        unifié} du Pilier 6 et le ciblage des \textbf{827 000 ménages} de filets sociaux du
+        Pilier 4.
+  \item Il publie un IPM pour \textbf{500 des 519 sous-préfectures et communes} et pour les
+        \textbf{111 départements}, sans exception.
+  \item Il établit que le milieu rural porte \textbf{84,7~\%} de la pauvreté
+        multidimensionnelle du pays pour 45,8~\% de sa population.
+  \item Étant décennal, il fournit \textbf{une photographie de départ}, pas un instrument de
+        suivi : il ne dira pas en 2030 si le PND a produit ses effets.
+\end{itemize}
+\end{retenir}
+
+\tableofcontents
+\bigskip
+
+\section{Ce que le PND demande à un indice de pauvreté}
+
+Le PND 2026-2030 vise à « Bâtir une Grande Nation Stable, Ambitieuse et Solidaire ». Parmi ses
+objectifs généraux figure de \textbf{« baisser significativement le taux de pauvreté »}, sans
+valeur cible à 2030 --- seul objectif majeur à ne pas être chiffré.
+
+Mais le plan ne demande pas seulement de \emph{mesurer}. Trois de ses instruments supposent de
+savoir \emph{où} et \emph{qui}, à une maille que la statistique d'enquête n'atteint pas :
+
+\begin{description}
+  \item[Pilier 5] « renforcer la planification spatiale des investissements, fondée sur une
+    \textbf{cartographie fine} des potentialités économiques régionales », développer les
+    \textbf{Pôles Économiques Compétitifs} « à travers une répartition optimale et équitable » et
+    aménager le territoire par les \textbf{villes secondaires} ;
+  \item[Pilier 6] instaurer un \textbf{registre social unifié} « visant à renforcer l'inclusion et
+    le ciblage des politiques publiques », et poursuivre « le renforcement du processus de
+    décentralisation et de réduction des inégalités régionales » ;
+  \item[Pilier 4] porter à \textbf{827 000} le nombre de ménages pauvres bénéficiaires de
+    transferts monétaires au titre des filets sociaux.
+\end{description}
+
+\begin{retenir}[Deux questions, pas une]
+Le PND pose au statisticien deux questions de nature différente. \emph{Où en est-on, et où en
+sera-t-on en 2030 ?} --- c'est une question de mesure. \emph{Où faut-il investir, et quels ménages
+faut-il servir ?} --- c'est une question de ciblage. Le recensement répond mal à la première et
+très bien à la seconde.
+\end{retenir}
+
+\section{La correspondance, cible par cible}
+\label{sec:correspondance}
+
+Les treize indicateurs de l'IPM RGPH se rapportent aux cibles du PND comme suit. La colonne
+« Aujourd'hui » donne la part de la population vivant dans un ménage privé sur l'indicateur.
+
+\subsection{Pilier 4 --- Capital humain, compétences et emplois décents}
+
+\begin{center}
+\small
+\begin{tabular}{@{}>{\RaggedRight}p{5.3cm}>{\RaggedRight}p{4.6cm}rc@{}}
+\toprule
+\textbf{Cible PND à 2030} & \textbf{Indicateur IPM} & \textbf{Auj.} & \textbf{Prise} \\
+\midrule
+Analphabétisme adultes 51,1 $\to$ 45~\% & Alphabétisation & 70,4~\% & directe \\
+Analphabétisme 15-24 ans 37,6 $\to$ 20~\% & Alphabétisation & 70,4~\% & directe \\
+Achèvement 1\textsuperscript{er} cycle secondaire
+  81,14 $\to$ 89~\% & Année de scolarité (par le diplôme) & 63,2~\% & approchée \\
+Chômage et main-d'œuvre potentielle (SU3) 12,9 $\to$ 8,9~\% & Chômage & 5,9~\% & directe \\
+Espérance de vie 62,3 $\to$ 65 ans & Mortalité dans le ménage & 1,1~\% & indirecte \\
+827 000 ménages bénéficiaires des filets sociaux &
+  \textbf{identification exhaustive des ménages pauvres} & --- & \textbf{opérationnelle} \\
+Enrôlés à la CMU 20 $\to$ 30 millions & --- & --- & \textbf{aucune} \\
+Couverture par la protection sociale 27 $\to$ 50~\% & --- & --- & \textbf{aucune} \\
+Personnes à moins de 5 km d'un centre de santé 82 $\to$ 100~\% & --- & --- & \textbf{aucune} \\
+Retard de croissance des moins de 5 ans 21,4 $\to$ 18~\% & --- & --- & \textbf{aucune} \\
+Indice de l'écart genre 0,655 $\to$ 0,7 & --- & --- & aucune \\
+Préscolaire ; EFTP ; IPS primaire & --- & --- & aucune \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Pilier 5 --- Infrastructures, pôles régionaux et transition écologique}
+
+\begin{center}
+\small
+\begin{tabular}{@{}>{\RaggedRight}p{5.3cm}>{\RaggedRight}p{4.6cm}rc@{}}
+\toprule
+\textbf{Cible PND à 2030} & \textbf{Indicateur IPM} & \textbf{Auj.} & \textbf{Prise} \\
+\midrule
+Pôles économiques compétitifs, villes secondaires,
+  réduction des inégalités régionales &
+  \textbf{IPM à la maille de 519 sous-préfectures} & --- & \textbf{opérationnelle} \\
+Accès à une source d'eau améliorée 81 $\to$ 90~\% & Eau potable (source seule) & 14,3~\% &
+  directe \\
+Accès à l'assainissement amélioré 37 $\to$ 70~\% & Toilette (sans le partage) & 45,1~\% &
+  directe \\
+Accès universel à l'électricité d'ici 2030, en priorité
+  dans les quartiers précaires & Électricité & 11,5~\% & directe \\
+Habitat décent (défi n\textsuperscript{o}~5 du diagnostic) & Logement & 25,0~\% & directe \\
+Population utilisant internet 40,7 $\to$ 60~\% & Biens d'équipement & 18,2~\% & indirecte \\
+Promiscuité, densité d'occupation du logement & --- & --- & aucune \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Piliers 2, 3 et 6}
+
+\begin{center}
+\small
+\begin{tabular}{@{}>{\RaggedRight}p{5.3cm}>{\RaggedRight}p{4.6cm}rc@{}}
+\toprule
+\textbf{Cible ou orientation PND} & \textbf{Indicateur IPM} & \textbf{Auj.} & \textbf{Prise} \\
+\midrule
+Registre social unifié pour le ciblage (P.~6) &
+  \textbf{base exhaustive de 5,6 M de ménages} & --- & \textbf{opérationnelle} \\
+Enregistrement des naissances 56,6 $\to$ 100~\% (P.~6) &
+  Déclaration d'état civil & 15,2~\% & directe \\
+NNI 27,78 $\to$ 100~\% (P.~6) & Déclaration d'état civil & 15,2~\% & indirecte \\
+Modernisation de l'agriculture et productivité (P.~2) ;
+  réduction de l'informalité (P.~3) &
+  Emploi agricole de subsistance (approché) & 46,0~\% & approchée \\
+Énergie de cuisson propre (P.~5) & Énergie de cuisson & 62,7~\% & directe \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{retenir}[Le décompte]
+Sur les vingt-deux cibles et orientations du PND qu'un indice de pauvreté peut éclairer, l'IPM
+RGPH en couvre \textbf{sept de façon directe}, deux par approximation, deux de façon indirecte, et
+en rend \textbf{trois opérationnelles} — le ciblage territorial, le registre social et la sélection
+des ménages bénéficiaires — que l'enquête ne peut pas servir du tout. Huit restent hors de portée,
+dont les quatre cibles santé et nutrition du Pilier 4.
+\end{retenir}
+
+\section{Ce que le RGPH est seul à apporter}
+
+\subsection{Une carte publiable partout}
+
+C'est l'apport décisif, et il se chiffre. Le tableau ci-dessous donne, pour chaque maille, le
+nombre de modalités dont l'IPM est trop imprécis pour être publié --- convention usuelle : un
+coefficient de variation supérieur à 20~\%.
+
+\begin{center}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Maille} & \textbf{Modalités} & \textbf{Non publiables} & \textbf{Population concernée} \\
+\midrule
+Ensemble & 1 & 0 & --- \\
+Milieu de résidence & 3 & 0 & --- \\
+Région & 33 & 0 & --- \\
+Département & 111 & 0 & --- \\
+Sous-préfecture ou commune & 519 & 19 & 1,55~\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{retenir}[La maille du Pilier 5 est atteinte]
+Le recensement publie un IPM pour \textbf{les 111 départements sans exception} et pour
+\textbf{500 des 519 sous-préfectures et communes}. Les 19 restantes ne représentent que 1,55~\% de
+la population, et leur imprécision tient au petit nombre de zones de dénombrement, non au nombre de
+ménages.
+
+C'est exactement l'échelle à laquelle le Pilier 5 entend conduire sa « répartition optimale et
+équitable des investissements publics et privés ».
+\end{retenir}
+
+\subsection{Le diagnostic territorial que le PND appelle}
+
+Le PND fait de la réduction des inégalités régionales une orientation du Pilier 6 et le
+rééquilibrage territorial l'objet même du Pilier 5. L'IPM RGPH en donne la mesure.
+
+\begin{center}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Milieu} & \textbf{Part pop.} & $H$ & \ipm & \textbf{Part de la pauvreté} \\
+\midrule
+Urbain & 44,8~\% & 5,4~\% & 0,0212 & 5,7~\% \\
+Semi-urbain & 9,4~\% & 41,0~\% & 0,1705 & 9,7~\% \\
+Rural & 45,8~\% & 71,1~\% & 0,3075 & \textbf{84,7~\%} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Le rural et l'urbain pèsent le même poids démographique, et le rural porte quinze fois l'IPM de
+l'urbain. À l'échelle des régions, l'écart va de 0,0069 (District autonome d'Abidjan) à 0,3654
+(Bounkani), soit un rapport de \textbf{un à cinquante-trois}. À l'échelle des sous-préfectures, il
+va de 0,0015 (Plateau) à 0,4752 (Santa de Ouaninou), où 92,6~\% de la population est
+multidimensionnellement pauvre.
+
+\begin{retenir}[Le semi-urbain, angle mort de l'enquête]
+Le recensement distingue trois milieux là où l'EHCVM n'en code que deux. Le semi-urbain concentre
+la population \textbf{vulnérable} : 34,2~\% de ses habitants ont un score de privation compris
+entre 0,2 et le seuil de pauvreté, contre 17,7~\% en urbain et 20,9~\% en rural.
+
+Ce sont précisément les « villes secondaires » que le Pilier 5 entend développer. L'enquête ne
+permet pas de les isoler.
+\end{retenir}
+
+\subsection{Le ciblage : du territoire au ménage}
+
+Le PND fixe un objectif de \textbf{827 000 ménages} bénéficiaires de transferts monétaires et
+prévoit un \textbf{registre social unifié}. Ces deux instruments demandent une base exhaustive.
+
+L'IPM RGPH identifie \textbf{1 751 746 ménages multidimensionnellement pauvres}, chacun avec son
+score, son identifiant et sa localisation. L'objectif de 827 000 ménages représente donc
+\textbf{47~\% des ménages pauvres} : le problème n'est pas d'en trouver assez, mais de choisir
+lesquels --- ce qu'un score par ménage permet de faire par ordre de sévérité.
+
+\begin{center}
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Statut} & \textbf{Ménages} \\
+\midrule
+Pauvreté sévère ($c_i \ge 0{,}5$) & 285 115 \\
+Pauvres ($c_i \ge 1/3$) & 1 751 746 \\
+Vulnérables ($0{,}2 \le c_i < 1/3$) & 1 155 195 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Sur le plan géographique, \textbf{121 sous-préfectures concentrent la moitié} de la pauvreté
+multidimensionnelle du pays, pour 41,5~\% de sa population, et 277 en concentrent 80~\%. Une
+politique de ciblage géographique dispose là de sa liste de priorités.
+
+\subsection{La mortalité, seule prise sur la santé}
+
+Le recensement ne pose aucune question de santé, mais il recense les décès survenus dans le ménage
+au cours des douze mois précédents. L'IPM en tire son unique indicateur de santé : le décès d'un
+enfant de moins de 18 ans, qui touche \textbf{1,1~\%} des ménages.
+
+C'est la seule prise, même indirecte, sur la cible « espérance de vie de 62,3 à 65 ans ».
+
+\section{Ce que l'IPM RGPH ne peut pas faire pour le PND}
+
+\subsection{La dimension Santé du Pilier 4 lui échappe entièrement}
+
+\begin{attention}[Quatre cibles chiffrées sans aucune prise]
+Le recensement ne permet de mesurer \textbf{aucune} des quatre cibles santé et nutrition du
+Pilier~4 : les 30 millions d'enrôlés à la CMU, la couverture par la protection sociale portée à
+50~\%, la population à moins de 5 km d'un établissement de santé portée à 100~\%, et la prévalence
+du retard de croissance ramenée à 18~\%.
+
+Ce n'est pas une lacune de l'indice, c'est une propriété du questionnaire : un recensement
+administré à trente millions de personnes ne peut pas porter de module de santé.
+\end{attention}
+
+La conséquence se lit dans la décomposition de l'indice. La dimension Santé, réduite à la seule
+mortalité, porte un quart du poids nominal et ne contribue qu'à \textbf{1,6~\%} de \ipm{}.
+
+\begin{center}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Dimension} & \textbf{Poids nominal} & \textbf{Contribution à \ipm} \\
+\midrule
+Éducation & 25~\% & 40,6~\% \\
+Conditions de vie & 25~\% & 29,2~\% \\
+Emploi & 25~\% & 28,6~\% \\
+Santé & 25~\% & \textbf{1,6~\%} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Le suivi dans le temps}
+
+\begin{attention}[Une photographie, pas un film]
+Le RGPH est décennal. Le prochain n'interviendra pas avant la fin du PND 2026-2030. L'IPM RGPH
+fournit donc une \textbf{valeur de départ} très solide et très détaillée, mais ne pourra pas dire,
+à mi-parcours ni en 2030, si les cibles ont été atteintes.
+
+Le PND prévoit un cadre de gouvernance chargé d'apprécier les progrès : le recensement ne peut pas
+l'alimenter en évolution.
+\end{attention}
+
+\subsection{Trois autres manques}
+
+\begin{description}
+  \item[Le genre.] Le sexe du chef de ménage n'est pas dans l'extrait transmis. La cible « indice
+    de l'écart genre 0,655 $\to$ 0,7 » ne peut pas être éclairée par cet indice.
+  \item[La pauvreté monétaire.] Le recensement n'a pas de module de consommation. L'objectif
+    « baisser significativement le taux de pauvreté », que le PND documente sur la série monétaire,
+    ne peut pas être croisé avec la pauvreté multidimensionnelle dans cette source.
+  \item[La promiscuité.] Le nombre de pièces du logement n'est pas collecté, alors que le
+    développement urbain et l'accès à un logement décent figurent parmi les dix défis du diagnostic
+    stratégique du PND.
+\end{description}
+
+\subsection{Deux approximations à signaler}
+
+Deux indicateurs reposent sur une substitution qu'il faut mentionner si le chiffre est publié dans
+un document du PND.
+
+\begin{description}
+  \item[L'année de scolarité] est mesurée par le \emph{diplôme} le plus élevé --- le BEPC ou plus
+    vaut dix années accomplies --- faute de question sur les années d'études ou la classe atteinte.
+    L'approximation est bonne au niveau national (63,2~\% contre 62,9~\% à l'enquête), moins bonne
+    individuellement.
+  \item[L'emploi agricole de subsistance] retient le chef de ménage occupé dans une branche
+    agricole, à son compte ou comme aide familial, faute de question sur « son propre champ ».
+    C'est le \textbf{premier contributeur à l'indice} (26,8~\%) : l'approximation pèse lourd.
+\end{description}
+
+\section{L'usage auquel l'IPM RGPH se prête}
+
+\begin{retenir}[Trois emplois immédiats]
+\begin{enumerate}
+  \item \textbf{La carte de référence du Pilier 5.} Un IPM publiable pour 111 départements et 500
+        sous-préfectures, qui donne à la « planification spatiale des investissements » sa base
+        statistique.
+  \item \textbf{Le socle du registre social unifié du Pilier 6.} 5,6 millions de ménages, chacun
+        avec un score de privation, un identifiant et une localisation — dont 1,75 million de
+        pauvres et 285 000 en pauvreté sévère.
+  \item \textbf{La liste de priorités des filets sociaux.} 121 sous-préfectures concentrent la
+        moitié de la pauvreté du pays ; l'objectif de 827 000 ménages peut y être décliné par ordre
+        de sévérité.
+\end{enumerate}
+\end{retenir}
+
+Il ne se prête en revanche pas au cadre de résultats du plan : sept cibles seulement, aucune sur la
+santé, et aucune possibilité d'actualisation avant 2030.
+
+\section{Limites de cette analyse}
+
+\begin{enumerate}
+  \item \textbf{Les correspondances ne sont pas des identités.} Les indicateurs de l'IPM sont des
+        indicateurs de \emph{ménage} ; les cibles du PND sont le plus souvent des taux
+        \emph{individuels}. Les deux évoluent dans le même sens sans être le même nombre.
+  \item \textbf{L'IPM RGPH n'est pas comparable en niveau à l'IPM EHCVM}, la dimension Santé du
+        premier étant presque inerte. Toute comparaison entre les deux sources doit passer par la
+        variante harmonisée.
+  \item \textbf{Un écart de taux de privation sur la toilette} (45,1~\% ici, 33,09~\% dans la
+        production Stata antérieure) n'est pas réconcilié et reste à élucider avec l'INS.
+  \item \textbf{Les intervalles de confiance d'un recensement} ne mesurent pas une incertitude
+        d'échantillonnage mais une dispersion entre zones de dénombrement. Le seuil de publication
+        à 20~\% de coefficient de variation reste une convention prudente, non une règle absolue.
+  \item \textbf{Le PND ne contient pas de cible d'IPM.} L'alignement établi ici est un alignement de
+        \emph{contenu}, pas une correspondance institutionnelle.
+\end{enumerate}
+
+\end{document}
