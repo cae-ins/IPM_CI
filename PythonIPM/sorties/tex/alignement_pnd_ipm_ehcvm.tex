@@ -185,32 +185,62 @@ Surtout, l'EHCVM porte dans la même base la \textbf{consommation des ménages} 
 produit le taux de pauvreté monétaire cité par le PND. Les deux pauvretés peuvent donc être
 croisées ménage par ménage.
 
+Le tableau ci-dessous porte sur les 9\,800 ménages pour lesquels l'indicateur de bien-être est
+renseigné, soit 18,7 millions de personnes.
+
 \begin{center}
 \begin{tabular}{@{}lrr@{}}
 \toprule
 & \textbf{Pauvre au sens de l'IPM} & \textbf{Non pauvre IPM} \\
 \midrule
-Pauvre monétaire & 26,2~\% & 4,2~\% \\
-Non pauvre monétaire & 31,7~\% & 37,8~\% \\
+Pauvre monétaire & 41,7~\% & 6,7~\% \\
+Non pauvre monétaire & 28,2~\% & 23,4~\% \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-La lecture est nette : \textbf{86~\% des pauvres monétaires sont aussi pauvres au sens
-multidimensionnel}, mais \textbf{31,7 points de population sont privés sans être pauvres
-monétairement}. Autrement dit, une politique qui ne suivrait que le revenu manquerait près d'un
-tiers de la population que le PND entend servir.
+Deux enseignements, dont un seul est solide.
 
-\begin{attention}[Un calcul à consolider avant publication]
-Le croisement ci-dessus applique directement le seuil de pauvreté national (\col{zref}) à la
-dépense par tête (\col{pcexp}) de la base ménage. Il donne un taux de pauvreté monétaire de
-30,5~\%, contre les \textbf{37,5~\%} publiés et repris par le PND. L'écart tient vraisemblablement
-aux déflateurs spatiaux et temporels appliqués par l'INS, qui ne sont pas dans la base.
+Le premier l'est : \textbf{86,1~\% des pauvres monétaires sont aussi pauvres au sens
+multidimensionnel}. C'est un rapport calculé à l'intérieur du champ, donc insensible à la façon
+dont on traite les ménages sans indicateur de bien-être --- il vaut 86,1~\% quelle que soit la
+convention retenue. La pauvreté monétaire est presque entièrement incluse dans la pauvreté
+multidimensionnelle.
 
-La \emph{structure} du croisement --- un recouvrement fort mais partiel, une pauvreté
-multidimensionnelle bien plus large que la monétaire --- est robuste à cet écart. Les
-\emph{niveaux} des quatre cases ne doivent pas être publiés tels quels sans que la méthode
-officielle de calcul du taux monétaire ait été reprise.
+Le second ne l'est pas au même degré, mais sa direction ne fait pas de doute : une part importante
+de la population est \textbf{privée sans être pauvre monétairement} --- 28,2 points ici, 31,7
+points si l'on raisonne sur l'ensemble de l'échantillon. Une politique qui ne suivrait que le
+revenu manquerait cette population, que le PND entend pourtant servir.
+
+\begin{attention}[Pourquoi les niveaux ne doivent pas être publiés tels quels]
+L'indicateur de bien-être (\col{pcexp}) et le seuil national (\col{zref}) ne sont renseignés que
+pour \textbf{9\,800 ménages sur 12\,965}, soit 75,6~\% de l'échantillon et 62,9~\% de la population
+pondérée : le module de consommation n'est pas exploitable pour un quart des ménages.
+
+Aucune des deux lectures possibles ne retombe sur le chiffre publié :
+
+\begin{center}
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Lecture} & \textbf{Taux monétaire} \\
+\midrule
+Manquants comptés non pauvres, sur toute la population & 30,5~\% \\
+Champ restreint aux 9\,800 ménages renseignés & 48,5~\% \\
+\textbf{Publié, et repris par le PND} & \textbf{37,5~\%} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Et le sous-champ n'est pas neutre : l'IPM y vaut 69,9~\% contre 58,0~\% sur l'échantillon complet.
+\textbf{Les ménages disposant d'un indicateur de bien-être sont plus pauvres que la moyenne.}
+Reproduire le 37,5~\% demanderait la pondération ou l'imputation que l'INS applique à ce
+sous-champ, qui ne figurent pas dans la base.
+
+Les déflateurs spatial et temporel présents dans la base (\col{def\_spa}, \col{def\_temp}) ne sont
+pas en cause : quelle que soit la façon de les appliquer, le taux reste entre 30,3 et 30,9~\%.
+
+\textbf{À retenir} : le taux de recouvrement de 86,1~\% est publiable, les quatre cases du tableau
+ne le sont pas avant que la méthode officielle de calcul du taux monétaire ait été reprise.
 \end{attention}
 
 \section{Ce que l'IPM EHCVM ne peut pas faire pour le PND}
@@ -299,8 +329,10 @@ C'est la seule des deux sources qui permette de dire, à mi-parcours puis en 203
   \item \textbf{La dimension Santé de l'IPM EHCVM est portée à 93,4~\% des ménages par l'assurance
         maladie}, ce qui en fait un indicateur peu discriminant (voir la \emph{Note sur la
         dimension santé}). Son poids dans l'indice doit être lu avec cette réserve.
-  \item \textbf{Le croisement monétaire / multidimensionnel} n'est pas reproduit sur la méthode
-        officielle de calcul du taux de pauvreté monétaire.
+  \item \textbf{Le croisement monétaire / multidimensionnel ne reproduit pas le taux de pauvreté
+        publié}, parce que l'indicateur de bien-être manque pour un quart des ménages et que ce
+        quart n'est pas tiré au hasard. Seul le taux de recouvrement entre les deux pauvretés
+        (86,1~\%) est robuste à ce défaut.
   \item \textbf{Le PND ne contient pas de cible d'IPM.} L'alignement établi ici est un alignement
         de \emph{contenu}, pas une correspondance institutionnelle : il resterait à faire adopter
         l'indice dans le cadre de gouvernance du plan.
