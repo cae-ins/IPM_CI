@@ -25,7 +25,7 @@ TOLERANCE = 1e-6
 def main():
     g0 = pd.read_stata(SORTIES_DTA / f"{nom('matrice_situationnelle')}.dta")
     z = pd.read_csv(SORTIES_CSV / f"{nom('vecteur_z')}.csv")
-    # le vecteur z porte aussi les indicateurs de variante (chomage_su3) : la comparaison
+    # le vecteur z porte aussi les indicateurs de variante (SU3, NEET approché) : la comparaison
     # est celle de l'IPM NATIONAL, on retient donc le même périmètre que l'étape 05.
     z = z[~z.colonne.isin(HORS_IPM_NATIONAL)]
     spec = Specification(z.groupby("dimension").colonne.apply(list).to_dict())

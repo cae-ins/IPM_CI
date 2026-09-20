@@ -317,18 +317,21 @@ chiffre ne peuvent pas s'importer entre eux) et de chef d'orchestre :
 ```
 python pipeline/orchestrateur.py            # enchaîne les étapes -> logs/00_pipeline.log
 python pipeline/orchestrateur.py --check    # les auto-contrôles de chaque étape
-python pipeline/orchestrateur.py --su3      # + la variante Emploi SU3 (EHCVM seule)
+python pipeline/orchestrateur.py --su3 --su3_seul --su3_neet  # variantes Emploi (EHCVM)
 python pipeline/02_construction_matrice_situationnelle.py   # une étape seule
 ```
 
-**Variantes Emploi.** Deux options ajoutent un jeu de sorties à l'étape 05, sans rien changer à
-l'IPM national : `--su1_su3` place la sous-utilisation SU3 **à côté** du chômage BIT (l'Emploi
-passe à trois indicateurs de 0,0833), `--su3` la met **à la place** (0,125). Elles n'existent que
+**Variantes Emploi.** Quatre options ajoutent un jeu de sorties à l'étape 05, sans rien changer à
+l'IPM national : `--su1_su3` place SU3 à côté du chômage BIT et de l'emploi de subsistance ;
+`--su3` retient **SU3 + emploi agricole de subsistance** ; `--su3_seul` donne tout le poids de la
+dimension à **SU3 uniquement** ; `--su3_neet` retient **SU3 + NEET approché**. Ce dernier est en
+réalité un NEE (« ni en emploi ni en études »), car l'EHCVM ne mesure pas la formation en cours.
+Ces variantes n'existent que
 pour l'EHCVM — le RGPH ne pose aucune question de recherche d'emploi ni de disponibilité, SU3 n'y
 est pas constructible — et l'orchestrateur les retire du passage sur le recensement. L'indicateur
-`chomage_su3` est produit par l'étape 02 dans tous les cas, mais reste **hors de l'IPM national**
-(`orchestrateur.HORS_IPM_NATIONAL`) : il englobe le chômage BIT, les additionner compterait deux
-fois les mêmes ménages. Voir la *Note sur la dimension Emploi* pour les résultats et leur lecture.
+`chomage_su3`, comme `neet_approx`, est produit par l'étape 02 mais reste **hors de l'IPM
+national** (`orchestrateur.HORS_IPM_NATIONAL`). SU3 englobe le chômage BIT : les additionner
+compterait deux fois les mêmes chômeurs. Voir la *Note sur la dimension Emploi*.
 
 Les étapes sont lancées en sous-processus : une étape en échec arrête la chaîne et les suivantes ne
 tournent pas, plutôt que de produire une sortie incomplète.
@@ -431,6 +434,7 @@ médiane de 5 années et un 3ᵉ quartile de 10 ; le nombre de biens possédés 
 | 11 septembre 2026 | Pipeline étendu au RGPH 2021, source portée par `IPM_SOURCE` | même méthode Alkire-Foster sur les deux sources ; seule l'étape 01 diffère, le reste du code est commun |
 | 11 septembre 2026 | Conditions de vie du RGPH lues dans `IPM_Data_110924_men.dta` | le fichier individus les porte aussi, mais renseignées pour un tiers des ménages seulement |
 | 11 septembre 2026 | Indicateur `chomage_su3` (sous-utilisation SU3) produit mais hors IPM national, exposé par `--su1_su3` et `--su3` | le chômage BIT ne prive que 6,5 % de la population pour 12,5 % des pondérations et rate les découragés ; SU3 double le périmètre (12,1 %). Ajouté en variante et non dans l'IPM publié : SU3 englobe SU1, le cumul compterait deux fois les mêmes ménages |
+| 20 septembre 2026 | Variantes `--su3_seul` et `--su3_neet` ; indicateur `neet_approx` hors IPM national | comparaison demandée des montages SU3 + subsistance, SU3 uniquement et SU3 + NEET. L'EHCVM ne mesure pas la formation en cours : `neet_approx` est explicitement un NEE et ne doit pas être publié comme un NEET complet |
 | 11 septembre 2026 | Pondération RGPH = `EW`, non `PROJ24` | `EW` redonne la population du RGPH 2021 à 0,4 % près ; `PROJ24` projette à 2024 (31,9 millions) |
 | 11 septembre 2026 | Dimension Santé du RGPH = mortalité juvénile seule | aucune question de santé au recensement ; conserve les 4 dimensions équipondérées, au prix d'une privation rare (fenêtre de 12 mois et non de 5 ans) |
 | 11 septembre 2026 | Chômage RGPH = `Statut_OQPtbb` (INS) | intègre le reclassement INS des personnes déclarées sans activité mais occupées ; le recalcul brut donnerait 21 % de chômeurs chez les 17-40 ans contre 0,9 % |

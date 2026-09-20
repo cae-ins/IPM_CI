@@ -23,7 +23,7 @@ Usage :
     python orchestrateur.py                    # les deux sources, tout le pipeline
     python orchestrateur.py --source rgph      # le RGPH seul
     python orchestrateur.py --check            # les auto-contrôles de chaque étape
-    python orchestrateur.py --su1_su3 --su3    # + les variantes Emploi (EHCVM seule)
+    python orchestrateur.py --su3 --su3_seul --su3_neet  # variantes Emploi (EHCVM seule)
 """
 import logging
 import os
@@ -108,14 +108,14 @@ SOCLE_COMMUN = [
 
 # Indicateurs produits par l'étape 02 mais HORS de l'IPM national : ils existent dans la
 # matrice de privation et dans le vecteur z, et seules les variantes qui les nomment les
-# emploient. `chomage_su3` (sous-utilisation SU3, EHCVM) est dans ce cas : il englobe le
-# chômage BIT, les additionner compterait deux fois les mêmes chômeurs.
-HORS_IPM_NATIONAL = ["chomage_su3"]
+# emploient. SU3 englobe le chômage BIT, et le NEET approché n'appartient qu'à une analyse de
+# sensibilité : les inclure d'office modifierait l'indice national publié.
+HORS_IPM_NATIONAL = ["chomage_su3", "neet_approx"]
 
 # Options de l'étape 05 qui ajoutent une variante Emploi. Elles n'ont de sens que sur l'EHCVM
 # et sont retirées du passage sur le RGPH, pour que `python orchestrateur.py --su3` traite les
 # deux sources sans échouer sur celle qui ne sait pas construire SU3.
-OPTIONS_EMPLOI = ("--su1_su3", "--su3")
+OPTIONS_EMPLOI = ("--su1_su3", "--su3", "--su3_seul", "--su3_neet")
 
 
 def configurer_logs(logger, fichier=None, niveau=logging.INFO):

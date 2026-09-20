@@ -41,6 +41,7 @@ TRANCHES = {
     "annees_etudes": (17, 95),
     "alphabetisation": (17, 49),
     "chomage": (17, 40),
+    "neet": (15, 24),
     "acte_naissance": (5, 15),
 }
 
@@ -233,6 +234,15 @@ def calculer_situations_individuelles(ind):
         | (~recherche & (ind.disponible_emploi == 1) & veut_travailler))
     ind["su3"] = ind.chomeur_bit | ind.main_oeuvre_potentielle
 
+    # NEET approché : l'EHCVM ne demande pas si une formation non formelle est suivie EN COURS.
+    # L'indicateur observable est donc strictement « ni en emploi, ni en études » (NEE). Il est
+    # conservé sous le nom neet_approx pour empêcher qu'une sortie ne masque cette limite. La
+    # scolarisation reprend la meilleure observation disponible selon la vague (2021/22 ou
+    # 2020/21) ; l'apprentissage de 4.09 est déjà inclus dans l'emploi via 4.10.
+    a_neet, b_neet = TRANCHES["neet"]
+    jeune = ind.age.between(a_neet, b_neet)
+    ind["neet_approx"] = jeune & sans_emploi & ~ind.scolarise
+
     logger.info("chômage BIT : sans emploi %s, dont en recherche %s, dont disponibles %s",
                 part(sans_emploi.sum(), len(ind)),
                 part((sans_emploi & recherche).sum(), sans_emploi.sum()),
@@ -251,6 +261,8 @@ def calculer_situations_individuelles(ind):
     logger.info("SU3 parmi les %d-%d ans : %s (SU1 : %s)", a, b,
                 part((cible & ind.su3).sum(), cible.sum()),
                 part((cible & ind.chomeur_bit).sum(), cible.sum()))
+    logger.info("NEET approché (en réalité NEE) parmi les %d-%d ans : %s",
+                a_neet, b_neet, part(ind.neet_approx.sum(), jeune.sum()))
 
     # renoncement aux soins : malade (3.01), non consulté (3.05), pour une raison subie —
     # coût ou indisponibilité de l'offre (3.06)
@@ -289,6 +301,7 @@ def agreger_par_menage(ind):
     a_etu, b_etu = TRANCHES["annees_etudes"]
     a_alp, b_alp = TRANCHES["alphabetisation"]
     a_cho, b_cho = TRANCHES["chomage"]
+    a_neet, b_neet = TRANCHES["neet"]
     a_act, b_act = TRANCHES["acte_naissance"]
 
     concernes_etudes = ind.age.between(a_etu, b_etu)
@@ -305,6 +318,9 @@ def agreger_par_menage(ind):
         situations[f"membres_{a_cho}_{b_cho}"] & ind.chomeur_bit)
     situations[f"chomeurs_su3_{a_cho}_{b_cho}"] = (
         situations[f"membres_{a_cho}_{b_cho}"] & ind.su3)
+    situations[f"jeunes_{a_neet}_{b_neet}"] = ind.age.between(a_neet, b_neet)
+    situations[f"jeunes_neet_approx_{a_neet}_{b_neet}"] = (
+        situations[f"jeunes_{a_neet}_{b_neet}"] & ind.neet_approx)
     situations[f"enfants_{a_act}_{b_act}"] = ind.age.between(a_act, b_act)
     situations[f"enfants_{a_act}_{b_act}_sans_acte"] = (
         situations[f"enfants_{a_act}_{b_act}"] & (ind.acte_naissance != 1))
@@ -330,6 +346,8 @@ def agreger_par_menage(ind):
             (f"membres_{a_alp}_{b_alp}", f"membres_{a_alp}_{b_alp}_alphabetises",
              "un membre alphabétisé"),
             (f"membres_{a_cho}_{b_cho}", f"chomeurs_{a_cho}_{b_cho}", "un chômeur"),
+            (f"jeunes_{a_neet}_{b_neet}", f"jeunes_neet_approx_{a_neet}_{b_neet}",
+             "un jeune NEET approché"),
             (f"enfants_{a_act}_{b_act}", f"enfants_{a_act}_{b_act}_sans_acte",
              "un enfant sans acte de naissance")]:
         logger.info("  %-16s ménages sans personne concernée : %-14s | au moins %s : %s",
@@ -545,6 +563,8 @@ def verifier():
     # SU3 = chômage BIT + main-d'œuvre potentielle : P2 par le chômage, P4 par la disponibilité
     assert ind.main_oeuvre_potentielle.tolist() == [False, False, False, True]
     assert ind.su3.tolist() == [False, True, False, True]
+    # P1 a 11 ans ; P2 a 38 ans ; P3 a 41 ans ; P4 a 6 ans : aucun n'est dans 15-24.
+    assert not ind.neet_approx.any()
     # « ne veut pas travailler » (4.18 = 3) sort de la main-d'œuvre potentielle : le désir
     # d'emploi fait partie de la définition
     refus = calculer_situations_individuelles(
@@ -567,6 +587,7 @@ def verifier():
     # le chômeur a 38 ans : compté dans la tranche 17-40 de la proposition nationale
     assert m1.membres_17_40 == 1 and m1.chomeurs_17_40 == 1
     assert m1.chomeurs_su3_17_40 == 1
+    assert m1.jeunes_15_24 == 0 and m2.jeunes_15_24 == 0
     assert m2.chomeurs_17_40 == 0
     assert m1.enfants_5_15_sans_acte == 1 and m2.enfants_5_15_sans_acte == 0
     assert m1.membres_assures == 0 and m2.membres_assures == 1

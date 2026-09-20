@@ -81,15 +81,21 @@ VARIANTES = {
 }
 
 # Variantes Emploi, ajoutées par option (EHCVM seulement : le recensement n'a pas de quoi
-# construire SU3). `--su1_su3` garde le chômage BIT ET lui adjoint SU3 ; `--su3` remplace l'un
-# par l'autre. Sans option, aucune n'est calculée et l'IPM publié est celui d'avant.
+# construire SU3). Les exclusions sont explicites afin que les indicateurs expérimentaux ne
+# contaminent aucune variante : `neet_approx` est un NEE, faute de formation en cours mesurée.
 VARIANTES_EMPLOI = {
     "--su1_su3": (nom("indices_ipm_su1_su3"),
                   ("IPM — Emploi à 3 indicateurs : chômage BIT, SU3, emploi de subsistance",
-                   None, None, [])),
+                   None, None, ["neet_approx"])),
     "--su3": (nom("indices_ipm_su3"),
-              ("IPM — SU3 en remplacement du chômage BIT",
-               None, None, ["chomage"])),
+              ("IPM — Emploi : SU3 et emploi agricole de subsistance",
+               None, None, ["chomage", "neet_approx"])),
+    "--su3_seul": (nom("indices_ipm_su3_seul"),
+                   ("IPM — Emploi : SU3 uniquement",
+                    None, None, ["chomage", "neet_approx", "emploi_subsistance"])),
+    "--su3_neet": (nom("indices_ipm_su3_neet"),
+                   ("IPM — Emploi : SU3 et NEET approché (en réalité NEE)",
+                    None, None, ["chomage", "emploi_subsistance"])),
 }
 
 # Seuils (identiques à l'étape 04). k = 1/3 est le seuil de pauvreté multidimensionnelle ;

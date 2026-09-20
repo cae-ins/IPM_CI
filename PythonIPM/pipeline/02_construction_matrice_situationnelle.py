@@ -4,7 +4,8 @@ Entrée  : preconstruction_matrice_situationnelle_<source>.dta (étape 01)
 Sortie  : matrice_situationnelle_<source>.dta — un ménage par ligne, un indicateur 0/1 par
           colonne, plus la pondération et les variables de désagrégation, et rien d'autre.
 
-          EHCVM 2021 :    12 965 ménages x 17 indicateurs (dont chomage_su3, hors IPM national)
+          EHCVM 2021 :    12 965 ménages x 18 indicateurs (dont SU3 et NEET approché,
+                          tous deux hors IPM national)
           RGPH 2021  : 5 616 487 ménages x 13 indicateurs
 
 Un seul code pour les deux sources : ce qui change d'une source à l'autre, ce sont les
@@ -158,6 +159,12 @@ INDICATEURS = [
                "disponible sans chercher",
                "chomage_su3", ["chomeurs_su3_17_40"], "membres_17_40",
                lambda X: X.chomeurs_su3_17_40 >= 1),
+    Indicateur("Emploi", "Jeunes ni en emploi ni en études (NEET approché)", NATIONALE,
+               "Un membre du ménage âgé de 15-24 ans n'est ni en emploi ni scolarisé. "
+               "Faute de mesure de la formation en cours dans l'EHCVM, il s'agit d'un NEE "
+               "et non d'un NEET complet",
+               "neet_approx", ["jeunes_neet_approx_15_24"], "jeunes_15_24",
+               lambda X: X.jeunes_neet_approx_15_24 >= 1),
     Indicateur("Emploi", "Emploi agricole de subsistance", NATIONALE,
                "Le chef de ménage est occupé mais son activité se limite à l'agriculture sur "
                "son propre champ, sans salariat, apprentissage ni commerce",
@@ -305,6 +312,7 @@ PARAMETRES_Z = {
                           "ou d'indisponibilité de l'offre", 1),
     "chomage": ("au moins un chômeur BIT de 17-40 ans", 1),
     "chomage_su3": ("au moins une personne de 17-40 ans en sous-utilisation SU3", 1),
+    "neet_approx": ("au moins un jeune de 15-24 ans ni en emploi ni scolarisé (NEE)", 1),
     "emploi_subsistance": ("chef de ménage en agriculture de subsistance seule", 1),
     "electricite": ("codes d'éclairage adéquats", ECLAIRAGE_ADEQUAT),
     "logement": ("codes de matériaux précaires (sol/toit/mur)",
@@ -463,6 +471,7 @@ def verifier():
         "membres_17_49": [2, 2], "membres_17_49_alphabetises": [0, 2],
         "membres_17_40": [1, 1], "chomeurs_17_40": [1, 0],
         "chomeurs_su3_17_40": [1, 0],
+        "jeunes_15_24": [1, 1], "jeunes_neet_approx_15_24": [1, 0],
         "enfants_5_15": [1, 1], "enfants_5_15_sans_acte": [1, 0],
         "membres_assures": [0, 1],
         "score_fies": [8.0, 0.0],
