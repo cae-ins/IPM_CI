@@ -6,11 +6,13 @@ Sortie  : matrice_situationnelle_<source>.dta — un ménage par ligne, un indic
 
           EHCVM 2021 :    12 965 ménages x 18 indicateurs (dont SU3 et NEET approché,
                           tous deux hors IPM national)
-          RGPH 2021  : 5 616 487 ménages x 13 indicateurs
+          RGPH 2021  : 5 616 487 ménages x 15 indicateurs (dont SU3 et NEET approché,
+                          tous deux hors IPM national)
 
 Un seul code pour les deux sources : ce qui change d'une source à l'autre, ce sont les
 énoncés et les seuils, rassemblés dans INDICATEURS_PAR_SOURCE. Le RGPH mesure treize des
-seize indicateurs de l'EHCVM et en apporte un que l'enquête n'a pas :
+seize indicateurs de l'EHCVM (plus SU3 et NEET, hors IPM national de part et d'autre) et
+en apporte un que l'enquête n'a pas :
 
     absents du RGPH   assurance maladie, insécurité alimentaire et renoncement aux soins
                       (aucune question de santé dans le recensement), promiscuité (le nombre
@@ -249,6 +251,20 @@ INDICATEURS_RGPH = [
                "Un membre du ménage âgé de 17-40 ans est au chômage",
                "chomage", ["chomeurs_17_40"], "membres_17_40",
                lambda X: X.chomeurs_17_40 >= 1),
+    # Hors IPM national (HORS_IPM_NATIONAL), comme côté EHCVM : SU3 englobe le chômage BIT et
+    # ne sert qu'aux variantes Emploi de l'étape 05. Le recensement porte déjà la main-d'œuvre
+    # potentielle dans `Statut_OQPtbb` (modalité 3), il n'y a rien à reconstruire.
+    Indicateur("Emploi", "Sous-utilisation de la main-d'œuvre (SU3)", NATIONALE,
+               "Un membre du ménage âgé de 17-40 ans est au chômage BIT ou relève de la "
+               "main-d'œuvre potentielle (statut d'activité INS : chômeur ou potentiel)",
+               "chomage_su3", ["chomeurs_su3_17_40"], "membres_17_40",
+               lambda X: X.chomeurs_su3_17_40 >= 1),
+    Indicateur("Emploi", "Jeunes ni en emploi ni en études (NEET approché)", NATIONALE,
+               "Un membre du ménage âgé de 15-24 ans n'est ni en emploi ni scolarisé. "
+               "Faute de mesure de la formation en cours dans le recensement, il s'agit d'un "
+               "NEE et non d'un NEET complet",
+               "neet_approx", ["jeunes_neet_approx_15_24"], "jeunes_15_24",
+               lambda X: X.jeunes_neet_approx_15_24 >= 1),
     Indicateur("Emploi", "Emploi agricole de subsistance", NATIONALE,
                "Le chef de ménage est occupé dans une branche agricole, à son compte ou "
                "comme aide familial",
@@ -510,6 +526,7 @@ def verifier_rgph():
         "membres_17_49": [2, 2], "membres_17_49_alphabetises": [0, 2],
         "membres_17_40": [1, 1], "chomeurs_17_40": [1, 0],
         "chomeurs_su3_17_40": [1, 0],
+        "jeunes_15_24": [1, 1], "jeunes_neet_approx_15_24": [1, 0],
         "enfants_5_15": [1, 1], "enfants_5_15_sans_acte": [1, 0],
         "deces_moins_18_ans": [1, 0],
         "cm_agriculture_subsistance": [1, 0],
@@ -519,7 +536,7 @@ def verifier_rgph():
     X = calculer_indicateurs(P)
     assert X.loc["A", COLONNES_INDICATEURS].tolist() == [1] * len(INDICATEURS), X.loc["A"]
     assert X.loc["B", COLONNES_INDICATEURS].tolist() == [0] * len(INDICATEURS), X.loc["B"]
-    assert len(INDICATEURS) == 13, len(INDICATEURS)
+    assert len(INDICATEURS) == 15, len(INDICATEURS)
     # les quatre indicateurs sans équivalent au recensement ont bien disparu
     absents = {"assurance_maladie", "insecurite_alimentaire", "renoncement_soins", "promiscuite"}
     assert not absents & set(COLONNES_INDICATEURS)

@@ -80,9 +80,9 @@ VARIANTES = {
                                    None, SOCLE_COMMUN, []),
 }
 
-# Variantes Emploi, ajoutées par option (EHCVM seulement : le recensement n'a pas de quoi
-# construire SU3). Les exclusions sont explicites afin que les indicateurs expérimentaux ne
-# contaminent aucune variante : `neet_approx` est un NEE, faute de formation en cours mesurée.
+# Variantes Emploi, ajoutées par option, pour les DEUX sources. Les exclusions sont explicites
+# afin que les indicateurs expérimentaux ne contaminent aucune variante : `neet_approx` est un
+# NEE, faute de formation en cours mesurée d'un côté comme de l'autre.
 VARIANTES_EMPLOI = {
     "--su1_su3": (nom("indices_ipm_su1_su3"),
                   ("IPM — Emploi à 3 indicateurs : chômage BIT, SU3, emploi de subsistance",
@@ -169,7 +169,8 @@ def vecteur_w(dimensions=None, colonnes=None, exclusions=(), chemin_z=ENTREE_Z):
         assert not inconnues, f"indicateurs absents du vecteur z : {sorted(inconnues)}"
         z = z[z.colonne.isin(colonnes)]
     # une exclusion portant sur un indicateur que la source ne produit pas est sans effet :
-    # `chomage_su3` n'existe que côté EHCVM, et l'IPM national du RGPH l'exclut pour rien.
+    # `chomage_su3` existe désormais dans les deux sources ; une exclusion sans effet reste
+    # inoffensive (variante harmonisée, où ni SU3 ni NEET ne figurent au socle commun).
     z = z[~z.colonne.isin(exclusions)]
 
     poids_dimension = 1 / z.dimension.nunique()
@@ -663,9 +664,6 @@ def variantes_demandees(arguments):
     for option, (nom_variante, parametres) in VARIANTES_EMPLOI.items():
         if option not in arguments:
             continue
-        assert SOURCE == "ehcvm", (
-            f"{option} n'existe que pour l'EHCVM : le RGPH ne pose aucune question de "
-            "recherche d'emploi ni de disponibilité, SU3 n'y est pas constructible")
         variantes[nom_variante] = parametres
     return variantes
 

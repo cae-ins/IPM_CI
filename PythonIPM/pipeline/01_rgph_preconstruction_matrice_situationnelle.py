@@ -50,6 +50,7 @@ TRANCHES = {
     "annees_etudes": (17, 95),
     "alphabetisation": (17, 49),
     "chomage": (17, 40),
+    "neet": (15, 24),
     "acte_naissance": (5, 15),
 }
 
@@ -69,7 +70,12 @@ SANS_ACTIVITE_7J = 11
 # diffèrent que sur 18 910 individus sur 28 millions, soit 0,07 %. L'autre variable de la base,
 # `Statut_OQPtb`, donne 21,6 % de ménages privés contre 5,9 % ici : elle n'intègre pas le
 # reclassement INS des personnes déclarées sans activité mais en réalité occupées.
-OCCUPE, CHOMEUR_BIT = 0, 1
+OCCUPE, CHOMEUR_BIT, MAIN_OEUVRE_POTENTIELLE = 0, 1, 3
+
+# SU3 = chômage BIT + main-d'œuvre potentielle. Là où l'EHCVM demande de reconstruire la
+# main-d'œuvre potentielle à partir de la recherche, de la disponibilité et du désir d'emploi,
+# le RGPH la porte déjà : `Statut_OQPtbb` vaut 3 pour ce groupe. SU3 se lit donc directement.
+SOUS_UTILISATION_SU3 = [CHOMEUR_BIT, MAIN_OEUVRE_POTENTIELLE]
 
 # Emploi agricole de subsistance : le RGPH ne demande pas « sur son propre champ ». Le chef est
 # compté comme en subsistance s'il est occupé dans une branche agricole (NAEMA divisions 01 à
@@ -164,6 +170,7 @@ def situations_individuelles(ind):
     a_etu, b_etu = TRANCHES["annees_etudes"]
     a_alp, b_alp = TRANCHES["alphabetisation"]
     a_cho, b_cho = TRANCHES["chomage"]
+    a_neet, b_neet = TRANCHES["neet"]
     a_act, b_act = TRANCHES["acte_naissance"]
 
     S = pd.DataFrame({"id_menage": ind.id_menage})
@@ -191,6 +198,16 @@ def situations_individuelles(ind):
     S[f"membres_{a_cho}_{b_cho}"] = age.between(a_cho, b_cho)
     S[f"chomeurs_{a_cho}_{b_cho}"] = (
         S[f"membres_{a_cho}_{b_cho}"] & (ind.statut_activite == CHOMEUR_BIT))
+    S[f"chomeurs_su3_{a_cho}_{b_cho}"] = (
+        S[f"membres_{a_cho}_{b_cho}"] & ind.statut_activite.isin(SOUS_UTILISATION_SU3))
+
+    # NEET approché : ni en emploi, ni en train de fréquenter l'école. Le recensement ne demande
+    # pas plus que l'EHCVM si une formation non formelle est suivie EN COURS : l'indicateur reste
+    # un NEE, et garde le nom `neet_approx` pour que la limite ne se perde pas en route.
+    S[f"jeunes_{a_neet}_{b_neet}"] = age.between(a_neet, b_neet)
+    S[f"jeunes_neet_approx_{a_neet}_{b_neet}"] = (
+        S[f"jeunes_{a_neet}_{b_neet}"]
+        & (ind.statut_activite != OCCUPE) & (ind.frequente_ecole != 1))
 
     # un seul chef par ménage : la somme vaut 0 ou 1
     debut, fin = BRANCHES_AGRICOLES
@@ -347,6 +364,7 @@ def controler(X):
 
     chiffrees = ["enfants_6_16_non_scolarises", "membres_17_95_dix_annees_etudes",
                  "membres_17_49_alphabetises", "enfants_5_15_sans_acte", "chomeurs_17_40",
+                 "chomeurs_su3_17_40", "jeunes_neet_approx_15_24",
                  "nb_equipements", "deces_moins_18_ans", "taille_menage"]
     logger.info("statistiques des situations chiffrées :\n%s",
                 X[chiffrees].describe().round(2).to_string())
@@ -376,7 +394,8 @@ def verifier():
         "lien_parente_cm": [1, 3, 1, 3],
         #        chef 38 ans   enfant 11   chef 30 ans   enfant 6, âge inconnu chez personne
         "age": [38, 11, 30, 6],
-        # P1 chômeur BIT, P3 occupé agriculteur indépendant
+        # P1 chômeur BIT, P3 occupé agriculteur indépendant ; P2 (11 ans) et P4 (6 ans) sont
+        # hors champ de la question — ni l'un ni l'autre n'entre dans la tranche NEET 15-24
         "statut_activite": [1.0, np.nan, 0.0, np.nan],
         "branche_activite": [np.nan, np.nan, 1110.0, np.nan],
         "situation_profession": [np.nan, np.nan, 3.0, np.nan],
@@ -399,6 +418,21 @@ def verifier():
     # « déclaré sans acte de naissance » est bien compté comme une privation
     assert S.enfants_5_15_sans_acte.tolist() == [False, True, False, False]
     assert S.chomeurs_17_40.tolist() == [True, False, False, False]
+    # SU3 = chômage BIT (P1) + main-d'œuvre potentielle : P3, occupé, n'en est pas
+    assert S.chomeurs_su3_17_40.tolist() == [True, False, False, False]
+    potentiel = ind.assign(statut_activite=[3.0, np.nan, 2.0, np.nan])
+    Sp = situations_individuelles(potentiel)
+    # la main-d'œuvre potentielle entre dans SU3 mais pas dans le chômage BIT ; l'inactif (2) ni
+    # dans l'un ni dans l'autre
+    assert Sp.chomeurs_su3_17_40.tolist() == [True, False, False, False]
+    assert not Sp.chomeurs_17_40.any()
+    # NEET : un jeune de 20 ans sans emploi et non scolarisé est NEET ; scolarisé, il ne l'est pas
+    jeunes = ind.assign(age=[20, 20, 20, 20], statut_activite=[2.0, 0.0, 2.0, 2.0],
+                        frequente_ecole=[2.0, 2.0, 1.0, 2.0])
+    Sj = situations_individuelles(jeunes)
+    assert Sj.jeunes_15_24.tolist() == [True] * 4
+    assert Sj.jeunes_neet_approx_15_24.tolist() == [True, False, False, True]
+    assert not S.jeunes_15_24.any(), "aucun des cas de base n'a 15-24 ans"
     assert S.cm_agriculture_subsistance.tolist() == [False, False, True, False]
     # un chef salarié de la même branche agricole n'est PAS en subsistance
     salarie = ind.assign(situation_profession=[np.nan, np.nan, 1.0, np.nan])

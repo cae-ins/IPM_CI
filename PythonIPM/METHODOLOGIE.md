@@ -317,7 +317,7 @@ chiffre ne peuvent pas s'importer entre eux) et de chef d'orchestre :
 ```
 python pipeline/orchestrateur.py            # enchaîne les étapes -> logs/00_pipeline.log
 python pipeline/orchestrateur.py --check    # les auto-contrôles de chaque étape
-python pipeline/orchestrateur.py --su3 --su3_seul --su3_neet  # variantes Emploi (EHCVM)
+python pipeline/orchestrateur.py --su3 --su3_seul --su3_neet  # variantes Emploi (2 sources)
 python pipeline/02_construction_matrice_situationnelle.py   # une étape seule
 ```
 
@@ -325,10 +325,15 @@ python pipeline/02_construction_matrice_situationnelle.py   # une étape seule
 l'IPM national : `--su1_su3` place SU3 à côté du chômage BIT et de l'emploi de subsistance ;
 `--su3` retient **SU3 + emploi agricole de subsistance** ; `--su3_seul` donne tout le poids de la
 dimension à **SU3 uniquement** ; `--su3_neet` retient **SU3 + NEET approché**. Ce dernier est en
-réalité un NEE (« ni en emploi ni en études »), car l'EHCVM ne mesure pas la formation en cours.
-Ces variantes n'existent que
-pour l'EHCVM — le RGPH ne pose aucune question de recherche d'emploi ni de disponibilité, SU3 n'y
-est pas constructible — et l'orchestrateur les retire du passage sur le recensement. L'indicateur
+réalité un NEE (« ni en emploi ni en études »), car ni l'EHCVM ni le RGPH ne mesurent la
+formation en cours.
+
+Ces variantes valent pour les **deux sources**. La construction de SU3 diffère : l'EHCVM la
+reconstruit à partir de la recherche d'emploi, de la disponibilité et du désir de travailler
+(questions 4.13 à 4.18), tandis que le RGPH la lit directement dans le statut d'activité produit
+par l'INS (`Statut_OQPtbb` : 0 occupé, 1 chômeur BIT, 2 inactif, **3 main-d'œuvre potentielle**).
+Le NEET du RGPH combine ce même statut (hors « occupé ») avec la fréquentation scolaire (P30A).
+L'indicateur
 `chomage_su3`, comme `neet_approx`, est produit par l'étape 02 mais reste **hors de l'IPM
 national** (`orchestrateur.HORS_IPM_NATIONAL`). SU3 englobe le chômage BIT : les additionner
 compterait deux fois les mêmes chômeurs. Voir la *Note sur la dimension Emploi*.
@@ -447,3 +452,4 @@ médiane de 5 années et un 3ᵉ quartile de 10 ; le nombre de biens possédés 
 | 11 septembre 2026 | Deux documents livrables ajoutés pour le RGPH (méthodologie + lecture des sorties) | parité avec l'EHCVM ; le titre des encadrés d'avertissement du préambule était écrit en rouge sur fond rouge, donc invisible dans tous les PDF — corrigé au passage |
 | 11 septembre 2026 | Version Word de chaque document, produite par `pandoc` dans `sorties/docx/` | les documents doivent pouvoir être retouchés ; le PDF reste la version mise en page qui fait foi |
 | 11 septembre 2026 | Trois analyses d'alignement au PND 2026-2030 (EHCVM, RGPH, comparaison) | le plan fixe des cibles chiffrées par pilier mais aucune cible de pauvreté à 2030 ; l'EHCVM couvre 11 des 22 cibles éclairables contre 7 au RGPH, mais le RGPH est seul à rendre opérationnels les pôles économiques, le registre social et le ciblage des 827 000 ménages de filets sociaux |
+| 21 septembre 2026 | Variantes Emploi (`--su1_su3`, `--su3`, `--su3_seul`, `--su3_neet`) étendues au RGPH ; indicateurs `chomage_su3` et `neet_approx` produits par le recensement | le recensement porte la main-d'œuvre potentielle dans `Statut_OQPtbb` (modalité 3) : SU3 s'y lit directement, sans reconstruire les critères BIT. SU3 prive 26,3 % de la population contre 5,9 % pour le chômage BIT. Les deux indicateurs restant dans `HORS_IPM_NATIONAL`, l'IPM national du RGPH est inchangé (M₀ = 0,1664). Note détaillée : `note_detaillee_variantes_emploi_ipm_rgph` |
