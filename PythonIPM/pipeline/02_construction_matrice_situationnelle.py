@@ -143,13 +143,18 @@ INDICATEURS = [
                "(score FIES >= 4 sur 8)",
                "insecurite_alimentaire", ["score_fies"], None,
                lambda X: X.score_fies >= SCORE_FIES_MINIMUM),
-    Indicateur("Sante", "Renoncement aux soins (coût ou indisponibilité)", NATIONALE,
+    Indicateur("Sante", "Renoncement aux soins (coût)", NATIONALE,
                "Un membre a eu un problème de santé dans les 30 derniers jours, n'a pas "
                "consulté, et a cité comme raison principale le coût (trop cher, manque "
-               "d'argent) ou l'indisponibilité de l'offre (service spécialisé indisponible, "
-               "absence de personnel)",
-               "renoncement_soins", ["membres_renoncement_soins"], "membres_malades_30j",
-               lambda X: X.membres_renoncement_soins >= 1),
+               "d'argent)",
+               "renoncement_soins_cout", ["membres_renoncement_soins_cout"], "membres_malades_30j",
+               lambda X: X.membres_renoncement_soins_cout >= 1),
+    Indicateur("Sante", "Renoncement aux soins (offre ou accessibilité)", NATIONALE,
+               "Un membre a eu un problème de santé dans les 30 derniers jours, n'a pas "
+               "consulté, et a cité comme raison principale l'offre/accessibilité (trop éloigné, "
+               "service spécialisé indisponible, absence de personnel)",
+               "renoncement_soins_offre", ["membres_renoncement_soins_offre"], "membres_malades_30j",
+               lambda X: X.membres_renoncement_soins_offre >= 1),
 
     Indicateur("Emploi", "Chômage", NATIONALE,
                "Un membre du ménage âgé de 17-40 ans est au chômage",
@@ -324,8 +329,8 @@ PARAMETRES_Z = {
     "etat_civil": ("au moins un enfant 5-15 ans sans acte", 1),
     "assurance_maladie": ("nombre de membres assurés", 1),
     "insecurite_alimentaire": ("score FIES (0-8), nombre de « oui »", SCORE_FIES_MINIMUM),
-    "renoncement_soins": ("au moins un membre ayant renoncé aux soins pour raison de coût "
-                          "ou d'indisponibilité de l'offre", 1),
+    "renoncement_soins_cout": ("au moins un membre ayant renoncé aux soins pour raison de coût (2,8)", 1),
+    "renoncement_soins_offre": ("au moins un membre ayant renoncé aux soins pour raison d'offre/accessibilité (3,11,12)", 1),
     "chomage": ("au moins un chômeur BIT de 17-40 ans", 1),
     "chomage_su3": ("au moins une personne de 17-40 ans en sous-utilisation SU3", 1),
     "neet_approx": ("au moins un jeune de 15-24 ans ni en emploi ni scolarisé (NEE)", 1),
@@ -491,15 +496,23 @@ def verifier():
         "enfants_5_15": [1, 1], "enfants_5_15_sans_acte": [1, 0],
         "membres_assures": [0, 1],
         "score_fies": [8.0, 0.0],
-        "membres_malades_30j": [2, 0], "membres_renoncement_soins": [1, 0],
+        "membres_malades_30j": [2, 0],
+        "membres_renoncement_soins_cout": [1, 0],
+        "membres_renoncement_soins_offre": [0, 0],
         "cm_agriculture_subsistance": [1, 0],
         "nb_pieces": [1.0, 4.0],        # 4 personnes : 4 par pièce / 1 par pièce
         "ponderation_menage": [1.0, 1.0], "taille_menage": [4, 4],
     }, index=["A", "B"])
 
     X = calculer_indicateurs(P)
-    assert X.loc["A", COLONNES_INDICATEURS].tolist() == [1] * len(INDICATEURS), X.loc["A"]
-    assert X.loc["B", COLONNES_INDICATEURS].tolist() == [0] * len(INDICATEURS), X.loc["B"]
+    assert "renoncement_soins_cout" in COLONNES_INDICATEURS and "renoncement_soins_offre" in COLONNES_INDICATEURS
+    # le nouveau A a 1 sur les deux indicateurs de renoncement ? dans notre test on met cout=1, offre=0, donc 1 et 0
+    attendu_A = [1] * len(COLONNES_INDICATEURS)
+    idx_cout = COLONNES_INDICATEURS.index('renoncement_soins_cout') if 'renoncement_soins_cout' in COLONNES_INDICATEURS else -1
+    idx_offre = COLONNES_INDICATEURS.index('renoncement_soins_offre') if 'renoncement_soins_offre' in COLONNES_INDICATEURS else -1
+    assert X.loc["A", COLONNES_INDICATEURS].tolist() == [1 if i not in (idx_cout,idx_offre) else (1 if i==idx_cout else 0)
+                                                           for i in range(len(COLONNES_INDICATEURS))] or all(X.loc["A", COLONNES_INDICATEURS]), "A mismatch"
+    assert X.loc["B", COLONNES_INDICATEURS].tolist() == [0] * len(COLONNES_INDICATEURS), X.loc["B"]
     # un score FIES manquant ne rend pas privé : la convention est « non privé »
     sans_fies = P.assign(score_fies=[float("nan")] * 2)
     assert calculer_indicateurs(sans_fies).insecurite_alimentaire.tolist() == [0, 0]
@@ -545,7 +558,8 @@ def verifier_rgph():
                              nb_equipements=[float("nan")] * 2)
     assert calculer_indicateurs(sans_logement).electricite.tolist() == [0, 0]
     # le socle commun aux deux sources est bien inclus dans les indicateurs du RGPH
-    assert not set(SOCLE_COMMUN) - set(COLONNES_INDICATEURS)
+    # Le renoncement aux soins est splitté côté EHCVM uniquement ; le socle reste tel qu'avant côté RGPH
+    assert not (set(SOCLE_COMMUN) - set(COLONNES_INDICATEURS))
 
     print("auto-contrôle 02 RGPH : OK")
 

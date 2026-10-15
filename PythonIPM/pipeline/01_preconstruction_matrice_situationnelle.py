@@ -86,9 +86,11 @@ VOITURE = 28                     # le camion n'existe pas non plus dans la secti
 # Question 3.06 : raison principale de la non-consultation. Deux familles de motifs sont
 # retenues — le renoncement est subi dans les deux cas, contrairement à l'automédication (4) ou
 # au « pas nécessaire » (1), qui relèvent d'un choix :
-#   coût            2 « Trop cher », 8 « Manque d'argent »
-#   offre de soins  11 « Service spécialisé non disponible », 12 « Absence de personnel »
-RAISONS_RENONCEMENT = [2, 8, 11, 12]
+#   coût                2 « Trop cher », 8 « Manque d'argent »
+#   offre/accessibilité 3 « Trop éloigné », 11 « Service spécialisé non disponible », 12 « Absence de personnel »
+RAISONS_RENONCEMENT_COUT = [2, 8]
+RAISONS_RENONCEMENT_OFFRE = [3, 11, 12]
+RAISONS_RENONCEMENT = RAISONS_RENONCEMENT_COUT + RAISONS_RENONCEMENT_OFFRE
 
 ITEMS_FIES = ["fies_inquietude", "fies_pas_sain", "fies_peu_varie", "fies_saute_repas",
               "fies_mange_moins", "fies_plus_de_nourriture", "fies_faim",
@@ -269,8 +271,12 @@ def calculer_situations_individuelles(ind):
     malade = ind.probleme_sante_30j == 1
     ind["renonce_aux_soins"] = (malade & (ind.consultation_sante_30j != 1)
                                & ind.raison_non_consultation.isin(RAISONS_RENONCEMENT))
+    ind["renonce_aux_soins_cout"] = (malade & (ind.consultation_sante_30j != 1)
+                                   & ind.raison_non_consultation.isin(RAISONS_RENONCEMENT_COUT))
+    ind["renonce_aux_soins_offre"] = (malade & (ind.consultation_sante_30j != 1)
+                                    & ind.raison_non_consultation.isin(RAISONS_RENONCEMENT_OFFRE))
     logger.info("problème de santé sur 30 jours (3.01) : %s, dont non consulté %s, "
-                "dont pour coût ou indisponibilité (3.06 = 2, 8, 11 ou 12) : %s",
+                "dont renoncement (coût/offre+éloigné 2,3,8,11,12) : %s",
                 part(malade.sum(), len(ind)),
                 part((malade & (ind.consultation_sante_30j != 1)).sum(), malade.sum()),
                 part(ind.renonce_aux_soins.sum(), malade.sum()))
@@ -327,6 +333,8 @@ def agreger_par_menage(ind):
     situations["membres_assures"] = ind.assurance_maladie == 1
     situations["membres_malades_30j"] = ind.probleme_sante_30j == 1
     situations["membres_renoncement_soins"] = ind.renonce_aux_soins
+    situations["membres_renoncement_soins_cout"] = ind.renonce_aux_soins_cout
+    situations["membres_renoncement_soins_offre"] = ind.renonce_aux_soins_offre
     # un seul chef par ménage : la somme vaut 0 ou 1
     situations["cm_agriculture_subsistance"] = (
         (ind.lien_parente_cm == 1) & ind.agriculture_subsistance)
@@ -358,7 +366,7 @@ def agreger_par_menage(ind):
     logger.info("  %-16s ménages sans aucun membre assuré : %s",
                 "membres_assures", part((X.membres_assures == 0).sum(), len(X)))
     logger.info("  %-16s ménages sans malade sur 30 jours : %-14s | au moins un renoncement "
-                "aux soins (coût ou indisponibilité) : %s", "membres_malades_30j",
+                "aux soins (coût/offre+éloigné) : %s", "membres_malades_30j",
                 part((X.membres_malades_30j == 0).sum(), len(X)),
                 part((X.membres_renoncement_soins > 0).sum(), len(X)))
     logger.info("  %-16s chef en agriculture de subsistance seule : %s",

@@ -128,12 +128,15 @@ ETIQUETTES_DTA = {"region": "REGION", "departement": "DEPART",
 
 @lru_cache(maxsize=None)
 def _value_labels():
-    """Les value labels du fichier individus, associés à leur variable (pandas ne fait que la
-    moitié du chemin : `value_labels()` est indexé par jeu d'étiquettes, pas par variable)."""
+    """Les value labels du fichier individus, associés à leur variable."""
     lecteur = pd.io.stata.StataReader(DATA / FICHIER_INDIVIDUS)
     jeux = lecteur.value_labels()
+    varlist = getattr(lecteur, 'varlist', getattr(lecteur, '_varlist', None))
+    lbllist = getattr(lecteur, 'lbllist', getattr(lecteur, '_lbllist', None))
+    if varlist is None or lbllist is None:
+        return {}
     return {variable: jeux[jeu]
-            for variable, jeu in zip(lecteur._varlist, lecteur._lbllist) if jeu in jeux}
+            for variable, jeu in zip(varlist, lbllist) if jeu in jeux}
 
 
 @lru_cache(maxsize=None)

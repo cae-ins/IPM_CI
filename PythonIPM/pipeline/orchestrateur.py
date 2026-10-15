@@ -98,9 +98,13 @@ def nom(base):
 # Sont hors socle : côté EHCVM l'assurance maladie, l'insécurité alimentaire, le renoncement
 # aux soins et la promiscuité ; côté RGPH la mortalité. La dimension Santé n'a donc aucun
 # indicateur commun : la variante harmonisée compte 3 dimensions et 12 indicateurs.
+# L'Emploi y est mesuré par SU3 (chômage BIT + main-d'œuvre potentielle) plutôt que le seul
+# chômage BIT : SU3 se lit à l'identique sur les deux sources (cf. `OPTIONS_EMPLOI` plus bas),
+# ce qui en fait un meilleur candidat pour une variante dont la promesse est justement d'être
+# comparable d'une source à l'autre.
 SOCLE_COMMUN = [
     "frequentation_scolaire", "annee_scolarite", "alphabetisation", "etat_civil",
-    "chomage", "emploi_subsistance",
+    "chomage_su3", "emploi_subsistance",
     "electricite", "logement", "eau_potable", "energie_cuisson", "toilette",
     "biens_equipement",
 ]
@@ -108,8 +112,9 @@ SOCLE_COMMUN = [
 
 # Indicateurs produits par l'étape 02 mais HORS de l'IPM national : ils existent dans la
 # matrice de privation et dans le vecteur z, et seules les variantes qui les nomment les
-# emploient. SU3 englobe le chômage BIT, et le NEET approché n'appartient qu'à une analyse de
-# sensibilité : les inclure d'office modifierait l'indice national publié.
+# emploient. SU3 englobe le chômage BIT (il figure au socle harmonisé ci-dessus, mais pas à
+# l'IPM national), et le NEET approché n'appartient qu'à une analyse de sensibilité : les
+# inclure d'office modifierait l'indice national publié.
 HORS_IPM_NATIONAL = ["chomage_su3", "neet_approx"]
 
 # Options de l'étape 05 qui ajoutent une variante Emploi. Elles valent pour les DEUX sources :

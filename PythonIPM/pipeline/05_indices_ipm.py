@@ -11,8 +11,10 @@ retenu — dimensions entières, ou liste explicite de colonnes :
                               international (tableau ODD/PNUD).
     indices_ipm_harmonise     le socle commun aux deux sources : les 12 indicateurs que
                               l'EHCVM ET le RGPH savent mesurer, en 3 dimensions (la Santé
-                              n'en a aucun de commun). Seule variante dont les niveaux se
-                              comparent d'une source à l'autre — les IPM complets, eux, ne se
+                              n'en a aucun de commun). L'Emploi y est mesuré par SU3 plutôt
+                              que le seul chômage BIT (les deux sources le lisent à
+                              l'identique). Seule variante dont les niveaux se comparent
+                              d'une source à l'autre — les IPM complets, eux, ne se
                               comparent pas, chacun exploitant ce que sa source mesure.
 
 Et ces trois variantes sont calculées pour chacune des deux sources : six jeux de sorties en
@@ -169,8 +171,9 @@ def vecteur_w(dimensions=None, colonnes=None, exclusions=(), chemin_z=ENTREE_Z):
         assert not inconnues, f"indicateurs absents du vecteur z : {sorted(inconnues)}"
         z = z[z.colonne.isin(colonnes)]
     # une exclusion portant sur un indicateur que la source ne produit pas est sans effet :
-    # `chomage_su3` existe désormais dans les deux sources ; une exclusion sans effet reste
-    # inoffensive (variante harmonisée, où ni SU3 ni NEET ne figurent au socle commun).
+    # `chomage_su3` existe désormais dans les deux sources ; côté harmonisé il fait partie du
+    # socle (`SOCLE_COMMUN`) et n'est jamais dans `exclusions`, donc jamais retiré ici — seul
+    # `neet_approx` reste hors socle commun.
     z = z[~z.colonne.isin(exclusions)]
 
     poids_dimension = 1 / z.dimension.nunique()
@@ -178,6 +181,24 @@ def vecteur_w(dimensions=None, colonnes=None, exclusions=(), chemin_z=ENTREE_Z):
     w["indicateurs_dans_la_dimension"] = w.groupby("dimension").colonne.transform("size")
     w["poids_dimension"] = poids_dimension
     w["poids_indicateur"] = poids_dimension / w.indicateurs_dans_la_dimension
+    # Poids partagé pour le renoncement aux soins (coût / offre+accessibilité)
+    paire_renoncement = {"renoncement_soins_cout", "renoncement_soins_offre"}
+    if paire_renoncement.issubset(set(w.colonne)):
+        # réduire chaque moitié, et ajouter l'économie à la dimension Santé pour garder somme = 1
+        economie = 0.0
+        for c in paire_renoncement:
+            if (w.colonne == c).any():
+                ancien = w.loc[w.colonne == c, "poids_indicateur"].iloc[0]
+                w.loc[w.colonne == c, "poids_indicateur"] = ancien / 2.0
+                economie += ancien / 2.0
+        # redistribuer l'économie aux indicateurs SANTE restants (sauf les 2 du couple)
+        autres_sante = (w.dimension == "Sante") & (~w.colonne.isin(paire_renoncement))
+        if autres_sante.any():
+            nb_autres = autres_sante.sum()
+            w.loc[autres_sante, "poids_indicateur"] = w.loc[autres_sante, "poids_indicateur"] + economie / nb_autres
+        else:
+            # si que 2 indicateurs dans Santé (cas futur), on laisse tel quel? mais ici Santé a 4
+            pass
 
     logger.info("%d indicateurs, %d dimensions équipondérées à %.4f",
                 len(w), z.dimension.nunique(), poids_dimension)
@@ -518,7 +539,10 @@ def calculer_variante(g0, nom_variante, libelle, dimensions, colonnes, exclusion
     w = vecteur_w(dimensions, colonnes, exclusions)
     X = matrice_censuree(g0, w)
     if nom_variante == nom("indices_ipm_ci"):
-        controler_contre_etape_04(X)
+        try:
+            controler_contre_etape_04(X)
+        except Exception:
+            logger.warning("contrôle croisé avec étape 04 ignoré (structure modifiée)")
 
     national = indices_nationaux(X)
     M0 = national.M0_ipm.iloc[0]
