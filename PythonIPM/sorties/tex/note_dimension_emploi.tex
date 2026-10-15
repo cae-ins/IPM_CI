@@ -16,8 +16,8 @@ Cette note documente précisément ce que recouvre la formule « au chômage au 
 qu'elle est implémentée, met au jour cinq décisions que l'énoncé ne mentionne pas, puis distingue
 les trois notions que l'on confond couramment --- le chômage BIT, la sous-utilisation de la
 main-d'\oe uvre (SU1 à SU4) et le NEET. Elle chiffre chacune sur l'EHCVM, mesure l'effet
-de deux montages alternatifs désormais implémentés dans le pipeline (options \col{-{}-su1\_su3}
-et \col{-{}-su3}), et conclut sur les arbitrages ouverts.
+de quatre montages alternatifs désormais implémentés dans le pipeline, et conclut sur les
+arbitrages ouverts.
 \end{abstract}
 
 \section{Le point de départ}
@@ -287,18 +287,19 @@ davantage ? ». Elle ne figure pas dans le questionnaire. SU2 et SU4 sont donc h
 \end{description}
 
 \begin{attention}[Un NEET EHCVM serait en réalité un « NEE »]
-Ni en emploi, ni en études --- sans le volet formation. Sur cette base approchée, 4\,079 jeunes
-sur 10\,078 sont concernés, soit \textbf{40,5~\% des 15-24 ans}. Le chiffre surestime le NEET
+Ni en emploi, ni en études --- sans le volet formation. Sur cette base approchée, 4\,042 jeunes
+sur 10\,078 sont concernés, soit \textbf{40,1~\% des 15-24 ans}. Le chiffre surestime le NEET
 d'autant que des jeunes sont en formation professionnelle en cours ; les questions 2.05 et 2.06
 permettent d'en majorer le biais, à défaut de le corriger.
 \end{attention}
 
-\section{SU3 mis en \oe uvre : l'effet mesuré}
+\section{Les variantes Emploi mises en \oe uvre}
 
-Les deux montages ont été calculés et sont disponibles dans le pipeline, par les options
+Quatre montages ont été calculés et sont disponibles dans le pipeline, par les options
 \col{-{}-su1\_su3} (SU3 \emph{en plus} du chômage BIT, l'Emploi passant à trois indicateurs de
-0,0833) et \col{-{}-su3} (SU3 \emph{à la place} du chômage BIT, à 0,125). Sans option, l'IPM
-national publié est inchangé --- ce que le pipeline vérifie à chaque exécution.
+0,0833), \col{-{}-su3} (SU3 et emploi de subsistance, 0,125 chacun),
+\col{-{}-su3\_seul} (SU3 porte seul les 0,25 de l'Emploi) et \col{-{}-su3\_neet} (SU3 et NEE,
+0,125 chacun). Sans option, l'IPM national publié est inchangé.
 
 Au niveau de l'indicateur, le passage de SU1 à SU3 fait passer le nombre de personnes concernées
 de \textbf{561 à 1\,200} sur la bande 17-40 (2,8~\% $\rightarrow$ 6,0~\%), et le nombre de ménages
@@ -314,34 +315,46 @@ $\rightarrow$ \textbf{12,1~\%} de la population).
 \midrule
 IPM national (SU1) & 58,0~\% & 0,4940 & 0,2863 & 22,8~\% & 26,1~\% \\
 SU1 + SU3 (\col{-{}-su1\_su3}) & 57,6~\% & 0,4750 & 0,2736 & 24,0~\% & 20,9~\% \\
-SU3 seul (\col{-{}-su3}) & 59,3~\% & 0,4970 & 0,2949 & 22,7~\% & 27,1~\% \\
+SU3 + subsistance (\col{-{}-su3}) & 59,3~\% & 0,4970 & 0,2949 & 22,7~\% & 27,1~\% \\
+SU3 uniquement (\col{-{}-su3\_seul}) & 53,6~\% & 0,4546 & 0,2438 & 28,0~\% & 13,7~\% \\
+SU3 + NEE (\col{-{}-su3\_neet}) & 57,7~\% & 0,4746 & 0,2740 & 25,2~\% & 20,5~\% \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 \begin{center}
 \small
-\begin{tabular}{@{}lrrr@{}}
+\begin{tabular}{@{}lrrrr@{}}
 \toprule
-\textbf{Contribution à l'\ipm{}} & \textbf{National} & \textbf{SU1 + SU3} & \textbf{SU3 seul} \\
+\textbf{Contribution à l'\ipm{}} & \textbf{National} & \textbf{SU3 + agric.} &
+\textbf{SU3 seul} & \textbf{SU3 + NEE} \\
 \midrule
-Chômage BIT (SU1) & 1,6~\% & 1,4~\% & --- \\
-Sous-utilisation SU3 & --- & 2,4~\% & 3,2~\% \\
-Emploi de subsistance & 16,9~\% & 11,2~\% & 16,5~\% \\
+Chômage BIT (SU1) & 1,6~\% & --- & --- & --- \\
+Sous-utilisation SU3 & --- & 3,2~\% & 11,2~\% & 4,0~\% \\
+NEET approché (NEE) & --- & --- & --- & 11,9~\% \\
+Emploi de subsistance & 16,9~\% & 16,5~\% & --- & --- \\
 \midrule
-\textbf{Dimension Emploi} & \textbf{18,5~\%} & \textbf{15,0~\%} & \textbf{19,7~\%} \\
+\textbf{Dimension Emploi} & \textbf{18,5~\%} & \textbf{19,7~\%} &
+\textbf{11,2~\%} & \textbf{15,9~\%} \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 \subsection{Lecture}
 
-\textbf{SU3 seul} est le montage cohérent. Il fait ce qu'on attendait : l'indicateur de chômage
+\textbf{SU3 + emploi de subsistance} est le remplacement direct du montage national. Il fait ce
+qu'on attendait : l'indicateur de chômage
 double sa contribution (1,6~\% $\rightarrow$ 3,2~\%) sans bouleverser l'indice, qui monte de
 0,2863 à \textbf{0,2949}. L'écart reste dans l'intervalle de confiance de l'IPM national
 (\mbox{[0,2701 ; 0,3026]}) : le changement est cohérent avec la mesure actuelle, il ne la
 contredit pas. Le rapport rural/urbain se resserre légèrement, de 2,85 à 2,72 --- SU3 capte du
 découragement en ville, là où le chômage BIT strict est déjà le plus visible.
+
+\textbf{SU3 uniquement} fait tomber l'IPM à 0,2438 et la pauvreté sévère à 13,7~\%. Ce mouvement
+ne signifie pas une amélioration réelle : un indicateur rare reçoit tout le poids de l'Emploi et
+la privation agricole disparaît. \textbf{SU3 + NEE} donne un résultat intermédiaire (0,2740), mais
+le NEE contribue déjà 11,9~\% de l'indice ; faute de formation en cours, ce poids serait attribué
+à un indicateur systématiquement surestimé.
 
 \textbf{SU1 + SU3} pose en revanche un problème de méthode, visible dans les chiffres. SU3
 \emph{englobe} SU1 : tout ménage privé au titre du chômage BIT l'est aussi au titre de SU3, et se
@@ -360,6 +373,32 @@ indicateurs seraient disjoints et chaque ménage ne serait compté qu'une fois. 
 pas implémentée à ce jour ; elle s'obtiendrait en remplaçant \col{ind.su3} par
 \col{ind.main\_oeuvre\_potentielle} à l'étape 01.
 \end{attention}
+
+\section{Ce que la littérature soutient sur l'agriculture de subsistance}
+
+La présence de cet indicateur est défendable. L'OIT explique que le chômage ouvert est peu
+informatif dans de nombreuses économies en développement et cite explicitement, parmi les
+indicateurs agricoles possibles, la part des ménages engagés dans l'agriculture de subsistance.
+Elle recommande d'adapter les indicateurs aux formes nationales d'emploi et de moyens
+d'existence.\footnote{OIT, \emph{Jobs and livelihoods: Meaningful ways to set targets and monitor
+progress}, 2012, \url{https://www.ilo.org/resource/jobs-and-livelihoods-meaningful-ways-set-targets-and-monitor-progress}.}
+Il existe aussi un précédent officiel dans un IPM national : le Rwanda retient comme privé le
+ménage « uniquement engagé dans le travail agricole », dans sa dimension Services sociaux et
+activité économique.\footnote{National Institute of Statistics of Rwanda, \emph{The Second Rwanda
+Multidimensional Poverty Report}, tableau des seuils, p.~31,
+\url{https://ophi.org.uk/sites/default/files/2023-12/nisr_rwanda_mpi_report_2018.pdf}.}
+
+La réserve porte sur la \textbf{mesure ivoirienne}, non sur le concept. Depuis la 19e CIST, l'OIT
+distingue l'emploi pour rémunération ou profit de la production pour usage propre et définit les
+producteurs vivriers de subsistance par la destination de la production.\footnote{OIT,
+\emph{Employment} et \emph{Own-use production work},
+\url{https://www.ilo.org/resource/employment-1} et
+\url{https://www.ilo.org/resource/own-use-production-work}.} Or l'EHCVM permet d'observer que le
+chef ne fait que du champ, sans salariat, commerce ni apprentissage, mais pas que la production est
+principalement destinée à la consommation du ménage. L'indicateur actuel est donc un
+\textbf{proxy de dépendance agricole exclusive}, pas une mesure conforme au sens strict de la
+subsistance OIT. La littérature soutient son maintien comme indicateur de moyens d'existence, mais
+pas le libellé trop affirmatif « agriculture de subsistance » sans cette réserve.
 
 \section{Les arbitrages ouverts}
 

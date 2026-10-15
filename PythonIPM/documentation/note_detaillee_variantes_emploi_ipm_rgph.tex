@@ -1,0 +1,989 @@
+\documentclass[11pt,a4paper]{article}
+\input{preambule}
+
+\renewcommand{\source}{RGPH 2021 --- variantes Emploi}
+\setcounter{tocdepth}{2}
+
+\title{\bfseries Comprendre le calcul de l'IPM pas à pas sur le recensement\\[5pt]
+\large Bases, colonnes, code du pipeline, et les trois variantes Emploi\\
+SU3, agriculture de subsistance et NEET approché}
+\author{Pipeline \col{PythonIPM} --- IPM Côte d'Ivoire}
+\date{21 septembre 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent Cette note est le pendant, pour le \textbf{RGPH 2021}, de la note détaillée déjà
+produite sur l'EHCVM. Elle explique, sans supposer de connaissance préalable, comment les
+réponses du recensement deviennent des indicateurs de privation au niveau du ménage, quelle
+colonne de quelle base sert à chaque indicateur, ce que fait exactement chaque script du
+pipeline, puis comment sont calculés l'incidence $H$, l'intensité $A$ et l'indice $M_0$. Elle
+détaille enfin les trois variantes demandées pour la dimension Emploi : \textbf{SU3 +
+agriculture de subsistance}, \textbf{SU3 uniquement} et \textbf{SU3 + NEET approché}. Les
+chiffres portent sur 5\,616\,487 ménages et 27\,984\,405 individus recensés, représentant
+29,28 millions de personnes après application du taux net de couverture post-censitaire.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Ce qu'il faut retenir avant d'entrer dans le détail}
+
+Le calcul est strictement le même que sur l'enquête --- c'est la méthode Alkire--Foster --- et
+il procède en quatre opérations :
+
+\begin{enumerate}
+  \item les réponses individuelles et celles du logement sont ramenées au niveau du ménage ;
+  \item chaque situation devient un indicateur binaire : 1 si le ménage est privé, 0 sinon ;
+  \item les indicateurs sont pondérés, puis additionnés pour obtenir un score entre 0 et 1 ;
+  \item le ménage est pauvre si son score atteint au moins un tiers, soit $k=1/3$.
+\end{enumerate}
+
+\[
+  \boxed{M_0 = H \times A}
+\]
+
+Ce qui change par rapport à l'EHCVM, ce n'est donc pas la méthode, c'est \textbf{ce que la
+source sait mesurer}. Le recensement ne pose aucune question de santé, ne demande ni les années
+d'études ni le nombre de pièces, mais il recense les décès et il porte un \textbf{statut
+d'activité déjà construit par l'INS} qui contient la main-d'{\oe}uvre potentielle. C'est ce
+dernier point qui rend les variantes Emploi possibles sur le recensement.
+
+\begin{retenir}[Résultat central]
+Sur le RGPH, la variante \textbf{SU3 + agriculture de subsistance} donne $H=43{,}1~\%$,
+$A=0{,}4464$ et $M_0=0{,}1924$, contre 0,1664 pour l'IPM national de référence. C'est la plus
+défendable des trois. \textbf{SU3 uniquement} fait tomber $M_0$ à 0,1380 et \textbf{SU3 + NEET
+approché} à 0,1522, mais dans les deux cas parce que l'on \emph{retire} la privation agricole,
+qui est de loin la plus contributive du recensement, et non parce que SU3 serait moins sévère.
+\end{retenir}
+
+\begin{attention}[Ne jamais comparer l'IPM RGPH à l'IPM EHCVM]
+Les deux indices n'ont pas les mêmes indicateurs : l'IPM national du recensement vaut 0,1664,
+celui de l'enquête 0,2863. L'écart ne mesure rien de réel. La seule comparaison légitime passe
+par la variante \emph{harmonisée}, bâtie sur le socle d'indicateurs commun aux deux sources.
+\end{attention}
+
+\section{Données, unités et pondération de la population}
+
+\subsection{Les trois bases utilisées}
+
+L'extrait RGPH 2021 mis à disposition est réparti sur trois fichiers Stata. Le point à
+connaître avant de lire le code est que les variables de logement et de biens figurent dans
+\emph{deux} fichiers, mais ne sont complètes que dans un seul.
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{4.6cm}rp{7.4cm}@{}}
+\toprule
+\textbf{Fichier} & \textbf{Lignes} & \textbf{Rôle dans l'IPM} \\
+\midrule
+\col{IPM\_Data\_191125.dta} & 27\,984\,405 individus & démographie, éducation, emploi, état
+civil, géographie, pondération, taille du ménage. Il porte aussi le logement et les biens, mais
+renseignés pour un tiers des ménages seulement : \textbf{ils ne sont pas lus ici} \\
+\col{IPM\_Data\_110924\_men.dta} & 5\,528\,535 ménages & logement, eau, éclairage, cuisson,
+sanitaires, biens d'équipement --- complets. Une ligne par chef de ménage \\
+\col{MORTALITE\_RP2021\_}\allowbreak\col{TRAITEMENT.dta} & 269\,901 décès & décès survenus dans
+les 12 mois précédant le recensement, dont l'âge au décès \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Après agrégation, la table de travail compte \textbf{5\,616\,487 ménages}.
+
+\subsection{Trois clés de jointure différentes}
+
+C'est une particularité du RGPH, et une source d'erreur si on l'ignore :
+
+\begin{description}
+  \item[Individus $\rightarrow$ ménage.] La colonne \col{ID\_Menage} (renommée
+  \col{id\_menage}) identifie le ménage. C'est la clé de l'IPM RGPH.
+
+  \item[Ménage $\rightarrow$ fichier logement.] Le fichier ménages n'est pas indexé par
+  \col{ID\_Menage} mais par \col{INDIV\_ID}, l'identifiant \emph{de l'individu chef de ménage}.
+  La jointure passe donc par la ligne du chef repérée dans le fichier individus
+  (\col{P16}~=~1). 87\,952 ménages n'ont pas de ligne correspondante : ils sont comptés non
+  privés par convention sur les indicateurs de conditions de vie.
+
+  \item[Ménage $\rightarrow$ fichier décès.] Le fichier des décès ne porte \emph{ni}
+  \col{INDIV\_ID} \emph{ni} \col{ID\_Menage}. Le seul lien possible est la clé géographique
+  complète en douze champs : \col{REGION}, \col{DEPART}, \col{SOUSPREFID}, \col{P\_ZC},
+  \col{P04}, \col{P05}, \col{P06}, \col{P07}, \col{P09}, \col{P09A}, \col{P09B}, \col{P10}.
+\end{description}
+
+\subsection{Ménage de construction, individu de comptage}
+
+La privation est construite au niveau du \textbf{ménage}, mais les résultats nationaux portent
+sur les \textbf{personnes}. Le poids de population du ménage $i$ est :
+
+\[
+  n_i = \underbrace{\col{EW}_i}_{\text{taux net de couverture post-censitaire}}
+        \times\ \col{TAILLE\_MENAGE}_i .
+\]
+
+Le recensement dénombre l'ensemble de la population ; \col{EW} ne corrige pas un plan de
+sondage mais la couverture incomplète du dénombrement, mesurée par l'enquête
+post-censitaire. La somme $\sum_i n_i$ vaut 29,28 millions de personnes.
+
+\begin{attention}[Ne pas confondre deux pourcentages]
+L'agriculture de subsistance concerne 39,8~\% des \emph{ménages} recensés, mais 46,0~\% de la
+\emph{population} pondérée : les ménages agricoles sont plus grands que la moyenne. Les indices
+$H$, $A$ et $M_0$ utilisent toujours la pondération population.
+\end{attention}
+
+\subsection{La grappe, pour les intervalles de confiance}
+
+Le recensement n'a pas de grappe d'échantillonnage. Pour calculer des erreurs-types, le pipeline
+reconstruit une unité primaire à partir de la \textbf{zone de dénombrement}, l'unité de terrain
+du recensement :
+
+\[
+  \col{grappe} = \col{SOUSPREFID}\times 10^{7} + \col{P\_ZC}\times 10^{4} + \col{P05}.
+\]
+
+On obtient ainsi 28\,329 zones, qui servent de strates au calcul de la variance.
+
+\section{Des réponses brutes aux indicateurs de privation}
+
+Pour chaque indicateur $j$, le pipeline construit :
+
+\[
+g^0_{ij} =
+\begin{cases}
+1 & \text{si le ménage } i \text{ est privé selon le seuil } z_j,\\
+0 & \text{sinon.}
+\end{cases}
+\]
+
+Un ménage sans personne appartenant à la tranche d'âge d'un indicateur est classé non privé sur
+cet indicateur. Ainsi, les 12,6~\% de ménages sans membre de 17 à 40 ans ne sont jamais privés
+au titre de SU3, et les 45,7~\% de ménages sans jeune de 15 à 24 ans ne le sont jamais au titre
+du NEET.
+
+\subsection{Les quatre indicateurs d'éducation}
+
+\begin{description}
+  \item[Fréquentation scolaire.] Colonne \col{P30A}. Privé si au moins un enfant de 6 à 16 ans
+  ne fréquente pas actuellement l'école, c'est-à-dire si \col{P30A}~$\neq$~1 (les modalités 2
+  « a déjà fréquenté », 3 « jamais » et 8 « ne sait pas » sont toutes des privations).
+  Privation : 21,7~\% des ménages, \textbf{35,6~\% de la population}.
+
+  \item[Année de scolarité.] Colonne \col{P32}, diplôme le plus élevé. \textbf{Écart assumé :}
+  le recensement ne demande ni le nombre d'années d'études ni la classe atteinte. Les dix années
+  accomplies de l'énoncé national sont approchées par « au moins le BEPC », soit les codes 4 à
+  22. Le CEPE (code 2, six années) et le CQP (code 3) restent donc sous le seuil. Privé si aucun
+  membre de 17 à 95 ans n'atteint ce niveau. Privation : 65,5~\% des ménages, 63,2~\% de la
+  population.
+
+  \item[Alphabétisation.] Colonnes \col{P29A} (sait lire et écrire une langue) et \col{P29\_BA}
+  (le français). Est alphabétisé celui pour qui \col{P29A}~=~1 \emph{et} \col{P29\_BA}~=~1.
+  Privé si au moins un membre de 17 à 49 ans ne l'est pas. Privation : 58,9~\% des ménages,
+  \textbf{70,4~\% de la population}.
+
+  \item[État civil.] Colonne \col{P20}. Seule la modalité 1 « déclaré avec extrait d'acte » est
+  non privée : la question de l'EHCVM porte sur la \emph{possession} de l'acte, donc « déclaré
+  sans acte » (2) est une privation. Privé si au moins un enfant de 5 à 15 ans est dans ce cas.
+  Privation : 9,8~\% des ménages, 15,2~\% de la population.
+\end{description}
+
+\begin{attention}[Deux écarts au dofile officiel du RGPH 2021, assumés et documentés]
+Sur l'alphabétisation, le dofile officiel lit « aucun membre alphabétisé » (33,2~\% des
+ménages) là où l'énoncé national dit « un membre ne sait pas lire ou écrire » (70,4~\%). C'est
+l'énoncé littéral qui est retenu, comme dans l'EHCVM, pour que les deux sources ne divergent
+pas. Sur l'état civil, le dofile officiel ne compte privés que les codes 3 et 8 (9,7~\% des
+ménages) : le pipeline y ajoute le code 2, soit 15,2~\%.
+\end{attention}
+
+\subsection{L'unique indicateur de santé : la mortalité}
+
+\begin{description}
+  \item[Mortalité dans le ménage.] Fichier des décès, colonne \col{M61A2\_AGE} (âge au décès,
+  998 = ne sait pas). Privé si au moins un enfant de moins de 18 ans est décédé dans le ménage.
+  Privation : 0,7~\% des ménages, 1,1~\% de la population.
+\end{description}
+
+Cet indicateur remplace à lui seul les trois indicateurs de santé de l'EHCVM --- assurance
+maladie, insécurité alimentaire et renoncement aux soins --- qu'aucune question du recensement
+ne permet de reconstruire. Il porte donc \textbf{à lui seul le poids de 0,25} de la dimension.
+
+\begin{attention}[La fenêtre de mortalité n'est pas celle de l'IPM mondial]
+Le RGPH recense les décès des \textbf{12 derniers mois} ; l'IPM mondial retient une fenêtre de
+\textbf{5 ans}. La privation est donc mécaniquement beaucoup plus rare ici, et les deux ne se
+comparent pas. Conséquence directe sur l'indice : avec un poids nominal de 25~\% mais un taux
+de privation de 1,1~\%, la dimension Santé ne contribue qu'à 1,6~\% de $M_0$. Le poids de 0,25
+est donc, en pratique, largement inemployé --- et c'est ce qui rend l'IPM RGPH si sensible au
+choix des indicateurs d'emploi.
+\end{attention}
+
+\subsection{Les six indicateurs de conditions de vie}
+
+Tous lus dans le fichier ménages. Les matériaux adéquats sont définis \emph{par exclusion},
+comme dans le dofile officiel du RGPH : tout ce qui n'est pas dans la liste courte est
+rudimentaire.
+
+\begin{description}
+  \item[Électricité.] Colonne \col{P51}. Privé si l'éclairage principal n'est ni le réseau, ni
+  un groupe électrogène, ni le solaire. Population privée : 11,5~\%.
+
+  \item[Logement.] Colonnes \col{P45} (murs), \col{P46} (toit), \col{P47} (sol). Privé si l'un
+  au moins des trois est rudimentaire. Sont adéquats : sol ciment, carreau ou moquette ; toit
+  tôle, béton ou tuile ; murs semi-dur, géobéton ou dur. Le sol en bois et le mur en tôle sont
+  comptés rudimentaires, conformément à la classification DHS. Population privée : 25,0~\%.
+
+  \item[Eau potable.] Colonne \col{P49}. Privé si la source n'est pas améliorée au sens des ODD.
+  \textbf{Écart assumé :} le temps de trajet jusqu'au point d'eau n'est pas demandé au
+  recensement, seul le premier critère du PNUD s'applique --- l'indicateur est donc moins sévère
+  que son homologue EHCVM. Population privée : 14,3~\%.
+
+  \item[Énergie de cuisson.] Colonne \col{P52}. Privé si le combustible n'est ni le gaz ni
+  l'électricité. Population privée : 62,7~\%.
+
+  \item[Toilettes.] Colonne \col{P48}. Privé si les sanitaires ne sont pas améliorés.
+  \textbf{Écart assumé :} le partage des sanitaires avec d'autres ménages n'est pas demandé.
+  Population privée : 45,1~\%.
+
+  \item[Biens d'équipement.] Colonnes \col{P55AA} à \col{P57EE}. Privé si le ménage possède au
+  plus un bien parmi radio, télévision, téléphone (fixe ou mobile), ordinateur, charrette, vélo,
+  moto et réfrigérateur, et ne possède pas de voiture (\col{P55CC}). \textbf{Ici le recensement
+  est plus complet que l'enquête :} les 8 biens de la définition PNUD y sont tous, charrette
+  (« véhicule à traction animale ») comprise, alors que l'EHCVM n'en a que 7. Population
+  privée : 18,2~\%.
+\end{description}
+
+\begin{retenir}[Ce que le recensement ne sait pas mesurer]
+Quatre indicateurs de l'EHCVM disparaissent : assurance maladie, insécurité alimentaire,
+renoncement aux soins (aucune question de santé) et promiscuité (le nombre de pièces n'est pas
+collecté). L'IPM national du RGPH compte donc \textbf{13 indicateurs} contre 16 dans l'enquête,
+et sa dimension Santé n'a plus qu'un seul indicateur.
+\end{retenir}
+
+\section{Les indicateurs d'emploi, dans le détail}
+
+C'est la section qui justifie cette note : les trois variantes demandées ne pouvaient, jusqu'à
+présent, être calculées que sur l'EHCVM. Elles le sont désormais aussi sur le recensement.
+
+\subsection{Pourquoi SU3 est constructible sur le RGPH}
+
+L'EHCVM permet de reconstruire la main-d'{\oe}uvre potentielle à la main, à partir de la
+recherche d'emploi, de la disponibilité et du désir de travailler (questions 4.13 à 4.18). Le
+recensement ne pose pas ces questions dans le même détail --- et c'est ce qui avait fait écarter
+les variantes Emploi côté RGPH.
+
+Mais le recensement porte une variable \textbf{déjà construite par l'INS},
+\col{Statut\_OQPtbb}, qui code directement le statut d'activité en quatre modalités :
+
+\begin{center}
+\small
+\begin{tabular}{@{}clrr@{}}
+\toprule
+\textbf{Code} & \textbf{Statut} & \textbf{Individus} & \textbf{Part} \\
+\midrule
+0 & Occupé & 11\,082\,635 & 39,6~\% \\
+1 & Chômeur au sens du BIT & 403\,834 & 1,4~\% \\
+2 & Inactif & 13\,794\,677 & 49,3~\% \\
+\textbf{3} & \textbf{Main-d'{\oe}uvre potentielle} & \textbf{2\,127\,898} & \textbf{7,6~\%} \\
+--- & Non renseigné (hors champ d'âge) & 575\,361 & 2,1~\% \\
+\midrule
+ & Total & 27\,984\,405 & 100,0~\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+La modalité 3 \emph{est} la main-d'{\oe}uvre potentielle. SU3 se lit donc directement :
+
+\[
+  \text{SU3} = \{\col{Statut\_OQPtbb} \in \{1,\,3\}\}
+  = \text{chômage BIT} \ \cup\ \text{main-d'{\oe}uvre potentielle}.
+\]
+
+\begin{retenir}[Le point méthodologique de cette note]
+SU3 n'est pas \emph{approché} sur le RGPH : il est \textbf{lu} dans une variable officielle de
+l'INS, là où l'EHCVM doit le reconstruire. Le recensement est, sur ce point précis, la source la
+plus directe des deux.
+\end{retenir}
+
+Le choix de \col{Statut\_OQPtbb} plutôt que de \col{Statut\_OQPtb}, l'autre variable de statut
+présente dans la base, n'est pas anodin : \col{Statut\_OQPtb} donne 21,6~\% de ménages privés au
+chômage contre 5,9~\% ici, parce qu'elle n'intègre pas le reclassement INS des personnes
+déclarées sans activité mais en réalité occupées. \col{Statut\_OQPtbb} a par ailleurs été
+vérifiée contre la construction du dofile officiel du RGPH 2021, qui applique les trois critères
+BIT explicitement : les deux ne diffèrent que sur 18\,910 individus sur 28 millions, soit
+0,07~\%.
+
+\subsection{Chômage BIT ou SU1}
+
+Privé si au moins un membre de 17 à 40 ans a \col{Statut\_OQPtbb}~=~1. On compte 298\,644
+chômeurs dans cette tranche sur 11,4 millions de personnes concernées, soit \textbf{2,6~\%}. Au
+niveau du ménage : 196\,019 ménages privés, 3,5~\% des ménages et \textbf{5,9~\% de la
+population}.
+
+Le chômage BIT est rare, pour les mêmes raisons que dans l'enquête : une heure de travail suffit
+à être classé occupé, et les personnes découragées qui ne recherchent plus activement sortent du
+chômage.
+
+\subsection{SU3 : chômage plus main-d'{\oe}uvre potentielle}
+
+Privé si au moins un membre de 17 à 40 ans a \col{Statut\_OQPtbb}~$\in \{1,3\}$. On compte
+1\,661\,331 personnes, soit \textbf{14,6~\%} des 17--40 ans --- cinq fois et demie le chômage
+BIT. Au niveau du ménage : 1\,033\,121 ménages, 18,4~\% des ménages et \textbf{26,3~\% de la
+population}.
+
+Tout chômeur BIT appartient nécessairement à SU3. La propriété a été vérifiée dans les données :
+\textbf{aucun} des 196\,019 ménages privés au titre du chômage ne se trouve hors de SU3.
+
+\begin{attention}[Pourquoi il ne faut pas additionner mécaniquement SU1 et SU3]
+SU3 contient déjà SU1. Une variante « SU1 + SU3 » attribue donc deux privations au même chômage.
+Ce montage peut être calculé comme test (option \col{-{}-su1\_su3}), mais il n'est pas recommandé
+comme spécification principale.
+\end{attention}
+
+\subsection{Agriculture de subsistance : ce que mesure réellement le code}
+
+Colonnes \col{Statut\_OQPtbb}, \col{P36BNEWtb} (branche d'activité, nomenclature NAEMA) et
+\col{P37NEWtb} (situation dans la profession). Le chef de ménage est compté en
+subsistance s'il
+est simultanément :
+
+\begin{itemize}
+  \item \textbf{occupé} : \col{Statut\_OQPtbb}~=~0 ;
+  \item dans une \textbf{branche agricole} : \col{P36BNEWtb} dans l'intervalle
+  $[01000\,;\,04000[$, soit les divisions NAEMA 01 à 03 (agriculture, sylviculture, pêche) ;
+  \item \textbf{à son compte ou comme aide familial} : \col{P37NEWtb} $\in \{3, 5\}$, ce qui
+  exclut le salariat, l'apprentissage et le statut d'employeur.
+\end{itemize}
+
+Le ménage n'est privé que si c'est le \textbf{chef} qui est dans ce cas (\col{P16}~=~1). Cette
+règle donne 2\,234\,464 ménages privés, soit 39,8~\% des ménages et \textbf{46,0~\% de la
+population}.
+
+\begin{attention}[Une approximation différente de celle de l'EHCVM]
+L'EHCVM observe le travail \emph{exclusif sur son propre champ} ; le RGPH ne pose pas cette
+question et observe la \emph{branche} croisée avec le \emph{statut non salarié}. Les deux
+approximations visent la même réalité mais ne coïncident pas : la version RGPH inclut la pêche
+et la sylviculture, et n'exclut pas un chef qui ferait aussi du commerce. Dans les deux cas, la
+destination de la production --- le vrai critère OIT de la subsistance --- n'est pas observée.
+Le libellé prudent reste : « chef de ménage dépendant d'une activité agricole non salariée ---
+proxy de l'agriculture de subsistance ».
+\end{attention}
+
+\subsection{NEET approché : en réalité un NEE}
+
+L'indicateur international NEET porte sur les jeunes de 15 à 24 ans qui ne sont ni en emploi, ni
+en éducation, ni en formation. Le recensement observe les deux premiers termes, pas le
+troisième. Le pipeline construit donc, sur les colonnes \col{Statut\_OQPtbb} et \col{P30A} :
+
+\[
+  \text{NEE approché} = (15\text{--}24\text{ ans}) \cap
+  (\col{Statut\_OQPtbb} \neq 0) \cap (\col{P30A} \neq 1).
+\]
+
+On obtient 1\,692\,665 jeunes sur 5\,920\,170, soit \textbf{28,6~\%}. Au niveau du ménage :
+1\,105\,964 ménages, 19,7~\% des ménages et \textbf{30,9~\% de la population}. Comme dans
+l'EHCVM, le chiffre est une \textbf{borne supérieure} du NEET : des jeunes comptés NEE peuvent
+suivre une formation non observée. L'indicateur garde le nom \col{neet\_approx} précisément pour
+que cette limite ne se perde pas en route.
+
+SU3 et NEE se recouvrent dans 473\,999 ménages, soit 14,2~\% de la population. Le couple
+SU3~+~NEE mesure deux objets différents, mais donne deux fois du poids à certains épisodes de
+non-emploi des jeunes.
+
+\section{Que fait chaque code du pipeline}
+
+Le pipeline tourne sur \textbf{deux sources} avec le même enchaînement d'étapes. La source est
+portée par la variable d'environnement \col{IPM\_SOURCE} (\col{ehcvm} ou \col{rgph}) ; elle
+détermine le dossier de données, la clé du ménage, les désagrégations disponibles et le
+\emph{suffixe} de tous les fichiers produits. Les sorties des deux sources cohabitent donc sans
+se marcher dessus.
+
+\subsection{Vue d'ensemble}
+
+\begin{center}
+\scriptsize
+\begin{tabular}{@{}p{4.3cm}p{5cm}p{5.4cm}@{}}
+\toprule
+\textbf{Script} & \textbf{Entrée} & \textbf{Sortie} \\
+\midrule
+\col{orchestrateur.py} & --- & socle commun (chemins, clés, journaux) \emph{et} chef d'orchestre \\
+\col{01\_rgph\_preconstruction\_}\allowbreak\col{matrice\_situationnelle.py} & les 3 bases
+  \col{.dta} du recensement & \col{preconstruction\_matrice\_}\allowbreak\col{situationnelle\_rgph2021.dta} \\
+\col{02\_construction\_matrice\_}\allowbreak\col{situationnelle.py} & la préconstruction &
+  \col{matrice\_situationnelle\_}\allowbreak\col{rgph2021.dta} + le vecteur $z$ \\
+\col{03\_matrice\_privations\_}\allowbreak\col{ponderees.py} & la matrice $g^0$ & poids $w$,
+  matrice pondérée, score $c_i$ \\
+\col{04\_matrice\_privations\_}\allowbreak\col{censuree.py} & la matrice pondérée & matrice
+  censurée, statuts au seuil $k$ \\
+\col{05\_indices\_ipm.py} & la matrice $g^0$ + le vecteur $z$ & $H$, $A$, $M_0$, contributions,
+  désagrégations, classeurs \col{.xlsx} \\
+\col{06\_validation\_afmpi.py} & les sorties de 05 & contrôle croisé par un package indépendant \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{\col{orchestrateur.py} --- le socle et le chef d'orchestre}
+
+Ce module a deux rôles. Comme \textbf{socle}, il porte ce qui est commun à toutes les étapes :
+les chemins du projet, la clé de fusion (\col{id\_menage} pour le RGPH,
+\col{grappe~+~menage~+~vague} pour l'EHCVM), les colonnes techniques transportées d'une étape à
+l'autre, la journalisation, et deux listes décisives :
+
+\begin{description}
+  \item[\col{SOCLE\_COMMUN}] les indicateurs que l'EHCVM \emph{et} le RGPH savent mesurer. Il
+  sert à la variante harmonisée, seule comparable en niveau d'une source à l'autre.
+
+  \item[\col{HORS\_IPM\_NATIONAL}] les indicateurs produits par l'étape 02 mais volontairement
+  \emph{exclus} de l'indice publié : \col{chomage\_su3} et \col{neet\_approx}. Ils existent dans
+  la matrice de privation et dans le vecteur $z$, et seules les variantes qui les nomment les
+  emploient. C'est ce mécanisme qui garantit que l'ajout de SU3 et du NEET au recensement
+  \textbf{n'a pas modifié d'un millième} l'IPM national : il vaut 0,1664 avant comme après.
+\end{description}
+
+Comme \textbf{chef d'orchestre}, il enchaîne les étapes en sous-processus --- une étape qui
+échoue arrête la chaîne --- et écrit un journal d'ensemble. Il porte aussi une fonction
+\col{compacter} qui ramène chaque colonne entière au plus petit type qui la contient : sur 5,6
+millions de lignes, stocker un indicateur 0/1 en \col{int64} octuple la taille des fichiers de
+travail. Les vrais flottants (scores $c_i$, pondérations) restent en \col{float64}, car ils sont
+comparés d'une étape à l'autre à $10^{-9}$ près.
+
+\subsection{\col{01\_rgph\_preconstruction\_matrice\_situationnelle.py}}
+
+C'est le seul script réellement spécifique au recensement. Son contrat de sortie : \textbf{une
+ligne par ménage, et pour chaque indicateur l'effectif \emph{concerné} à côté de l'effectif
+\emph{défavorable}} --- sans qu'aucun seuil ne soit appliqué à ce stade. Il procède en cinq
+temps :
+
+\begin{enumerate}
+  \item \textbf{Parcours du fichier individus par morceaux de 3 millions de lignes.} 28 millions
+  de lignes ne tiennent pas en mémoire. Chaque morceau est agrégé séparément par ménage, puis
+  les agrégats sont resommés : un ménage coupé entre deux morceaux est correctement reconstitué,
+  puisque la somme d'une somme reste une somme. Les lignes de chef sont mises de côté au passage,
+  car elles portent la géographie, la pondération et la taille du ménage.
+
+  \item \textbf{Situations individuelles} (fonction \col{situations\_individuelles}). Chaque
+  colonne est un booléen, et l'appartenance à la tranche d'âge concernée est portée par une
+  colonne \emph{séparée} --- c'est elle qui permettra à l'étape 02 de distinguer « non privé »
+  de « non concerné ». Un âge « ne sait pas » (code 999) ne fait entrer dans aucune tranche.
+  \textbf{C'est ici qu'ont été ajoutées} les colonnes \col{chomeurs\_su3\_17\_40},
+  \col{jeunes\_15\_24} et \col{jeunes\_neet\_approx\_15\_24}.
+
+  \item \textbf{Conditions de vie et biens} (fichier ménages), avec le comptage des 8 biens
+  PNUD.
+
+  \item \textbf{Mortalité juvénile} (fichier des décès), jointe par la clé géographique en douze
+  champs.
+
+  \item \textbf{Assemblage et contrôles} : unicité de la clé, pondérations strictement
+  positives, distributions, valeurs manquantes.
+\end{enumerate}
+
+\subsection{\col{02\_construction\_matrice\_situationnelle.py} --- où sont écrites les règles}
+
+À partir de cette étape, le code est \textbf{commun aux deux sources} : il ne travaille plus que
+sur des colonnes de situation normalisées. Ce qui change d'une source à l'autre, ce sont les
+énoncés et les seuils, rassemblés dans une carte officielle des indicateurs. Chaque entrée
+déclare :
+
+\begin{description}
+  \item[\col{colonne}] le nom produit dans $X$ (1 = privé, 0 = non privé) ;
+  \item[\col{regle}] le seuil appliqué, écrit comme une fonction ;
+  \item[\col{situation}] les colonnes de la préconstruction qui portent la situation brute ;
+  \item[\col{eligibilite}] la colonne qui dit combien de membres sont concernés.
+\end{description}
+
+Chaque indicateur suit soit la \emph{proposition nationale}, soit l'\emph{application du PNUD},
+et l'étiquette est portée dans la carte. Le script produit aussi le \textbf{vecteur $z$}, la
+liste des indicateurs avec leur dimension et leur valeur de coupure : c'est lui que lira
+l'étape 05 pour construire les poids, ce qui garantit que $w$ et $z$ portent toujours sur
+exactement les mêmes colonnes.
+
+\textbf{C'est ici qu'ont été ajoutés} les deux indicateurs \col{chomage\_su3} et
+\col{neet\_approx} à la liste du RGPH, qui passe de 13 à 15 indicateurs --- dont 13 seulement
+entrent dans l'IPM national.
+
+\subsection{\col{03\_matrice\_privations\_ponderees.py}}
+
+Calcule le vecteur de poids $w$ : les dimensions sont équipondérées, et à l'intérieur d'une
+dimension le poids est partagé également entre les indicateurs. Puis la matrice pondérée
+$w_j g^0_{ij}$ et le score $c_i$. \textbf{C'est ce script qui retire \col{HORS\_IPM\_NATIONAL}}
+du vecteur $z$ avant de calculer les poids : la chaîne 03--04 ne voit donc jamais SU3 ni le NEET,
+et l'IPM national reste celui qui est publié.
+
+\subsection{\col{04\_matrice\_privations\_censuree.py}}
+
+Applique le seuil $k=1/3$ et remet à zéro les privations des ménages \emph{non} pauvres. C'est
+la censure Alkire--Foster, qui rend $M_0$ décomposable par indicateur. Le script calcule aussi
+les deux statuts complémentaires : vulnérable ($0{,}20 \leq c_i < 1/3$) et pauvreté sévère
+($c_i \geq 0{,}50$).
+
+\subsection{\col{05\_indices\_ipm.py} --- les variantes}
+
+Le script principal. Il repart de la matrice $g^0$ brute et \textbf{refait} la pondération et la
+censure pour chaque variante, puisque les poids changent d'une variante à l'autre. Trois
+variantes sont toujours calculées :
+
+\begin{description}
+  \item[IPM national] 4 dimensions, tous les indicateurs sauf \col{HORS\_IPM\_NATIONAL} ;
+  \item[IPM international] 3 dimensions, sans l'Emploi ;
+  \item[IPM harmonisé] le socle commun EHCVM/RGPH, seule variante comparable entre sources.
+\end{description}
+
+La variante nationale est comparée par \col{assert} à la matrice censurée de l'étape 04 : si les
+deux chemins de calcul divergeaient d'un millième, le script s'arrêterait. C'est ce contrôle qui
+garantit qu'aucune modification du code ne déplace silencieusement l'indice publié.
+
+À ces trois variantes s'ajoutent, \textbf{sur option}, les variantes Emploi. Chacune est définie
+par la liste des indicateurs qu'elle \emph{exclut} :
+
+\begin{center}
+\small
+\begin{tabular}{@{}llp{6.4cm}@{}}
+\toprule
+\textbf{Option} & \textbf{Emploi retenu} & \textbf{Exclusions déclarées} \\
+\midrule
+\col{-{}-su1\_su3} & chômage, SU3, subsistance & \col{neet\_approx} \\
+\col{-{}-su3} & SU3, subsistance & \col{chomage}, \col{neet\_approx} \\
+\col{-{}-su3\_seul} & SU3 & \col{chomage}, \col{neet\_approx}, \col{emploi\_subsistance} \\
+\col{-{}-su3\_neet} & SU3, NEET approché & \col{chomage}, \col{emploi\_subsistance} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Les exclusions sont \emph{explicites} plutôt qu'implicites, afin qu'un indicateur expérimental
+ne puisse pas contaminer une variante par oubli. Le script produit ensuite, pour chaque
+variante, les indices désagrégés par milieu, région, département, sous-préfecture et taille du
+ménage, avec intervalles de confiance à 95~\% et coefficient de variation, puis les
+contributions de chaque indicateur à $M_0$, et enfin un classeur Excel de restitution.
+
+\subsection{\col{06\_validation\_afmpi.py}}
+
+Hors chaîne. Recalcule $H$, $A$, $M_0$ et les contributions avec le package indépendant
+\col{afmpi}, et compare à $10^{-6}$ près. C'est un contrôle croisé : deux implémentations
+différentes de la même méthode doivent donner le même nombre.
+
+\subsection{Comment lancer}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{8.6cm}p{6.4cm}@{}}
+\toprule
+\textbf{Commande} & \textbf{Effet} \\
+\midrule
+\col{python pipeline/orchestrateur.py} & les deux sources, tout le pipeline \\
+\col{python pipeline/orchestrateur.py -{}-source rgph} & le recensement seul \\
+\col{python pipeline/orchestrateur.py -{}-check} & les auto-contrôles de chaque étape \\
+\col{python pipeline/orchestrateur.py -{}-su3 -{}-su3\_seul -{}-su3\_neet} & ajoute les trois
+  variantes Emploi, sur les deux sources \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Ce qui a été modifié pour rendre les variantes possibles sur le RGPH}
+
+Quatre fichiers, aucune modification de la méthode de calcul :
+
+\begin{description}
+  \item[Étape 01 RGPH --- \col{01\_rgph\_preconstruction\_...py}] ajout de la tranche d'âge
+  NEET (15--24 ans), de la constante \col{SOUS\_UTILISATION\_SU3}~=~$\{1,3\}$, et des trois
+  colonnes de situation \col{chomeurs\_su3\_17\_40}, \col{jeunes\_15\_24} et
+  \col{jeunes\_neet\_}\allowbreak\col{approx\_15\_24}. Les auto-contrôles unitaires ont été étendus en
+  conséquence : un inactif n'entre ni dans SU1 ni dans SU3, une personne de la main-d'{\oe}uvre
+  potentielle entre dans SU3 mais pas dans SU1, un jeune scolarisé n'est pas NEET.
+
+  \item[Étape 02 --- \col{02\_construction\_matrice\_...py}] ajout des deux indicateurs
+  \col{chomage\_su3} et \col{neet\_approx} à la carte du RGPH, avec leurs énoncés propres au
+  recensement. La source passe de 13 à 15 indicateurs produits.
+
+  \item[\col{orchestrateur.py}] suppression du filtre qui retirait les options Emploi du passage
+  sur le recensement. Les quatre options valent désormais pour les deux sources.
+
+  \item[\col{05\_indices\_ipm.py}] suppression du garde-fou \col{assert SOURCE == "ehcvm"} qui
+  interdisait les variantes Emploi au RGPH.
+\end{description}
+
+\begin{retenir}[L'IPM national n'a pas bougé]
+\col{chomage\_su3} et \col{neet\_approx} figurent dans \col{HORS\_IPM\_NATIONAL} : l'étape 03
+les retire du vecteur $z$ et la variante nationale de l'étape 05 les exclut explicitement. Après
+recalcul complet, l'IPM national du RGPH vaut toujours $H = 38{,}8~\%$, $A = 0{,}4287$ et
+$M_0 = 0{,}1664$, identiques aux valeurs publiées dans la note de lecture des sorties.
+\end{retenir}
+
+\section{Pondérations : comment chaque privation entre dans le score}
+
+Les quatre dimensions sont équipondérées : chacune reçoit 0,25. À l'intérieur d'une dimension,
+ce poids est partagé également entre les indicateurs retenus.
+
+\subsection{IPM national de référence}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Dimension} & \textbf{Nombre d'indicateurs} & \textbf{Poids par indicateur} &
+\textbf{Poids total} \\
+\midrule
+Éducation & 4 & 0,0625 & 0,25 \\
+Santé & 1 & 0,2500 & 0,25 \\
+Emploi & 2 & 0,1250 & 0,25 \\
+Conditions de vie & 6 & 0,041667 & 0,25 \\
+\midrule
+Total & 13 & --- & 1,00 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Le contraste avec l'EHCVM est frappant : là où l'enquête partage les 0,25 de la Santé entre
+trois indicateurs, le recensement les concentre sur la seule mortalité.
+
+\subsection{Poids dans les trois variantes demandées}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{4.3cm}p{7cm}p{2.1cm}@{}}
+\toprule
+\textbf{Variante} & \textbf{Indicateurs d'emploi retenus} & \textbf{Poids} \\
+\midrule
+SU3 + agriculture & SU3 ; chef en activité agricole non salariée & 0,125 chacun \\
+SU3 uniquement & SU3 & 0,250 \\
+SU3 + NEET approché & SU3 ; NEE des 15--24 ans & 0,125 chacun \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Les poids des trois autres dimensions ne changent jamais. Seul le partage des 0,25 de la
+dimension Emploi varie.
+
+\section{Du score du ménage à la pauvreté multidimensionnelle}
+
+\subsection{Score pondéré, seuil, censure}
+
+Pour le ménage $i$ :
+
+\[
+  c_i = \sum_{j=1}^{J} w_j g^0_{ij},
+  \qquad
+  \rho_i(k) = \mathbf{1}(c_i \geq 1/3),
+  \qquad
+  g^0_{ij}(k) = g^0_{ij}\,\rho_i(k).
+\]
+
+Un score de 0,40 signifie que le ménage subit 40~\% de l'ensemble pondéré des privations
+possibles. Il ne signifie pas que 40~\% des membres du ménage sont privés. Un score exactement
+égal à un tiers est pauvre.
+
+\subsection{H, A et M0}
+
+Soit $n_i$ le poids de population du ménage et $q_i=\rho_i(k)$ son statut de pauvreté :
+
+\[
+  H = \frac{\sum_i n_i q_i}{\sum_i n_i},
+  \qquad
+  A = \frac{\sum_i n_i c_i q_i}{\sum_i n_i q_i},
+  \qquad
+  M_0 = H A = \frac{\sum_i n_i c_i q_i}{\sum_i n_i}.
+\]
+
+\begin{attention}[M0 n'est pas un pourcentage ordinaire]
+Un $M_0$ de 0,1924 ne signifie pas que 19,24~\% des personnes sont pauvres. Dans la variante
+SU3~+~agriculture, 43,1~\% sont pauvres et leur intensité moyenne est de 44,64~\%. Le produit
+$0{,}4311 \times 0{,}4464$ donne 0,1924.
+\end{attention}
+
+\section{Exemple entièrement calculé pour un ménage fictif}
+
+Considérons la variante SU3 + agriculture sur le RGPH. Supposons un ménage privé sur six
+indicateurs : année de scolarité, alphabétisation, SU3, agriculture, énergie de cuisson et
+toilettes --- mais \emph{sans} décès d'enfant.
+
+\begin{center}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Indicateur privé} & $g^0_{ij}$ & $w_j$ & $w_jg^0_{ij}$ \\
+\midrule
+Année de scolarité & 1 & 0,062500 & 0,062500 \\
+Alphabétisation & 1 & 0,062500 & 0,062500 \\
+SU3 & 1 & 0,125000 & 0,125000 \\
+Agriculture de subsistance & 1 & 0,125000 & 0,125000 \\
+Énergie de cuisson & 1 & 0,041667 & 0,041667 \\
+Toilettes & 1 & 0,041667 & 0,041667 \\
+\midrule
+Score $c_i$ & & & \textbf{0,458334} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Comme $0{,}458334 \geq 1/3$, le ménage est pauvre. Dans la variante \textbf{SU3 uniquement}, la
+privation agricole disparaît et SU3 vaut 0,25 : le score devient
+$0{,}0625+0{,}0625+0{,}25+0{,}041667+0{,}041667 = 0{,}458334$, identique par coïncidence. Mais
+pour un ménage agricole \emph{sans} SU3 --- le cas le plus fréquent en milieu rural --- le score
+perd 0,125 d'un coup et peut repasser sous le seuil. C'est tout le mécanisme de la baisse
+observée.
+
+\section{Résultats nationaux des variantes}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{4.8cm}rrrrr@{}}
+\toprule
+\textbf{Dimension Emploi} & $H$ & $A$ & $M_0$ & \textbf{Vulnér.} & \textbf{Sévère} \\
+\midrule
+Référence : chômage BIT + agriculture & 38,8~\% & 0,4287 & 0,1664 & 20,7~\% & 7,8~\% \\
+SU3 + agriculture de subsistance & 43,1~\% & 0,4464 & \textbf{0,1924} & 20,8~\% & 12,3~\% \\
+SU3 uniquement & 30,9~\% & 0,4473 & \textbf{0,1380} & 32,6~\% & 9,2~\% \\
+SU3 + NEET approché (NEE) & 34,6~\% & 0,4401 & \textbf{0,1522} & 28,3~\% & 9,0~\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Les intervalles de confiance à 95~\% de $M_0$ sont respectivement :
+
+\begin{itemize}
+  \item référence : $[0{,}1645\ ;\ 0{,}1684]$ ;
+  \item SU3 + agriculture : $[0{,}1903\ ;\ 0{,}1946]$ ;
+  \item SU3 uniquement : $[0{,}1366\ ;\ 0{,}1395]$ ;
+  \item SU3 + NEE : $[0{,}1506\ ;\ 0{,}1537]$.
+\end{itemize}
+
+Les intervalles sont environ dix fois plus étroits que ceux de l'EHCVM : c'est l'effet de
+l'exhaustivité du recensement. \textbf{Aucun des écarts entre variantes n'est imputable à
+l'imprécision statistique} --- ils sont tous largement significatifs.
+
+\subsection{Pourquoi SU3 + agriculture augmente l'IPM de 16~\%}
+
+SU3 remplace le chômage BIT au même poids de 0,125, mais la privation population passe de
+5,9~\% à 26,3~\%, soit un quadruplement. De nombreux ménages auparavant juste sous un tiers
+franchissent le seuil : $H$ passe de 38,8~\% à 43,1~\%. Chez les pauvres, SU3 ajoute aussi de la
+privation, ce qui porte $A$ de 0,4287 à 0,4464. La pauvreté sévère, elle, augmente de moitié
+(7,8~\% $\rightarrow$ 12,3~\%).
+
+\subsection{Pourquoi SU3 uniquement fait fortement baisser l'IPM}
+
+SU3 reçoit 0,25, mais la privation agricole --- qui concernait 46,0~\% de la population, la plus
+fréquente des indicateurs d'emploi --- disparaît. La hausse du poids de SU3 ne compense pas
+cette suppression, parce que les deux privations ne touchent pas les mêmes ménages : un chef
+agriculteur est \emph{occupé}, donc hors SU3 par construction. Des ménages ruraux perdent 0,125
+de score et repassent sous le seuil.
+
+Le signe le plus net est le report vers la vulnérabilité : la part de vulnérables bondit de
+20,7~\% à 32,6~\%. Ce ne sont pas des ménages qui vont mieux, ce sont les mêmes ménages passés
+juste sous la barre.
+
+\begin{attention}[Une baisse de définition, pas une amélioration]
+Les ménages et la date sont identiques dans les quatre colonnes. Seule la définition de l'indice
+change. Une comparaison entre variantes n'est en aucun cas une évolution temporelle.
+\end{attention}
+
+\subsection{Pourquoi SU3 + NEE donne un résultat intermédiaire}
+
+Le NEE est plus fréquent que SU3 : 30,9~\% de la population au niveau ménage contre 26,3~\%. Il
+remplace donc une partie du pouvoir discriminant de l'agriculture, mais déplace la dimension
+vers la jeunesse et la déconnexion de l'école. La variante devient moins rurale et plus sensible
+aux ménages comprenant des jeunes de 15 à 24 ans. Elle ignore en revanche complètement les
+45,7~\% de ménages qui n'en comptent aucun.
+
+\section{Lecture par milieu de résidence}
+
+Le RGPH distingue trois milieux, là où l'EHCVM n'en code que deux.
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{4.2cm}rrrrrr@{}}
+\toprule
+& \multicolumn{2}{c}{\textbf{Urbain}} & \multicolumn{2}{c}{\textbf{Rural}} &
+\multicolumn{2}{c}{\textbf{Semi-urbain}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(l){6-7}
+\textbf{Variante} & $H$ & $M_0$ & $H$ & $M_0$ & $H$ & $M_0$ \\
+\midrule
+Référence & 5,4~\% & 0,0212 & 71,1~\% & 0,3075 & 41,0~\% & 0,1705 \\
+SU3 + agriculture & 8,9~\% & 0,0355 & 75,4~\% & 0,3425 & 48,3~\% & 0,2079 \\
+SU3 uniquement & 17,1~\% & 0,0721 & 43,3~\% & 0,1977 & 35,6~\% & 0,1614 \\
+SU3 + NEE & 15,1~\% & 0,0623 & 51,9~\% & 0,2323 & 43,1~\% & 0,1893 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Part de population : urbain 44,8~\%, rural 45,8~\%, semi-urbain 9,4~\%.
+
+Le tableau est le résultat le plus important de cette note. Retirer l'agriculture
+\textbf{triple} l'IPM urbain (0,0212 $\rightarrow$ 0,0721) et \textbf{réduit d'un tiers} l'IPM
+rural (0,3075 $\rightarrow$ 0,1977). Le rapport rural/urbain passe de 14,5 à 2,7.
+
+\begin{attention}[Conséquence directe sur le ciblage]
+Les variantes ne changent pas seulement le niveau national : elles changent \emph{qui} est
+désigné comme pauvre. Une politique calibrée sur « SU3 uniquement » orienterait des moyens vers
+des zones urbaines que l'IPM de référence classe parmi les moins pauvres du pays. Le choix de
+variante est donc une décision de politique publique, pas un réglage technique.
+\end{attention}
+
+\section{Contribution des indicateurs à M0}
+
+La contribution de l'indicateur $j$ s'écrit :
+
+\[
+  \mathrm{Contribution}_j = \frac{w_j\,CH_j}{M_0},
+\]
+
+où $CH_j$ est le taux de privation censuré : la part de population à la fois pauvre et privée
+sur l'indicateur $j$. La somme des contributions vaut 100~\%.
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Contribution à $M_0$} & \textbf{Référence} & \textbf{SU3+agri.} &
+\textbf{SU3 seul} & \textbf{SU3+NEE} \\
+\midrule
+Chômage BIT & 1,8~\% & --- & --- & --- \\
+SU3 & --- & 9,3~\% & 35,5~\% & 13,0~\% \\
+Agriculture de subsistance & 26,8~\% & 24,5~\% & --- & --- \\
+NEET approché (NEE) & --- & --- & --- & 19,1~\% \\
+\midrule
+\textbf{Dimension Emploi} & \textbf{28,6~\%} & \textbf{33,8~\%} & \textbf{35,5~\%} &
+\textbf{32,1~\%} \\
+Éducation & 40,6~\% & 37,8~\% & 37,1~\% & 39,7~\% \\
+Conditions de vie & 29,2~\% & 27,0~\% & 25,5~\% & 26,4~\% \\
+Santé & 1,6~\% & 1,4~\% & 1,9~\% & 1,7~\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Deux enseignements. D'abord, l'agriculture de subsistance est, à elle seule, le
+\textbf{deuxième contributeur de l'IPM RGPH} après l'alphabétisation --- la retirer ne peut pas
+être sans conséquence. Ensuite, la dimension Santé, dotée d'un poids nominal de 25~\%, ne
+contribue qu'à 1,6~\%. C'est ce déséquilibre qui amplifie mécaniquement le rôle de l'Emploi
+dans le recensement, et qui explique que les écarts entre variantes y soient bien plus marqués
+que dans l'enquête.
+
+\section{Tableau de contrôle de l'IPM national de référence}
+
+Le tableau relie règle, fréquence, poids et contribution. Le taux population est non censuré ;
+la contribution ne porte que sur les pauvres après censure.
+
+\begin{center}
+\scriptsize
+\begin{longtable}{@{}p{3.6cm}p{2.6cm}rrr@{}}
+\toprule
+\textbf{Indicateur} & \textbf{Dimension} & \textbf{Privation pop.} & $w_j$ &
+\textbf{Contribution} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Indicateur} & \textbf{Dimension} & \textbf{Privation pop.} & $w_j$ &
+\textbf{Contribution} \\
+\midrule
+\endhead
+Fréquentation scolaire & Éducation & 35,6~\% & 0,0625 & 8,7~\% \\
+Année de scolarité & Éducation & 63,2~\% & 0,0625 & 13,4~\% \\
+Alphabétisation & Éducation & 70,4~\% & 0,0625 & 13,6~\% \\
+État civil & Éducation & 15,2~\% & 0,0625 & 4,9~\% \\
+Mortalité dans le ménage & Santé & 1,1~\% & 0,2500 & 1,6~\% \\
+Chômage BIT & Emploi & 5,9~\% & 0,1250 & 1,8~\% \\
+Agriculture de subsistance & Emploi & 46,0~\% & 0,1250 & 26,8~\% \\
+Électricité & Conditions de vie & 11,5~\% & 0,0417 & 2,5~\% \\
+Logement & Conditions de vie & 25,0~\% & 0,0417 & 4,7~\% \\
+Eau potable & Conditions de vie & 14,3~\% & 0,0417 & 2,8~\% \\
+Énergie de cuisson & Conditions de vie & 62,7~\% & 0,0417 & 9,5~\% \\
+Toilettes & Conditions de vie & 45,1~\% & 0,0417 & 7,4~\% \\
+Biens d'équipement & Conditions de vie & 18,2~\% & 0,0417 & 2,3~\% \\
+\midrule
+Total des contributions & & & & 100,0~\% \\
+\bottomrule
+\end{longtable}
+\end{center}
+
+Pour mémoire, les deux indicateurs hors IPM national : SU3 prive 26,3~\% de la population et le
+NEET approché 30,9~\%.
+
+\section{Forces, limites et risques d'interprétation}
+
+\begin{description}
+  \item[SU3 est mieux mesuré sur le RGPH que sur l'EHCVM.] Il est lu dans une variable
+  officielle de l'INS plutôt que reconstruit. C'est le principal argument en faveur du
+  recensement sur cette dimension précise.
+
+  \item[SU3 est préférable au chômage BIT strict.] Il récupère le découragement et
+  l'attachement incomplet au marché du travail : 14,6~\% des 17--40 ans contre 2,6~\%. Il reste
+  toutefois limité à cette tranche d'âge.
+
+  \item[L'agriculture mesure une vulnérabilité absente de SU3.] Un chef travaillant dans son
+  champ est \emph{occupé} et n'entre pas dans SU3. Sans indicateur de qualité de l'emploi, cette
+  réalité --- 46~\% de la population --- disparaît entièrement de la dimension.
+
+  \item[Le proxy agricole du RGPH n'est pas celui de l'EHCVM.] Branche agricole croisée avec
+  statut non salarié, contre travail exclusif sur son propre champ. Les deux visent la même
+  chose, aucun n'observe la destination de la production.
+
+  \item[SU3 seul donne un poids très fort à une privation unique.] Chaque ménage SU3 reçoit 0,25
+  d'un coup, tout en ignorant la qualité des emplois existants. Le report massif vers la
+  vulnérabilité (32,6~\%) en est le symptôme.
+
+  \item[Le NEE n'est pas un NEET complet.] La formation en cours manque, le taux est donc une
+  borne supérieure. L'indicateur ne concerne par ailleurs que les 54,3~\% de ménages comprenant
+  un jeune de 15 à 24 ans.
+
+  \item[La dimension Santé est structurellement faible.] Un poids de 0,25 pour une contribution
+  de 1,6~\%. Toute conclusion tirée de l'IPM RGPH doit tenir compte de ce que la mortalité sur
+  12 mois ne peut pas porter, à elle seule, un quart de l'indice.
+\end{description}
+
+\section{Recommandation}
+
+\begin{enumerate}
+  \item Retenir comme variante principale \textbf{SU3 + dépendance agricole non salariée du
+  chef}, avec deux indicateurs de poids 0,125. C'est la seule qui couvre à la fois la
+  sous-utilisation de la main-d'{\oe}uvre et la précarité de l'emploi existant.
+  \item Qualifier explicitement l'indicateur agricole de \textbf{proxy}, car la destination de la
+  production n'est pas observée.
+  \item Conserver \textbf{SU3 uniquement} comme test de sensibilité, en documentant que la baisse
+  de $M_0$ est un effet de suppression d'indicateur, pas une amélioration.
+  \item Conserver \textbf{SU3 + NEE} comme scénario exploratoire, sans l'appeler NEET dans une
+  publication officielle tant que la formation en cours n'est pas mesurée.
+  \item Ne jamais présenter ces quatre chiffres côte à côte sans le tableau par milieu : c'est
+  là que se joue la conséquence réelle du choix.
+  \item Au prochain recensement, ajouter une question sur la destination principale de la
+  production agricole et une question sur la formation suivie actuellement.
+\end{enumerate}
+
+\section{Contrôles réalisés pour sécuriser les chiffres}
+
+\begin{itemize}
+  \item auto-contrôles unitaires des étapes 01, 02 et 05, étendus aux nouvelles colonnes : un
+  inactif n'entre ni dans SU1 ni dans SU3 ; une personne de la main-d'{\oe}uvre potentielle
+  entre dans SU3 mais pas dans SU1 ; un jeune scolarisé n'est pas NEET ; un âge « ne sait pas »
+  n'entre dans aucune tranche ;
+  \item contrôle que tout ménage privé au chômage BIT est également privé selon SU3 : 0 exception
+  sur 196\,019 ménages ;
+  \item \col{assert} de l'étape 05 vérifiant que la variante nationale reproduit à l'identique la
+  matrice censurée produite indépendamment par l'étape 04 ;
+  \item contrôle que la somme des lignes censurées redonne exactement $c_i(k)$ : écart maximal
+  nul ;
+  \item contrôle de décomposabilité : pour chaque variable de désagrégation, les $M_0$ de groupe
+  pondérés par la part de population redonnent le $M_0$ national ;
+  \item vérification que la somme des poids vaut 1 à $10^{-9}$ près dans chacune des six
+  variantes ;
+  \item vérification que l'IPM national du RGPH est inchangé après l'ajout de SU3 et du NEET :
+  $H = 38{,}8~\%$, $A = 0{,}4287$, $M_0 = 0{,}1664$, identiques aux valeurs publiées ;
+  \item distribution complète de \col{Statut\_OQPtbb} relue sur les 27\,984\,405 individus du
+  fichier pour confirmer le codage des quatre modalités.
+\end{itemize}
+
+\begin{retenir}[Conclusion]
+Les variantes Emploi sont désormais calculables sur le recensement, et SU3 y est même mieux
+mesuré que dans l'enquête puisqu'il est lu dans une variable officielle de l'INS. Le choix
+restant n'est pas informatique : il consiste à décider quelle conception de la privation
+d'emploi doit entrer dans l'IPM. Sur le RGPH, l'enjeu est plus lourd que sur l'EHCVM, parce que
+la dimension Santé y est presque muette et que l'Emploi y pèse d'autant plus. Les résultats
+conduisent à préférer SU3 accompagné de l'indicateur agricole, sous un libellé prudent.
+\end{retenir}
+
+\section*{Fichiers de résultats associés}
+
+\begin{itemize}
+  \item \col{indices\_ipm\_su3\_rgph2021.xlsx} : SU3 + agriculture ;
+  \item \col{indices\_ipm\_su3\_seul\_rgph2021.xlsx} : SU3 uniquement ;
+  \item \col{indices\_ipm\_su3\_neet\_rgph2021.xlsx} : SU3 + NEE ;
+  \item \col{contributions\_ipm\_su3*\_rgph2021.csv} : contributions par indicateur ;
+  \item chaque classeur contient les résultats nationaux, les contributions, les poids et les
+  désagrégations par milieu, région, département, sous-préfecture et taille du ménage.
+\end{itemize}
+
+\end{document}

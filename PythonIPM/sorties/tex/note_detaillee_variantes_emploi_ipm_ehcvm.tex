@@ -1,0 +1,676 @@
+\documentclass[11pt,a4paper]{article}
+\input{preambule}
+
+\renewcommand{\source}{EHCVM 2021 --- variantes Emploi}
+\setcounter{tocdepth}{2}
+
+\title{\bfseries Comprendre le calcul de l'IPM pas à pas\\[5pt]
+\large Chômage BIT, SU3, agriculture de subsistance et NEET approché}
+\author{Pipeline \col{PythonIPM} --- IPM Côte d'Ivoire}
+\date{20 septembre 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent Cette note explique, sans supposer de connaissance préalable, comment les réponses de
+l'EHCVM 2021 deviennent des indicateurs de privation au niveau du ménage, comment ces indicateurs
+sont pondérés, puis comment sont calculés l'incidence $H$, l'intensité $A$ et l'indice de pauvreté
+multidimensionnelle $M_0$. Elle détaille ensuite les trois variantes demandées pour la dimension
+Emploi : \textbf{SU3 + agriculture de subsistance}, \textbf{SU3 uniquement} et
+\textbf{SU3 + NEET approché}. Les chiffres ont été recalculés sur 12\,965 ménages représentant
+29,81 millions de personnes et contrôlés par deux chemins de calcul indépendants.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Ce qu'il faut retenir avant d'entrer dans le détail}
+
+L'IPM ne compte pas simplement le nombre de personnes privées. Il procède en quatre opérations :
+
+\begin{enumerate}
+  \item les réponses individuelles et celles du logement sont ramenées au niveau du ménage ;
+  \item chaque situation devient un indicateur binaire : 1 si le ménage est privé, 0 sinon ;
+  \item les indicateurs sont pondérés, puis additionnés pour obtenir un score entre 0 et 1 ;
+  \item le ménage est pauvre si son score atteint au moins un tiers, soit $k=1/3$.
+\end{enumerate}
+
+Deux agrégats décrivent ensuite la pauvreté : $H$ est la part de population pauvre et $A$ la part
+moyenne de privations subie par les pauvres. Leur produit est l'IPM :
+
+\[
+  \boxed{M_0 = H \times A}
+\]
+
+\begin{retenir}[Résultat central]
+Parmi les trois variantes demandées, \textbf{SU3 + agriculture de subsistance} est la plus
+défendable. Elle donne $H=59{,}3~\%$, $A=0{,}4970$ et $M_0=0{,}2949$. Retenir SU3 seul fait
+tomber $M_0$ à 0,2438 surtout parce que l'on supprime une privation agricole très fréquente.
+La variante SU3 + NEET approché donne 0,2740, mais l'EHCVM ne mesure pas la formation en cours :
+l'indicateur construit est un NEE, pas un véritable NEET.
+\end{retenir}
+
+\section{Données, unités et pondération de la population}
+
+\subsection{Les bases utilisées}
+
+Quatre bases de l'EHCVM 2021 sont mobilisées :
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{4.2cm}rp{6.4cm}@{}}
+\toprule
+\textbf{Base} & \textbf{Lignes} & \textbf{Rôle dans l'IPM} \\
+\midrule
+Base Individus & 64\,491 & âge, éducation, emploi, état civil, assurance et recours aux soins \\
+Base Ménage & 12\,965 & logement, eau, énergie, sanitaires, pièces, poids et géographie \\
+Base Avoirs du ménage & 583\,425 & possession des biens d'équipement \\
+Base Sécurité alimentaire & 12\,965 utiles & huit questions de l'échelle FIES \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+La clé de fusion est \col{grappe + menage + vague}. Après nettoyage des lignes vides de la base
+alimentaire, les quatre sources couvrent les mêmes 12\,965 ménages.
+
+\subsection{Ménage de construction, individu de comptage}
+
+La privation est construite au niveau du \textbf{ménage}. Par exemple, la présence d'un enfant non
+scolarisé prive l'ensemble du ménage. Mais les résultats nationaux portent sur les
+\textbf{personnes}. Le poids de population du ménage $i$ est :
+
+\[
+  n_i = \text{poids d'enquête du ménage}_i \times \text{taille du ménage}_i.
+\]
+
+Un ménage de huit personnes représente donc, à poids d'enquête égal, quatre fois plus de
+population qu'un ménage de deux personnes. C'est pourquoi le taux de privation ``ménages'' et le
+taux pondéré ``population'' peuvent différer.
+
+\begin{attention}[Ne pas confondre deux pourcentages]
+L'agriculture de subsistance concerne 48,1~\% des ménages de l'échantillon, mais 40,5~\% de la
+population pondérée. Les ménages concernés sont en moyenne d'une taille et d'un poids différents
+des autres ménages. Les indices $H$, $A$ et $M_0$ utilisent toujours la pondération population.
+\end{attention}
+
+\section{Des réponses brutes aux indicateurs de privation}
+
+Pour chaque indicateur $j$, le pipeline construit :
+
+\[
+g^0_{ij} =
+\begin{cases}
+1 & \text{si le ménage } i \text{ est privé selon le seuil } z_j,\\
+0 & \text{sinon.}
+\end{cases}
+\]
+
+Un ménage sans personne appartenant à la tranche d'âge d'un indicateur est classé non privé sur
+cet indicateur. Ainsi, un ménage sans membre de 17 à 40 ans n'est pas privé au titre de SU3.
+
+\subsection{Les quatre indicateurs d'éducation}
+
+\begin{description}
+  \item[Fréquentation scolaire.] Un ménage est privé si au moins un enfant de 6 à 16 ans ne
+  fréquente pas l'école. La scolarisation combine la question 2.08a pour 2021/22 et la question
+  2.12 pour 2020/21. Privation : 27,9~\% des ménages, 31,9~\% de la population.
+
+  \item[Années de scolarité.] Les années accomplies sont reconstruites à partir du niveau et de
+  la classe, achevés ou en cours. Le ménage est privé si aucun membre de 17 à 95 ans n'a accompli
+  dix années d'études. Privation : 72,5~\% des ménages, 62,9~\% de la population.
+
+  \item[Alphabétisation.] Est alphabétisé celui qui sait à la fois lire et écrire le français.
+  Le ménage est privé si au moins un membre de 17 à 49 ans ne satisfait pas ces deux conditions.
+  Privation : 61,7~\% des ménages, 62,9~\% de la population.
+
+  \item[État civil.] Le ménage est privé si au moins un enfant de 5 à 15 ans ne possède pas
+  d'acte de naissance. Privation : 23,5~\% des ménages, 26,3~\% de la population.
+\end{description}
+
+\subsection{Les trois indicateurs de santé}
+
+\begin{description}
+  \item[Assurance maladie.] Le ménage est privé si aucun membre n'est couvert. Privation :
+  93,4~\% des ménages, 90,2~\% de la population.
+
+  \item[Insécurité alimentaire.] Les huit réponses FIES sont additionnées. Un score d'au moins
+  quatre ``oui'' signale une insécurité modérée ou sévère. Privation : 42,7~\% des ménages,
+  40,8~\% de la population.
+
+  \item[Renoncement aux soins.] Il faut qu'un membre ait été malade au cours des 30 derniers
+  jours, n'ait pas consulté et cite une raison subie : soins trop chers, manque d'argent, service
+  indisponible ou absence de personnel. Privation : 9,3~\% des ménages, 9,0~\% de la population.
+\end{description}
+
+\subsection{Les sept indicateurs de conditions de vie}
+
+\begin{description}
+  \item[Électricité.] Privé si l'éclairage principal ne vient ni du réseau, ni d'un groupe
+  électrogène, ni du solaire. Population privée : 9,3~\%.
+
+  \item[Logement.] Privé si le sol est naturel ou si le toit ou les murs sont constitués de
+  matériaux naturels ou rudimentaires. Population privée : 17,3~\%.
+
+  \item[Eau potable.] Privé si la source n'est pas améliorée selon la classification ODD, ou si
+  elle se trouve à plus de 15 minutes à l'aller, soit plus de 30 minutes aller-retour.
+  Population privée : 20,9~\%.
+
+  \item[Énergie de cuisson.] Privé si le combustible principal n'est ni le gaz ni l'électricité.
+  Population privée : 66,3~\%.
+
+  \item[Toilettes.] Privé si les sanitaires ne sont pas améliorés ou s'ils sont partagés avec
+  d'autres ménages. Population privée : 67,2~\%.
+
+  \item[Biens d'équipement.] Privé si le ménage possède au plus un bien parmi radio, télévision,
+  téléphone, ordinateur, vélo, moto et réfrigérateur, et ne possède pas de voiture. La charrette,
+  prévue par la définition PNUD, n'existe pas dans le module EHCVM. Population privée : 21,7~\%.
+
+  \item[Promiscuité.] Privé si le nombre de personnes par pièce à coucher dépasse trois.
+  Population privée : 12,5~\%.
+\end{description}
+
+\section{Les indicateurs d'emploi, dans le détail}
+
+\subsection{Chômage BIT ou SU1}
+
+Une personne est chômeuse si trois conditions sont simultanément réunies :
+
+\begin{enumerate}
+  \item \textbf{sans emploi} : elle n'a pas travaillé au moins une heure pendant les sept
+  derniers jours et n'a pas un emploi dont elle était temporairement absente ;
+  \item \textbf{en recherche} : elle a recherché un emploi rémunéré dans les 30 derniers jours ;
+  \item \textbf{disponible} : elle peut commencer immédiatement, sous 15 jours ou entre 15 jours
+  et un mois, ou se déclare disponible immédiatement dans la branche des non-chercheurs.
+\end{enumerate}
+
+Pour l'IPM, seules les personnes de 17 à 40 ans sont retenues. Le ménage est privé dès qu'il en
+compte au moins une. On obtient 561 chômeurs dans cette tranche, 476 ménages privés et 6,5~\% de
+population privée.
+
+Le chômage BIT est rare car une seule heure de travail suffit à être classé occupé et parce que
+les personnes découragées qui ne recherchent plus activement sortent du chômage.
+
+\subsection{SU3 : chômage plus main-d'œuvre potentielle}
+
+SU3 ajoute au chômage la \textbf{main-d'œuvre potentielle}. Celle-ci comprend :
+
+\begin{itemize}
+  \item les personnes sans emploi qui cherchent mais ne sont pas disponibles ;
+  \item les personnes sans emploi qui sont disponibles mais ne cherchent pas, à condition
+  qu'elles ne déclarent pas explicitement ne pas vouloir travailler.
+\end{itemize}
+
+Au niveau individuel :
+
+\[
+  \text{SU3} = \text{chômage BIT} \ \cup\ \text{main-d'œuvre potentielle}.
+\]
+
+Tout chômeur BIT appartient donc nécessairement à SU3. Cette propriété a été vérifiée dans les
+données : aucune des 476 privations de ménage au titre du chômage ne se trouve hors de SU3.
+
+Sur les 17--40 ans, SU3 concerne 1\,200 personnes, contre 561 pour le chômage BIT. À l'échelle du
+ménage, 1\,027 ménages sont privés, soit 7,9~\% des ménages et 12,1~\% de la population.
+
+\begin{attention}[Pourquoi il ne faut pas additionner mécaniquement SU1 et SU3]
+SU3 contient déjà SU1. Une variante ``SU1 + SU3'' attribue donc deux privations au même chômage
+pour les ménages concernés. Ce montage peut être calculé comme test, mais il n'est pas recommandé
+comme spécification principale.
+\end{attention}
+
+\subsection{Agriculture de subsistance : ce que mesure réellement le code}
+
+Une personne est classée en agriculture de subsistance si elle :
+
+\begin{itemize}
+  \item a travaillé pendant les sept derniers jours ;
+  \item a travaillé dans son propre champ ;
+  \item n'a exercé ni activité salariée, ni apprentissage, ni commerce.
+\end{itemize}
+
+Le ménage n'est privé que si cette personne est le \textbf{chef de ménage}. Cette règle donne
+6\,238 ménages privés, soit 48,1~\% des ménages et 40,5~\% de la population.
+
+Le terme ``subsistance'' doit être manié avec prudence. La définition statistique de l'OIT repose
+sur la destination principale de la production : consommation du ménage plutôt que marché.
+L'EHCVM observe le travail exclusif dans son propre champ, mais pas cette destination. Le code
+mesure donc plus exactement une \textbf{dépendance exclusive du chef à l'agriculture sur son
+propre champ}.
+
+\subsection{NEET approché : en réalité un NEE}
+
+L'indicateur international NEET porte sur les jeunes de 15 à 24 ans qui ne sont :
+
+\begin{itemize}
+  \item ni en emploi ;
+  \item ni en éducation ;
+  \item ni en formation.
+\end{itemize}
+
+L'emploi et la scolarisation sont observables dans l'EHCVM. En revanche, les questions de
+formation professionnelle demandent si la personne en a déjà suivi une, sans établir qu'elle en
+suit une actuellement. Le pipeline construit donc :
+
+\[
+  \text{NEE approché} = (15\text{--}24\text{ ans}) \cap
+  (\text{sans emploi}) \cap (\text{non scolarisé}).
+\]
+
+On obtient 4\,042 jeunes sur 10\,078, soit 40,1~\%. Au niveau du ménage, 3\,247 ménages sont
+concernés, représentant 29,1~\% de la population. Le chiffre est une borne supérieure du NEET :
+des jeunes comptés NEE peuvent suivre une formation non observée.
+
+Par ailleurs, SU3 et NEE se recouvrent dans 547 ménages. Le couple SU3 + NEE mesure deux objets
+différents, mais donne deux fois du poids à certains épisodes de non-emploi des jeunes.
+
+\section{Pondérations : comment chaque privation entre dans le score}
+
+Les quatre dimensions sont équipondérées : chacune reçoit 0,25. À l'intérieur d'une dimension,
+ce poids est partagé également entre les indicateurs retenus.
+
+\subsection{IPM national de référence}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Dimension} & \textbf{Nombre d'indicateurs} & \textbf{Poids par indicateur} &
+\textbf{Poids total} \\
+\midrule
+Éducation & 4 & 0,0625 & 0,25 \\
+Santé & 3 & 0,083333 & 0,25 \\
+Emploi & 2 & 0,1250 & 0,25 \\
+Conditions de vie & 7 & 0,035714 & 0,25 \\
+\midrule
+Total & 16 & --- & 1,00 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+La somme des poids vaut exactement 1. Dans la référence, les deux indicateurs d'emploi sont le
+chômage BIT et l'agriculture de subsistance.
+
+\subsection{Poids dans les trois variantes demandées}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{4.3cm}p{7cm}p{2.1cm}@{}}
+\toprule
+\textbf{Variante} & \textbf{Indicateurs d'emploi retenus} & \textbf{Poids} \\
+\midrule
+SU3 + agriculture & SU3 ; agriculture sur propre champ exclusive du chef & 0,125 chacun \\
+SU3 uniquement & SU3 & 0,250 \\
+SU3 + NEET approché & SU3 ; NEE des 15--24 ans & 0,125 chacun \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Les poids des trois autres dimensions ne changent jamais. Seul le partage des 0,25 de la
+dimension Emploi varie.
+
+\section{Du score du ménage à la pauvreté multidimensionnelle}
+
+\subsection{Score pondéré}
+
+Pour le ménage $i$, le score est :
+
+\[
+  c_i = \sum_{j=1}^{J} w_j g^0_{ij},
+\]
+
+où $w_j$ est le poids de l'indicateur et $g^0_{ij}$ vaut 0 ou 1. Un score de 0,40 signifie que le
+ménage subit 40~\% de l'ensemble pondéré des privations possibles. Il ne signifie pas que 40~\%
+des membres du ménage sont privés.
+
+\subsection{Seuil de pauvreté}
+
+Le seuil retenu est $k=1/3$. Le statut de pauvreté est :
+
+\[
+  \rho_i(k) = \mathbf{1}(c_i \geq 1/3).
+\]
+
+Un score exactement égal à un tiers est donc pauvre. Deux catégories complémentaires sont aussi
+calculées : vulnérable si $0,20 \leq c_i < 1/3$ et pauvreté sévère si $c_i \geq 0,50$.
+
+\subsection{Censure des privations}
+
+Pour expliquer la composition de l'IPM, les privations des ménages non pauvres sont remises à
+zéro :
+
+\[
+  g^0_{ij}(k) = g^0_{ij}\rho_i(k).
+\]
+
+C'est la censure Alkire--Foster. Une privation réelle d'un ménage non pauvre compte dans le taux
+brut de l'indicateur, mais pas dans $M_0$ ni dans les contributions à la pauvreté
+multidimensionnelle.
+
+\section{Calcul de H, A et M0}
+
+Soit $n_i$ le poids de population du ménage et $q_i=\rho_i(k)$ son statut de pauvreté.
+
+\subsection{Incidence H}
+
+\[
+  H = \frac{\sum_i n_i q_i}{\sum_i n_i}.
+\]
+
+$H$ répond à la question : quelle part de la population vit dans un ménage dont le score atteint
+au moins un tiers ?
+
+\subsection{Intensité A}
+
+\[
+  A = \frac{\sum_i n_i c_i q_i}{\sum_i n_i q_i}.
+\]
+
+$A$ est le score moyen des seuls pauvres. Une intensité de 0,497 signifie que les personnes
+pauvres subissent en moyenne 49,7~\% des privations pondérées possibles.
+
+\subsection{Indice M0}
+
+\[
+  M_0 = H A = \frac{\sum_i n_i c_i q_i}{\sum_i n_i}.
+\]
+
+$M_0$ augmente si davantage de personnes deviennent pauvres, si les pauvres accumulent davantage
+de privations, ou si les deux phénomènes se produisent ensemble.
+
+\begin{attention}[M0 n'est pas un pourcentage ordinaire]
+Un $M_0$ de 0,2949 ne signifie pas que 29,49~\% des personnes sont pauvres. Ici, 59,3~\% sont
+pauvres et leur intensité moyenne est de 49,70~\%. Le produit $0,5932\times0,4970$ donne 0,2949.
+\end{attention}
+
+\section{Exemple entièrement calculé pour un ménage fictif}
+
+Considérons la variante SU3 + agriculture. Supposons un ménage privé sur six indicateurs : année
+de scolarité, alphabétisation, assurance maladie, SU3, énergie de cuisson et toilettes.
+
+\begin{center}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Indicateur privé} & $g^0_{ij}$ & $w_j$ & $w_jg^0_{ij}$ \\
+\midrule
+Année de scolarité & 1 & 0,062500 & 0,062500 \\
+Alphabétisation & 1 & 0,062500 & 0,062500 \\
+Assurance maladie & 1 & 0,083333 & 0,083333 \\
+SU3 & 1 & 0,125000 & 0,125000 \\
+Énergie de cuisson & 1 & 0,035714 & 0,035714 \\
+Toilettes & 1 & 0,035714 & 0,035714 \\
+\midrule
+Score $c_i$ & & & \textbf{0,404761} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Comme $0,404761 \geq 1/3$, le ménage est pauvre. Son score censuré reste 0,404761. Si son score
+avait été 0,30, il aurait été vulnérable mais non pauvre et toutes ses privations auraient été
+remises à zéro dans le calcul de $M_0$.
+
+Dans la variante SU3 uniquement, la privation SU3 vaudrait 0,25 au lieu de 0,125. Toutes choses
+égales par ailleurs, le score fictif passerait à 0,529761. Cela montre pourquoi une modification
+du nombre d'indicateurs change non seulement la description de l'emploi, mais aussi la position de
+certains ménages par rapport aux seuils d'un tiers et de moitié.
+
+\section{Résultats nationaux des variantes}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{4.8cm}rrrr@{}}
+\toprule
+\textbf{Dimension Emploi} & $H$ & $A$ & $M_0$ & \textbf{Sévère} \\
+\midrule
+Référence : chômage BIT + agriculture & 58,0~\% & 0,4940 & 0,2863 & 26,1~\% \\
+SU3 + agriculture de subsistance & 59,3~\% & 0,4970 & \textbf{0,2949} & 27,1~\% \\
+SU3 uniquement & 53,6~\% & 0,4546 & \textbf{0,2438} & 13,7~\% \\
+SU3 + NEET approché (NEE) & 57,7~\% & 0,4746 & \textbf{0,2740} & 20,5~\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Les intervalles de confiance à 95~\% de $M_0$ sont respectivement :
+
+\begin{itemize}
+  \item référence : $[0,2701\ ;\ 0,3026]$ ;
+  \item SU3 + agriculture : $[0,2788\ ;\ 0,3109]$ ;
+  \item SU3 uniquement : $[0,2331\ ;\ 0,2545]$ ;
+  \item SU3 + NEE : $[0,2617\ ;\ 0,2863]$.
+\end{itemize}
+
+\subsection{Pourquoi SU3 + agriculture augmente légèrement l'IPM}
+
+SU3 remplace le chômage BIT au même poids de 0,125. La privation population passe de 6,5~\% à
+12,1~\%. Certains ménages auparavant juste sous un tiers franchissent le seuil ; $H$ passe de
+58,0~\% à 59,3~\%. Chez les pauvres, SU3 ajoute aussi un peu de privation, ce qui porte $A$ de
+0,4940 à 0,4970.
+
+\subsection{Pourquoi SU3 uniquement fait fortement baisser l'IPM}
+
+SU3 reçoit 0,25, mais la privation agricole, qui concernait 40,5~\% de la population, disparaît.
+La hausse du poids de SU3 ne compense pas cette suppression. Des ménages ruraux perdent 0,125 de
+score et repassent sous le seuil. La pauvreté sévère est particulièrement sensible : elle passe
+de 27,1~\% dans SU3 + agriculture à 13,7~\% dans SU3 uniquement.
+
+Cette baisse est un effet de définition et de pondération. Elle ne représente aucune amélioration
+des conditions de vie entre deux dates.
+
+\subsection{Pourquoi SU3 + NEE donne un résultat intermédiaire}
+
+Le NEE est beaucoup plus fréquent que SU3 : sa privation brute touche 29,1~\% de la population au
+niveau ménage. Il remplace donc une partie du pouvoir discriminant de l'agriculture, mais déplace
+la dimension vers la jeunesse et la déconnexion de l'école. La variante devient moins rurale et
+plus sensible aux ménages comprenant des jeunes de 15 à 24 ans.
+
+\section{Lecture urbaine et rurale}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{4.6cm}rrrr@{}}
+\toprule
+& \multicolumn{2}{c}{\textbf{Urbain}} & \multicolumn{2}{c}{\textbf{Rural}} \\
+\cmidrule(lr){2-3}\cmidrule(l){4-5}
+\textbf{Variante} & $H$ & $M_0$ & $H$ & $M_0$ \\
+\midrule
+Référence & 33,6~\% & 0,1525 & 85,1~\% & 0,4354 \\
+SU3 + agriculture & 35,7~\% & 0,1626 & 85,6~\% & 0,4422 \\
+SU3 uniquement & 37,6~\% & 0,1685 & 71,5~\% & 0,3278 \\
+SU3 + NEE & 40,9~\% & 0,1850 & 76,5~\% & 0,3732 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+La suppression de l'agriculture réduit surtout l'IPM rural. À l'inverse, NEE fait davantage
+remonter l'incidence urbaine. Les variantes ne changent donc pas seulement le niveau national :
+elles modifient aussi le profil territorial de la pauvreté et, par conséquent, le ciblage public.
+
+\section{Contribution des indicateurs à M0}
+
+La contribution de l'indicateur $j$ s'écrit :
+
+\[
+  \mathrm{Contribution}_j =
+  \frac{w_j\,CH_j}{M_0},
+\]
+
+où $CH_j$ est le taux de privation censuré : la part de population qui est à la fois pauvre et
+privée sur l'indicateur $j$. La somme des contributions vaut 100~\%.
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Contribution à M0} & \textbf{Référence} & \textbf{SU3+agri.} &
+\textbf{SU3 seul} & \textbf{SU3+NEE} \\
+\midrule
+Chômage BIT & 1,6~\% & --- & --- & --- \\
+SU3 & --- & 3,2~\% & 11,2~\% & 4,0~\% \\
+Agriculture de subsistance & 16,9~\% & 16,5~\% & --- & --- \\
+NEET approché (NEE) & --- & --- & --- & 11,9~\% \\
+\midrule
+Dimension Emploi & 18,5~\% & 19,7~\% & 11,2~\% & 15,9~\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Le poids nominal de la dimension reste 25~\%, mais sa contribution observée à $M_0$ dépend de la
+fréquence de ses privations et de leur chevauchement avec les autres dimensions.
+
+\section{Tableau de contrôle de l'IPM national de référence}
+
+Le tableau suivant relie règle, fréquence, poids et contribution. Le taux population est non
+censuré ; la contribution ne porte que sur les pauvres après censure.
+
+\begin{center}
+\scriptsize
+\begin{longtable}{@{}p{3.4cm}p{2.6cm}rrr@{}}
+\toprule
+\textbf{Indicateur} & \textbf{Dimension} & \textbf{Privation pop.} & $w_j$ &
+\textbf{Contribution} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Indicateur} & \textbf{Dimension} & \textbf{Privation pop.} & $w_j$ &
+\textbf{Contribution} \\
+\midrule
+\endhead
+Fréquentation scolaire & Éducation & 31,9~\% & 0,0625 & 6,0~\% \\
+Années de scolarité & Éducation & 62,9~\% & 0,0625 & 10,8~\% \\
+Alphabétisation & Éducation & 62,9~\% & 0,0625 & 10,3~\% \\
+État civil & Éducation & 26,3~\% & 0,0625 & 5,2~\% \\
+Assurance maladie & Santé & 90,2~\% & 0,0833 & 16,7~\% \\
+Insécurité alimentaire & Santé & 40,8~\% & 0,0833 & 9,0~\% \\
+Renoncement aux soins & Santé & 9,0~\% & 0,0833 & 2,2~\% \\
+Chômage BIT & Emploi & 6,5~\% & 0,1250 & 1,6~\% \\
+Agriculture de subsistance & Emploi & 40,5~\% & 0,1250 & 16,9~\% \\
+Électricité & Conditions de vie & 9,3~\% & 0,0357 & 1,1~\% \\
+Logement & Conditions de vie & 17,3~\% & 0,0357 & 2,0~\% \\
+Eau potable & Conditions de vie & 20,9~\% & 0,0357 & 2,2~\% \\
+Énergie de cuisson & Conditions de vie & 66,3~\% & 0,0357 & 6,5~\% \\
+Toilettes & Conditions de vie & 67,2~\% & 0,0357 & 6,3~\% \\
+Biens d'équipement & Conditions de vie & 21,7~\% & 0,0357 & 2,1~\% \\
+Promiscuité & Conditions de vie & 12,5~\% & 0,0357 & 1,1~\% \\
+\midrule
+Total des contributions & & & & 100,0~\% \\
+\bottomrule
+\end{longtable}
+\end{center}
+
+\section{La littérature soutient-elle l'indicateur agricole ?}
+
+\subsection{Arguments favorables}
+
+L'OIT souligne que le chômage ouvert peut être peu informatif dans les économies où les personnes
+pauvres ne peuvent pas se permettre de rester sans aucune activité. Elle propose, parmi les
+indicateurs adaptés aux moyens d'existence agricoles, la part des ménages engagés dans
+l'agriculture de subsistance. Elle insiste aussi sur la nécessité d'adapter les indicateurs à la
+structure nationale de l'emploi et des moyens d'existence.\footnote{OIT, \emph{Jobs and
+livelihoods: Meaningful ways to set targets and monitor progress},
+\url{https://www.ilo.org/resource/jobs-and-livelihoods-meaningful-ways-set-targets-and-monitor-progress}.}
+
+Le Rwanda offre un précédent officiel d'IPM national. Son indicateur de subsistance prive le
+ménage lorsqu'il est uniquement engagé dans le travail agricole. Il appartient à la dimension
+``Services sociaux et activité économique''.\footnote{National Institute of Statistics of
+Rwanda, \emph{The Second Rwanda Multidimensional Poverty Report}, p.~31,
+\url{https://ophi.org.uk/sites/default/files/2023-12/nisr_rwanda_mpi_report_2018.pdf}.}
+
+Enfin, le guide PNUD--OPHI rappelle qu'un IPM national peut inclure l'emploi et d'autres dimensions
+adaptées aux priorités du pays.\footnote{PNUD--OPHI, \emph{How to build a National
+Multidimensional Poverty Index},
+\url{https://www.undp.org/publications/how-build-national-multidimensional-poverty-index}.}
+
+\subsection{Réserve de définition}
+
+Depuis la 19e Conférence internationale des statisticiens du travail, l'emploi désigne le travail
+pour rémunération ou profit. La production principalement destinée à l'usage propre est une autre
+forme de travail, à mesurer séparément.\footnote{OIT, \emph{Employment},
+\url{https://www.ilo.org/resource/employment-1} ; OIT, \emph{Own-use production work},
+\url{https://www.ilo.org/resource/own-use-production-work}.}
+
+La littérature soutient donc clairement l'idée de mesurer la dépendance à la production agricole
+de subsistance. Elle ne suffit pas à valider le proxy EHCVM, car celui-ci ne connaît pas la
+destination de la récolte. Le libellé conseillé est :
+
+\begin{retenir}[Libellé recommandé]
+« Chef de ménage dépendant exclusivement de l'agriculture sur son propre champ --- proxy de
+l'agriculture de subsistance. »
+\end{retenir}
+
+\section{Forces, limites et risques d'interprétation}
+
+\begin{description}
+  \item[SU3 est préférable au chômage BIT strict.] Il récupère une partie du découragement et de
+  l'attachement incomplet au marché du travail. Il reste toutefois limité aux 17--40 ans et la
+  disponibilité admise jusqu'à un mois est plus large que le standard de deux semaines.
+
+  \item[L'agriculture mesure une vulnérabilité absente de SU3.] Une personne travaillant dans son
+  champ est occupée et n'entre pas dans SU3. Sans indicateur de qualité de l'emploi, cette réalité
+  disparaît de la dimension.
+
+  \item[SU3 seul donne un poids très fort à une privation rare.] Chaque ménage SU3 reçoit 0,25 de
+  score d'un coup. Cela rend l'indice sensible à une seule condition tout en ignorant la qualité
+  des emplois existants.
+
+  \item[Le NEE n'est pas un NEET complet.] La formation en cours manque et le taux est donc
+  surestimé. De plus, l'indicateur ne concerne que les ménages comprenant un jeune de 15 à 24 ans.
+
+  \item[Les variantes changent le profil des pauvres.] Supprimer l'agriculture réduit surtout la
+  pauvreté rurale ; ajouter NEE augmente relativement le poids des ménages jeunes et urbains.
+
+  \item[Une comparaison entre variantes n'est pas une évolution temporelle.] Les ménages et la
+  date restent identiques. Seule la définition de l'indice change.
+\end{description}
+
+\section{Recommandation finale}
+
+\begin{enumerate}
+  \item Retenir comme variante principale \textbf{SU3 + dépendance agricole exclusive du chef},
+  avec deux indicateurs de poids 0,125.
+  \item Renommer ou qualifier explicitement l'indicateur agricole comme \textbf{proxy}, car la
+  destination de la production n'est pas observée.
+  \item Conserver \textbf{SU3 uniquement} comme test de sensibilité montrant ce qui arrive lorsque
+  la qualité de l'emploi agricole est retirée.
+  \item Conserver \textbf{SU3 + NEE} comme scénario exploratoire, sans l'appeler NEET dans une
+  publication officielle tant que la formation en cours n'est pas mesurée.
+  \item À la prochaine enquête, ajouter une question sur la destination principale de la
+  production agricole et une question sur la formation suivie actuellement. Ces deux ajouts
+  permettraient de construire les indicateurs sans approximation.
+\end{enumerate}
+
+\section{Contrôles réalisés pour sécuriser les chiffres}
+
+Les vérifications suivantes ont été exécutées après l'implémentation :
+
+\begin{itemize}
+  \item auto-contrôles unitaires des cinq étapes du pipeline, sur l'EHCVM et le RGPH ;
+  \item recalcul direct et séparé des scores, de $H$, de $A$ et de $M_0$ depuis la matrice binaire ;
+  \item vérification exacte de l'identité $M_0=H\times A$ ;
+  \item écart maximal de $5,15\times10^{-7}$ entre le recalcul indépendant et les CSV publiés,
+  entièrement expliqué par leur arrondi à six décimales ;
+  \item contrôle que tout ménage privé au chômage BIT est également privé selon SU3 ;
+  \item validation de l'IPM national avec le package indépendant \col{afmpi}, y compris les
+  contributions et l'erreur-type, avec une tolérance de $10^{-6}$ ;
+  \item vérification que SU3 et NEE restent hors de l'IPM national lorsqu'aucune option de
+  variante n'est demandée.
+\end{itemize}
+
+\begin{retenir}[Conclusion]
+Les valeurs présentées dans cette note sont reproductibles et cohérentes avec les règles codées.
+Le choix restant n'est pas informatique : il consiste à décider quelle conception de la
+privation d'emploi doit entrer dans l'IPM. Les résultats et la littérature conduisent à préférer
+SU3 accompagné d'un indicateur agricole, sous un libellé plus prudent et statistiquement exact.
+\end{retenir}
+
+\section*{Fichiers de résultats associés}
+
+\begin{itemize}
+  \item \col{indices\_ipm\_su3\_ehcvm2021.xlsx} : SU3 + agriculture ;
+  \item \col{indices\_ipm\_su3\_seul\_ehcvm2021.xlsx} : SU3 uniquement ;
+  \item \col{indices\_ipm\_su3\_neet\_ehcvm2021.xlsx} : SU3 + NEE ;
+  \item chaque classeur contient les résultats nationaux, les contributions, les poids et les
+  désagrégations territoriales et sociales.
+\end{itemize}
+
+\end{document}
