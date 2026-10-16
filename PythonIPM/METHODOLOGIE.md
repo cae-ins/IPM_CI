@@ -202,7 +202,7 @@ exécution.
 | Éducation | Déclaration d'état civil | nationale | `etat_civil` | au moins un enfant de 5-15 ans sans acte | 23,5 % |
 | Santé | Assurance maladie | nationale | `assurance_maladie` | aucun membre couvert | 93,4 % |
 | Santé | Insécurité alimentaire | FAO | `insecurite_alimentaire` | score FIES ≥ 4 sur 8 (modérée ou sévère) | 42,7 % |
-| Santé | Renoncement aux soins (coût ou indisponibilité) | nationale | `renoncement_soins` | un membre malade sur 30 j n'a pas consulté, pour raison subie : coût (2 « trop cher », 8 « manque d'argent ») ou offre (11 « service indisponible », 12 « absence de personnel ») | 9,3 % |
+| Santé | Renoncement aux soins (coût) et (offre ou accessibilité) | nationale | `renoncement_soins_cout / renoncement_soins_offre` | un membre malade sur 30 j n'a pas consulté, pour raison subie : coût (2 « trop cher », 8 « manque d'argent ») ou offre (11 « service indisponible », 12 « absence de personnel ») | 9,3 % |
 | Emploi | Chômage | nationale | `chomage` | au moins un chômeur BIT de 17-40 ans | 3,7 % |
 | Emploi | Emploi agricole de subsistance | nationale | `emploi_subsistance` | chef occupé ne travaillant que son propre champ (sans salariat, apprentissage ni commerce) | 48,1 % |
 | Conditions de vie | Électricité | nationale | `electricite` | éclairage hors réseau / groupe électrogène / solaire | 13,3 % |
@@ -399,7 +399,7 @@ Colonnes : les effectifs concernés et défavorables des indicateurs individuels
 (`enfants_6_16` / `enfants_6_16_non_scolarises`, `membres_17_40` / `chomeurs_17_40`,
 `enfants_5_15` / `enfants_5_15_sans_acte`, `membres_17_49` / `membres_17_49_alphabetises`,
 `membres_17_95` / `annees_etudes_max`, `membres_assures`, `membres_malades_30j` /
-`membres_renoncement_soins`), les codes de modalité des conditions de
+`membres_renoncement_soins_cout / renoncement_soins_offre`), les codes de modalité des conditions de
 vie (`source_eclairage`, `materiau_toit`, `materiau_mur`, `materiau_sol`,
 `source_eau_boisson_seche`, `temps_aller_source_seche`, `combustible_principal`, `type_sanitaire`,
 `sanitaire_partage`), l'équipement (`nb_equipements`, `possede_voiture`), la variante non retenue
