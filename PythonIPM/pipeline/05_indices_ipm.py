@@ -64,6 +64,8 @@ from orchestrateur import (CLE, COLONNES_TECHNIQUES, HORS_IPM_NATIONAL, LOGS, SO
 
 if SOURCE == "rgph":
     import dictionnaire_rgph as dico
+elif SOURCE == "enem":
+    import dictionnaire_enem as dico
 else:
     import dictionnaire_ehcvm as dico
 
@@ -81,6 +83,11 @@ VARIANTES = {
     nom("indices_ipm_harmonise"): ("IPM harmonisé — socle commun EHCVM/RGPH",
                                    None, SOCLE_COMMUN, []),
 }
+
+if SOURCE == "enem":
+    # pas de socle commun avec l'EHCVM ou le RGPH : l'ENEM ne mesure pas l'état civil, et ses
+    # indicateurs de logement, d'eau et de toilette sont réduits
+    VARIANTES.pop(nom("indices_ipm_harmonise"))
 
 # Variantes Emploi, ajoutées par option, pour les DEUX sources. Les exclusions sont explicites
 # afin que les indicateurs expérimentaux ne contaminent aucune variante : `neet_approx` est un
@@ -113,6 +120,8 @@ TOLERANCE = 1e-9
 # variables de désagrégation : colonne de la matrice -> libellé publié
 DESAGREGATIONS = {
     "milieu": "Milieu de résidence",
+    "trimestre": "Trimestre d'enquête",
+    "direction_regionale": "Direction régionale (INS)",
     "region": "Région",
     "departement": "Département",
     # pas de « / » : le libellé sert aussi de nom de feuille Excel
@@ -685,6 +694,8 @@ def verifier():
 def variantes_demandees(arguments):
     """Les trois variantes de référence, plus celles que les options ajoutent."""
     variantes = dict(VARIANTES)
+    if SOURCE == "enem":
+        return variantes        # --bit / --su3 choisissent le chômage de l'IPM lui-même
     for option, (nom_variante, parametres) in VARIANTES_EMPLOI.items():
         if option not in arguments:
             continue

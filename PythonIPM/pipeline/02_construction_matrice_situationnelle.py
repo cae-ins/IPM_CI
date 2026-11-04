@@ -311,7 +311,93 @@ INDICATEURS_RGPH = [
                lambda X: (X.nb_equipements <= BIENS_MAXIMUM) & (X.possede_voiture == 0)),
 ]
 
-INDICATEURS_PAR_SOURCE = {"ehcvm": INDICATEURS, "rgph": INDICATEURS_RGPH}
+# --------------------------------------------------------------------------- #
+# ENEM 2025 : 20 indicateurs (voir dictionnaire_enem.py et la préconstruction 01_enem)
+# --------------------------------------------------------------------------- #
+AJOUT_ENEM = "extension ENEM (hors énoncé national)"
+# Nomenclatures de l'ENEM (questionnaire ENE-M, volet ménage, section logement).
+ENEM_EAU_AMELIOREE = [1, 2, 3, 4, 7, 8, 9, 10, 13, 14]   # robinet, borne, puits fermé, forage,
+#                                                          source aménagée, bouteille, pluie
+ENEM_SANITAIRE_AMELIORE = [1, 2, 3, 4, 5, 6, 7]           # WC avec chasse, VIP, ECOSAN, SANPLAT
+ENEM_MUR_ADEQUAT = [1, 2, 3]                              # ciment/béton, briques cuites, semi-dur
+ENEM_ORDURES_DEFAVORABLES = [3, 4, 5]                     # brûlées, enterrées, dépotoir sauvage
+ENEM_EAUX_USEES_DEFAVORABLES = [3, 5]                     # dans la rue, dans la nature
+
+_EHCVM = {i.colonne: i for i in INDICATEURS}   # définitions communes reprises telles quelles
+
+# Le chômage figure deux fois (BIT et SU3) : l'option --bit / --su3 de l'orchestrateur en retient
+# UN SEUL dans l'IPM (HORS_IPM_NATIONAL écarte l'autre), les deux restent dans la matrice g0.
+INDICATEURS_ENEM = [
+    _EHCVM["frequentation_scolaire"], _EHCVM["annee_scolarite"], _EHCVM["alphabetisation"],
+
+    _EHCVM["assurance_maladie"],
+    Indicateur("Sante", "Handicap", AJOUT_ENEM,
+               "Un membre du ménage a beaucoup de difficulté ou est incapable dans au moins un "
+               "domaine fonctionnel (vue, ouïe, mains et bras, communication, mémoire)",
+               "handicap", ["membres_handicapes"], "membres_repondants_handicap",
+               lambda X: X.membres_handicapes >= 1),
+
+    _EHCVM["chomage"], _EHCVM["chomage_su3"],
+    Indicateur("Emploi", "Emploi agricole de subsistance", NATIONALE,
+               "Le chef de ménage est occupé dans l'agriculture, à son compte ou comme "
+               "travailleur ou aide familial. Approximation haute : la destination de la "
+               "production n'est pas distinguée",
+               "emploi_subsistance", ["cm_agriculture_subsistance"], None,
+               lambda X: X.cm_agriculture_subsistance >= 1),
+    Indicateur("Emploi", "Emploi vulnérable", AJOUT_ENEM,
+               "Un membre occupé de 15 ans et plus est travailleur à son compte, travailleur "
+               "familial ou aide familial",
+               "emploi_vulnerable", ["occupes_vulnerables"], "occupes_15_plus",
+               lambda X: X.occupes_vulnerables >= 1),
+    Indicateur("Emploi", "Emploi informel", AJOUT_ENEM,
+               "Un salarié ou apprenti du ménage n'est pas déclaré à la CNPS ou à la CGRAE",
+               "emploi_informel", ["salaries_non_declares"], "salaries",
+               lambda X: X.salaries_non_declares >= 1),
+    Indicateur("Emploi", "Sous-emploi lié au temps de travail", AJOUT_ENEM,
+               "Un membre occupé travaille moins que le seuil d'heures (étape 01), souhaite "
+               "travailler plus et est disponible pour le faire",
+               "sous_emploi", ["sous_employes"], "occupes_heures",
+               lambda X: X.sous_employes >= 1),
+    Indicateur("Emploi", "Jeunes ni en emploi ni en études ni en formation (NEET)", AJOUT_ENEM,
+               "Un jeune de 15-24 ans n'est ni en emploi, ni scolarisé, ni en formation",
+               "neet", ["jeunes_neet_15_24"], "jeunes_15_24",
+               lambda X: X.jeunes_neet_15_24 >= 1),
+
+    _EHCVM["electricite"],
+    Indicateur("Conditions de vie", "Logement", PNUD,
+               "Murs en matériaux rudimentaires (le sol et le toit ne sont pas collectés)",
+               "logement", ["materiau_mur"], None,
+               lambda X: ~X.materiau_mur.isin(ENEM_MUR_ADEQUAT)),
+    Indicateur("Conditions de vie", "Eau potable", PNUD,
+               "La source d'eau de boisson n'est pas améliorée (ODD) ; le temps de trajet "
+               "n'est pas collecté",
+               "eau_potable", ["source_eau_boisson"], None,
+               lambda X: ~X.source_eau_boisson.isin(ENEM_EAU_AMELIOREE)),
+    Indicateur("Conditions de vie", "Toilette", PNUD,
+               "Installations sanitaires non améliorées (ODD), toilettes publiques comprises ; "
+               "le partage n'est pas collecté",
+               "toilette", ["type_sanitaire"], None,
+               lambda X: ~X.type_sanitaire.isin(ENEM_SANITAIRE_AMELIORE)),
+    _EHCVM["biens_equipement"], _EHCVM["promiscuite"],
+    Indicateur("Conditions de vie", "Energie de cuisson", NATIONALE,
+               "Approximation : l'énergie de cuisson n'est pas demandée, le ménage n'a ni "
+               "cuisinière ni réchaud à gaz",
+               "energie_cuisson", ["rechaud_gaz"], None,
+               lambda X: X.rechaud_gaz == 0),
+    Indicateur("Conditions de vie", "Déchets et eaux usées", AJOUT_ENEM,
+               "Les ordures sont brûlées, enterrées ou jetées en dépotoir sauvage, ou les eaux "
+               "usées sont rejetées dans la rue ou dans la nature",
+               "dechets_eaux_usees", ["evacuation_ordures", "evacuation_eaux_usees"], None,
+               lambda X: (X.evacuation_ordures.isin(ENEM_ORDURES_DEFAVORABLES)
+                          | X.evacuation_eaux_usees.isin(ENEM_EAUX_USEES_DEFAVORABLES))),
+    Indicateur("Conditions de vie", "Exclusion numérique", AJOUT_ENEM,
+               "Le ménage n'a ni abonnement internet fixe ni internet mobile",
+               "exclusion_numerique", ["internet"], None,
+               lambda X: X.internet == 0),
+]
+
+INDICATEURS_PAR_SOURCE = {"ehcvm": INDICATEURS, "rgph": INDICATEURS_RGPH,
+                          "enem": INDICATEURS_ENEM}
 INDICATEURS = INDICATEURS_PAR_SOURCE[SOURCE]
 
 # les colonnes indicateurs, dans l'ordre du tableau de référence
@@ -359,8 +445,28 @@ PARAMETRES_Z_RGPH = {
     "energie_cuisson": ("modes de cuisson propres", RGPH_CUISSON_PROPRE),
     "toilette": ("codes de sanitaires améliorés (ODD)", RGPH_SANITAIRE_AMELIORE),
 }
+# ENEM : seuils lisibles des indicateurs nouveaux ou redéfinis, le reste est repris de l'EHCVM
+PARAMETRES_Z_ENEM = {
+    **PARAMETRES_Z,
+    "handicap": ("au moins un membre avec « beaucoup » ou « incapable » dans un domaine", 1),
+    "emploi_subsistance": ("chef de ménage agricole, indépendant ou familial", 1),
+    "emploi_vulnerable": ("au moins un occupé à son compte, familial ou aide familial", 1),
+    "emploi_informel": ("au moins un salarié ou apprenti non déclaré à la CNPS ou CGRAE", 1),
+    "sous_emploi": ("au moins un occupé sous le seuil d'heures (étape 01), voulant et pouvant "
+                    "travailler plus", 1),
+    "neet": ("au moins un jeune de 15-24 ans ni en emploi, ni scolarisé, ni en formation", 1),
+    "logement": ("codes de murs adéquats", ENEM_MUR_ADEQUAT),
+    "eau_potable": ("codes d'eau améliorée (ODD)", ENEM_EAU_AMELIOREE),
+    "toilette": ("codes de sanitaires améliorés (ODD)", ENEM_SANITAIRE_AMELIORE),
+    "energie_cuisson": ("possession d'un réchaud ou d'une cuisinière à gaz (approximation)", 1),
+    "dechets_eaux_usees": ("codes d'ordures et d'eaux usées défavorables",
+                           [ENEM_ORDURES_DEFAVORABLES, ENEM_EAUX_USEES_DEFAVORABLES]),
+    "exclusion_numerique": ("abonnement internet fixe ou mobile", 1),
+}
 if SOURCE == "rgph":
     PARAMETRES_Z = PARAMETRES_Z_RGPH
+elif SOURCE == "enem":
+    PARAMETRES_Z = PARAMETRES_Z_ENEM
 
 
 def vecteur_z():
@@ -383,6 +489,11 @@ RAPPEL_SOURCE = {
     "rgph": "le recensement ne pose aucune question de santé ni sur le nombre de pièces : "
             "assurance maladie, insécurité alimentaire, renoncement aux soins et promiscuité "
             "sont absents, et la dimension Santé repose sur la seule mortalité",
+    "enem": "l'ENEM ne mesure ni l'état civil, ni l'insécurité alimentaire, ni le renoncement "
+            "aux soins, ni la mortalité : la Santé repose sur l'assurance maladie et le handicap ; "
+            "logement, eau et toilette n'ont que leur premier critère PNUD ; l'énergie de "
+            "cuisson est approchée par le réchaud à gaz ; seuls les ménages à leur première "
+            "interrogation de 2025 sont retenus",
 }
 
 logger = logging.getLogger("ipm.matrice_situationnelle")
@@ -478,6 +589,8 @@ def verifier():
     configurer_logs(logger, niveau=logging.WARNING)
     if SOURCE == "rgph":
         return verifier_rgph()
+    if SOURCE == "enem":
+        return verifier_enem()
 
     P = pd.DataFrame({
         "source_eclairage": [4, 1],                 # lampe à pile / réseau
@@ -562,6 +675,55 @@ def verifier_rgph():
     assert not (set(SOCLE_COMMUN) - set(COLONNES_INDICATEURS))
 
     print("auto-contrôle 02 RGPH : OK")
+
+
+def verifier_enem():
+    """Mêmes deux ménages, en codes ENEM : A privé partout, B privé nulle part."""
+    P = pd.DataFrame({
+        "enfants_6_16": [2, 2], "enfants_6_16_non_scolarises": [1, 0],
+        "membres_17_95": [2, 2], "annees_etudes_max": [5.0, 11.0],
+        "membres_17_49": [2, 2], "membres_17_49_alphabetises": [0, 2],
+        "taille_menage": [4, 4], "membres_assures": [0, 1],
+        "membres_repondants_handicap": [4, 4], "membres_handicapes": [1, 0],
+        "membres_17_40": [1, 1], "chomeurs_17_40": [1, 0], "chomeurs_su3_17_40": [1, 0],
+        "cm_agriculture_subsistance": [1, 0],
+        "occupes_15_plus": [1, 1], "occupes_vulnerables": [1, 0],
+        "salaries": [1, 1], "salaries_non_declares": [1, 0],
+        "occupes_heures": [1, 1], "sous_employes": [1, 0],
+        "jeunes_15_24": [1, 1], "jeunes_neet_15_24": [1, 0],
+        "source_eclairage": [4, 1],          # lampe à pile / réseau
+        "materiau_mur": [4, 1],              # récupération / ciment
+        "source_eau_boisson": [12, 1],       # rivière / robinet dans le logement
+        "type_sanitaire": [11, 1],           # aucune toilette / WC avec chasse
+        "nb_equipements": [1, 6], "possede_voiture": [0, 1],
+        "nb_pieces": [1, 4], "rechaud_gaz": [0, 1],
+        "evacuation_ordures": [5, 2], "evacuation_eaux_usees": [5, 1], "internet": [0, 1],
+        "ponderation_menage": [1.0, 1.0],
+    }, index=["A", "B"])
+
+    X = calculer_indicateurs(P)
+    assert len(INDICATEURS) == 21, len(INDICATEURS)      # 20 indicateurs + les deux chômages
+    assert {"chomage", "chomage_su3"} <= set(COLONNES_INDICATEURS)
+    assert X.loc["A", COLONNES_INDICATEURS].tolist() == [1] * len(INDICATEURS), X.loc["A"]
+    assert X.loc["B", COLONNES_INDICATEURS].tolist() == [0] * len(INDICATEURS), X.loc["B"]
+    # ni état civil, ni insécurité alimentaire, ni renoncement aux soins, ni mortalité
+    assert not {"etat_civil", "insecurite_alimentaire", "renoncement_soins_cout",
+                "mortalite"} & set(COLONNES_INDICATEURS)
+    # codes sensibles : pluie = eau améliorée ; latrine dallée simplement (8) et toilettes
+    # publiques (10) = non améliorées
+    assert calculer_indicateurs(P.assign(source_eau_boisson=[14, 14])).eau_potable.tolist() == [0, 0]
+    assert calculer_indicateurs(P.assign(type_sanitaire=[8, 10])).toilette.tolist() == [1, 1]
+    # le chômage SU3 englobe le BIT : un chômeur BIT est toujours SU3, pas l'inverse
+    potentiel = P.assign(chomeurs_17_40=[0, 0], chomeurs_su3_17_40=[1, 0])
+    Xp = calculer_indicateurs(potentiel)
+    assert Xp.chomage.tolist() == [0, 0] and Xp.chomage_su3.tolist() == [1, 0]
+    # un ménage sans aucun jeune ni salarié n'est pas privé sur NEET et informel
+    sans = P.assign(jeunes_15_24=[0, 0], jeunes_neet_15_24=[0, 0], salaries=[0, 0],
+                    salaries_non_declares=[0, 0])
+    Xs = calculer_indicateurs(sans)
+    assert Xs.neet.tolist() == [0, 0] and Xs.emploi_informel.tolist() == [0, 0]
+
+    print("auto-contrôle 02 ENEM : OK")
 
 
 def main():

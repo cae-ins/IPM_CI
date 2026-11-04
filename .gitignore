@@ -6,6 +6,7 @@
 **/*.sas7bdat
 **/*.rdata
 **/*.rds
+**/*.parquet
 **/*.xlsx
 **/*.xls
 **/*.db

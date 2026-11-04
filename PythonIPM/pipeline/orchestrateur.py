@@ -22,6 +22,8 @@ circulaire (les étapes importent ce module) est évité.
 Usage :
     python orchestrateur.py                    # les deux sources, tout le pipeline
     python orchestrateur.py --source rgph      # le RGPH seul
+    python orchestrateur.py --source enem      # l'ENEM 2025, chômage BIT (= --bit)
+    python orchestrateur.py --source enem --su3   # l'ENEM 2025 avec SU3 à la place du BIT
     python orchestrateur.py --check            # les auto-contrôles de chaque étape
     python orchestrateur.py --su3 --su3_seul --su3_neet  # variantes Emploi (les 2 sources)
 """
@@ -36,13 +38,21 @@ import pandas as pd
 
 # source courante : « ehcvm » (enquête) ou « rgph » (recensement)
 SOURCE = os.environ.get("IPM_SOURCE", "ehcvm")
-SOURCES = ("ehcvm", "rgph")
+SOURCES = ("ehcvm", "rgph", "enem")
+SOURCES_PAR_DEFAUT = ("ehcvm", "rgph")   # l'appel nu ne lance pas l'ENEM : --source enem
 assert SOURCE in SOURCES, f"IPM_SOURCE doit valoir {' ou '.join(SOURCES)}, reçu {SOURCE!r}"
+
+# Chômage retenu dans l'IPM de l'ENEM : BIT (par défaut, `--bit`) ou SU3 (`--su3`). Un seul des
+# deux entre dans l'indice, l'autre est produit mais écarté (HORS_IPM_NATIONAL plus bas). Le choix
+# fait partie du suffixe des fichiers : les deux jeux de sorties cohabitent. Valable pour la
+# seule source `enem` ; côté EHCVM et RGPH, `--su3` garde son sens de variante Emploi.
+EMPLOI = os.environ.get("IPM_EMPLOI") or ("su3" if "--su3" in sys.argv else "bit")
 
 RACINE = Path(__file__).resolve().parent.parent   # PythonIPM/
 DATA_EHCVM = RACINE / "Data" / "EHCVM"            # bases .dta d'origine, en lecture seule
 DATA_RGPH = RACINE / "Data" / "RGPH_IPM"
-DATA = DATA_EHCVM if SOURCE == "ehcvm" else DATA_RGPH
+DATA_ENEM = RACINE / "Data" / "ENEM"
+DATA = {"ehcvm": DATA_EHCVM, "rgph": DATA_RGPH, "enem": DATA_ENEM}[SOURCE]
 SORTIES = RACINE / "sorties"                      # tables produites par le pipeline
 SORTIES_DTA = SORTIES / "dta"                     #   format Stata : ce que lit l'étape suivante
 SORTIES_CSV = SORTIES / "csv"                     #   format texte : lecture humaine, R
@@ -60,6 +70,7 @@ JOURNAL_PIPELINE = LOGS / "00_pipeline.log"
 ETAPES_PAR_SOURCE = {
     "ehcvm": ["01_preconstruction_matrice_situationnelle.py"],
     "rgph": ["01_rgph_preconstruction_matrice_situationnelle.py"],
+    "enem": ["01_enem_preconstruction_matrice_situationnelle.py"],
 }
 ETAPES_COMMUNES = [
     "02_construction_matrice_situationnelle.py",
@@ -70,10 +81,11 @@ ETAPES_COMMUNES = [
 ETAPES = ETAPES_PAR_SOURCE[SOURCE] + ETAPES_COMMUNES
 
 # suffixe de tous les fichiers produits : c'est lui qui fait cohabiter les deux IPM
-SUFFIXE = {"ehcvm": "ehcvm2021", "rgph": "rgph2021"}[SOURCE]
+SUFFIXE = {"ehcvm": "ehcvm2021", "rgph": "rgph2021", "enem": f"enem2025_{EMPLOI}"}[SOURCE]
 
 # clé d'un ménage : grappe/ménage/vague dans l'EHCVM, identifiant national dans le RGPH
-CLE = {"ehcvm": ["grappe", "menage", "vague"], "rgph": ["id_menage"]}[SOURCE]
+CLE = {"ehcvm": ["grappe", "menage", "vague"], "rgph": ["id_menage"],
+       "enem": ["id_menage"]}[SOURCE]
 
 # Variables de pondération et de désagrégation transportées d'une étape à l'autre.
 # RGPH : `id_menage` est la clé (donc l'index) et n'est pas reprise ici ; le sexe du chef n'est
@@ -84,6 +96,9 @@ COLONNES_TECHNIQUES = {
               "region", "departement", "sous_prefecture", "milieu", "sexe_cm"],
     "rgph": ["ponderation_menage", "taille_menage",
              "region", "departement", "sous_prefecture", "milieu", "grappe"],
+    # ENEM : `grappe` = unité primaire de sondage (PSUKEY), `trimestre` sert de désagrégation
+    "enem": ["trimestre", "ponderation_menage", "taille_menage", "direction_regionale",
+             "region", "departement", "sous_prefecture", "milieu", "sexe_cm", "grappe"],
 }[SOURCE]
 
 
@@ -116,6 +131,10 @@ SOCLE_COMMUN = [
 # l'IPM national), et le NEET approché n'appartient qu'à une analyse de sensibilité : les
 # inclure d'office modifierait l'indice national publié.
 HORS_IPM_NATIONAL = ["chomage_su3", "neet_approx"]
+if SOURCE == "enem":
+    # l'ENEM mesure une vraie formation en cours (`neet`, dans l'IPM) ; il écarte celui des
+    # deux chômages que l'option ne retient pas
+    HORS_IPM_NATIONAL = ["chomage_su3"] if EMPLOI == "bit" else ["chomage"]
 
 # Options de l'étape 05 qui ajoutent une variante Emploi. Elles valent pour les DEUX sources :
 # l'EHCVM reconstruit SU3 à partir de la recherche, de la disponibilité et du désir d'emploi,
@@ -228,7 +247,7 @@ def lancer(etape, arguments=()):
     debut = time.perf_counter()
     resultat = subprocess.run([sys.executable, str(script), *arguments],
                               capture_output=True, text=True, cwd=RACINE,
-                              env={**os.environ, "IPM_SOURCE": SOURCE})
+                              env={**os.environ, "IPM_SOURCE": SOURCE, "IPM_EMPLOI": EMPLOI})
     duree = time.perf_counter() - debut
 
     for ligne in resultat.stdout.splitlines():
@@ -269,14 +288,18 @@ def lancer_source(source, arguments=()):
     suffixe et les chemins de tous les modules du pipeline. Changer de source en cours de
     processus ne rechargerait pas ces constantes.
     """
+    emploi = "su3" if "--su3" in arguments else "bit"
     resultat = subprocess.run([sys.executable, str(Path(__file__).resolve()), *arguments],
-                              cwd=RACINE, env={**os.environ, "IPM_SOURCE": source})
+                              cwd=RACINE,
+                              env={**os.environ, "IPM_SOURCE": source, "IPM_EMPLOI": emploi})
     return resultat.returncode
 
 
 if __name__ == "__main__":
-    reconnues = ("--check",) + OPTIONS_EMPLOI
+    reconnues = ("--check", "--bit") + OPTIONS_EMPLOI
     options = [a for a in sys.argv[1:] if a in reconnues]
+    if "--bit" in options and "--su3" in options:
+        sys.exit("--bit et --su3 s'excluent : un seul chômage entre dans l'IPM de l'ENEM")
     inconnues = [a for a in sys.argv[1:]
                  if a.startswith("--") and a not in reconnues + ("--source",)]
     if inconnues:
@@ -293,7 +316,7 @@ if __name__ == "__main__":
         sys.exit(main(options))      # appelé par lancer_source : on exécute la chaîne
 
     # appel nu : les deux IPM, l'un après l'autre
-    for source in SOURCES:
+    for source in SOURCES_PAR_DEFAUT:
         print(f"\n{'#' * 78}\n### source {source}\n{'#' * 78}")
         if lancer_source(source, options):
             sys.exit(f"pipeline interrompu sur la source {source}")
