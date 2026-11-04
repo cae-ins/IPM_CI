@@ -24,6 +24,7 @@ Usage :
     python orchestrateur.py --source rgph      # le RGPH seul
     python orchestrateur.py --source enem      # l'ENEM 2025, chômage BIT (= --bit)
     python orchestrateur.py --source enem --su3   # l'ENEM 2025 avec SU3 à la place du BIT
+    python orchestrateur.py --source enem --k40   # seuil de pauvreté k = 40 % (--k33, 1/3, par défaut)
     python orchestrateur.py --check            # les auto-contrôles de chaque étape
     python orchestrateur.py --su3 --su3_seul --su3_neet  # variantes Emploi (les 2 sources)
 """
@@ -47,6 +48,15 @@ assert SOURCE in SOURCES, f"IPM_SOURCE doit valoir {' ou '.join(SOURCES)}, reçu
 # fait partie du suffixe des fichiers : les deux jeux de sorties cohabitent. Valable pour la
 # seule source `enem` ; côté EHCVM et RGPH, `--su3` garde son sens de variante Emploi.
 EMPLOI = os.environ.get("IPM_EMPLOI") or ("su3" if "--su3" in sys.argv else "bit")
+
+# Seuil de pauvreté k : 1/3 par défaut (`--k33`) ou 40 % (`--k40`). Il vaut pour toutes les sources et
+# pour les étapes 04 à 07. Hors défaut, il entre dans le suffixe des fichiers (`_k40`) : les sorties à
+# k = 1/3 gardent leur nom et celles à k = 40 % cohabitent avec elles.
+K_OPTIONS = {"k33": 1 / 3, "k40": 0.4}
+K_CHOIX = os.environ.get("IPM_K") or ("k40" if "--k40" in sys.argv else "k33")
+assert K_CHOIX in K_OPTIONS, f"IPM_K doit valoir {' ou '.join(K_OPTIONS)}, reçu {K_CHOIX!r}"
+K_PAUVRETE = K_OPTIONS[K_CHOIX]
+LIBELLE_K = "1/3" if K_CHOIX == "k33" else f"{100 * K_PAUVRETE:.0f} %"
 
 RACINE = Path(__file__).resolve().parent.parent   # PythonIPM/
 DATA_EHCVM = RACINE / "Data" / "EHCVM"            # bases .dta d'origine, en lecture seule
@@ -82,6 +92,8 @@ ETAPES = ETAPES_PAR_SOURCE[SOURCE] + ETAPES_COMMUNES
 
 # suffixe de tous les fichiers produits : c'est lui qui fait cohabiter les deux IPM
 SUFFIXE = {"ehcvm": "ehcvm2021", "rgph": "rgph2021", "enem": f"enem2025_{EMPLOI}"}[SOURCE]
+if K_CHOIX != "k33":
+    SUFFIXE += f"_{K_CHOIX}"
 
 # clé d'un ménage : grappe/ménage/vague dans l'EHCVM, identifiant national dans le RGPH
 CLE = {"ehcvm": ["grappe", "menage", "vague"], "rgph": ["id_menage"],
@@ -247,7 +259,7 @@ def lancer(etape, arguments=()):
     debut = time.perf_counter()
     resultat = subprocess.run([sys.executable, str(script), *arguments],
                               capture_output=True, text=True, cwd=RACINE,
-                              env={**os.environ, "IPM_SOURCE": SOURCE, "IPM_EMPLOI": EMPLOI})
+                              env={**os.environ, "IPM_SOURCE": SOURCE, "IPM_EMPLOI": EMPLOI, "IPM_K": K_CHOIX})
     duree = time.perf_counter() - debut
 
     for ligne in resultat.stdout.splitlines():
@@ -265,7 +277,8 @@ def lancer(etape, arguments=()):
 def main(arguments=()):
     configurer_logs(logger, JOURNAL_PIPELINE)
     debut = time.perf_counter()
-    logger.info("=== pipeline IPM — source %s, %d étapes ===", SOURCE, len(ETAPES))
+    logger.info("=== pipeline IPM — source %s, seuil de pauvreté k = %s, %d étapes ===", SOURCE, LIBELLE_K,
+                len(ETAPES))
 
     for numero, etape in enumerate(ETAPES, start=1):
         if not lancer(etape, arguments):
@@ -289,15 +302,18 @@ def lancer_source(source, arguments=()):
     processus ne rechargerait pas ces constantes.
     """
     emploi = "su3" if "--su3" in arguments else "bit"
+    k = "k40" if "--k40" in arguments else "k33"
     resultat = subprocess.run([sys.executable, str(Path(__file__).resolve()), *arguments],
                               cwd=RACINE,
-                              env={**os.environ, "IPM_SOURCE": source, "IPM_EMPLOI": emploi})
+                              env={**os.environ, "IPM_SOURCE": source, "IPM_EMPLOI": emploi, "IPM_K": k})
     return resultat.returncode
 
 
 if __name__ == "__main__":
-    reconnues = ("--check", "--bit") + OPTIONS_EMPLOI
+    reconnues = ("--check", "--bit", "--k33", "--k40") + OPTIONS_EMPLOI
     options = [a for a in sys.argv[1:] if a in reconnues]
+    if "--k33" in options and "--k40" in options:
+        sys.exit("--k33 et --k40 s'excluent : un seul seuil de pauvreté k par exécution")
     if "--bit" in options and "--su3" in options:
         sys.exit("--bit et --su3 s'excluent : un seul chômage entre dans l'IPM de l'ENEM")
     inconnues = [a for a in sys.argv[1:]

@@ -41,16 +41,17 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from orchestrateur import (CLE, LOGS, SORTIES, SORTIES_CSV, SORTIES_DTA, SOURCE, SUFFIXE,
-                           configurer_logs, exporter_table, nom)
+from orchestrateur import (CLE, K_PAUVRETE, LIBELLE_K, LOGS, SORTIES, SORTIES_CSV, SORTIES_DTA, SOURCE,
+                           SUFFIXE, configurer_logs, exporter_table, nom)
 
 JOURNAL = LOGS / f"07_robustesse_seuil_k_{SOURCE}.log"
 DOSSIER_PNG = SORTIES / "png"
 DOSSIER_DOCX = SORTIES / "docx"
 logger = logging.getLogger("ipm.robustesse_k")
 
-K_REF = 1 / 3
-K_ALTERNATIFS = [0.20, 0.25, 0.40, 0.50, 0.60]
+K_REF = K_PAUVRETE      # seuil de l'IPM calculé : 1/3 par défaut, 40 % avec --k40 (orchestrateur)
+# les autres seuils testés : 1/3 et 40 % y figurent toujours, le seuil de référence en est exclu
+K_ALTERNATIFS = sorted({0.20, 0.25, 1 / 3, 0.40, 0.50, 0.60} - {K_REF})
 GRILLE = np.unique(np.append(np.round(np.arange(0.05, 1.0001, 0.05), 4), K_REF))
 # Découpage d'analyse : les 33 régions (230 à 392 ménages chacune dans l'ENEM 2025). Les 14 directions
 # régionales, plus précises (492 à 973 ménages) mais moins fines, s'ajoutent avec
@@ -318,7 +319,7 @@ def figure_correlations(res, chemin):
                 transform=ax.get_yaxis_transform())
         ax.set_ylim(min(0.4, np.nanmin(c[["spearman", "kendall"]].values) - 0.05), 1.02)
         ax.set_title(f"Stabilité du classement : {d['libelle'].lower()}", fontsize=9)
-        ax.set_ylabel("Corrélation avec le classement à k = 1/3")
+        ax.set_ylabel(f"Corrélation avec le classement à k = {LIBELLE_K}")
         ax.legend(fontsize=7, frameon=False, loc="lower left")
         _axe_k(ax)
     fig.tight_layout()
@@ -402,6 +403,9 @@ def rapport_word(res, chemins):
 
     n = Note(entete="Rapport technique. Robustesse de l'IPM au seuil de pauvreté k",
              pied="Projet IPM Côte d'Ivoire. Usage interne")
+    # les textes écrits « k = 1/3 » désignent le seuil de référence : ils suivent l'option --k33 / --k40
+    _run_brut = n._run
+    n._run = lambda par, txt, **kw: _run_brut(par, txt.replace("k = 1/3", f"k = {LIBELLE_K}"), **kw)
     aujourdhui = date.today()
     etiquette = SUFFIXE
     n.bandeau("Projet IPM Côte d'Ivoire", f"Robustesse de l'indice au seuil k ({etiquette})")
@@ -509,9 +513,11 @@ def rapport_word(res, chemins):
     n.p("Les valeurs de H, A et M0 sont calculées pour une grille de seuils de 5 % à 100 %, avec leurs intervalles de confiance à 95 % (variance par grappe). "
         "Le tableau donne les valeurs aux seuils testés, la figure la courbe complète.")
     lignes = []
-    for k in [0.2, 0.25, K_REF, 0.4, 0.5, 0.6]:
+    for k in sorted({0.2, 0.25, 1 / 3, 0.4, 0.5, 0.6} | {K_REF}):
         r = c.loc[k]
-        lignes.append([("1/3 (référence)" if abs(k - K_REF) < 1e-3 else _p(k, 0)), _n(k * dims, 2),
+        etiquette_k = (f"{LIBELLE_K} (référence)" if abs(k - K_REF) < 1e-9
+                       else "1/3" if abs(k - 1 / 3) < 1e-9 else _p(k, 0))
+        lignes.append([etiquette_k, _n(k * dims, 2),
                        _ic(r.H, r.H_bas, r.H_haut, True), _ic(r.A, r.A_bas, r.A_haut), _ic(r.M0, r.M0_bas, r.M0_haut)])
     n.tableau(["Seuil k", "Équivalent en dimensions", "H, incidence (IC 95 %)", "A, intensité (IC 95 %)", "M0 (IC 95 %)"], lignes,
               widths=[2.6, 2.4, 4.0, 3.6, 3.6], fs=8.5, legende="Effet de k sur H, A et M0 au niveau national.")
@@ -591,8 +597,10 @@ def rapport_word(res, chemins):
          (f"Le niveau de l'indice dépend de k (H de {_p(c.loc[0.5, 'H'], 0)} à {_p(c.loc[0.2, 'H'], 0)} pour k de 50 % à 20 %). Le classement des zones, lui, est stable pour k allant de "
           f"{_p(k_bas, 0)} à {_p(k_haut, 0)}, et les comparaisons par paires significatives sont en grande partie préservées.", False)])
     n.p([("Ce que cela permet de dire. ", True),
-         ("Le choix de k = 1/3 ne détermine pas où cibler l'action. Il est donc défendable de le conserver, ce qui aligne l'ENEM sur l'EHCVM et le RGPH. "
-          "La publication doit présenter le classement et ses intervalles de confiance, et signaler que le niveau n'est comparable ni à celui d'une autre source, ni à celui d'un autre pays.", False)])
+         ("Le choix de k = 1/3 ne détermine pas où cibler l'action. "
+          + ("Il est donc défendable de le conserver, ce qui aligne l'ENEM sur l'EHCVM et le RGPH. " if abs(K_REF - 1 / 3) < 1e-9 else
+             "Ce seuil diffère toutefois du 1/3 retenu pour l'EHCVM et le RGPH : les niveaux ne sont pas comparables entre ces sources. ")
+          + "La publication doit présenter le classement et ses intervalles de confiance, et signaler que le niveau n'est comparable ni à celui d'une autre source, ni à celui d'un autre pays.", False)])
     n.p([("Ce qui reste à décider. ", True),
          ("Faut-il publier un seuil unique ou plusieurs ? Il est proposé de publier k = 1/3 comme référence et de joindre en annexe la courbe et le tableau de stabilité de ce rapport.", False)])
 

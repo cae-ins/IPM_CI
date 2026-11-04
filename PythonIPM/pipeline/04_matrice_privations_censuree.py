@@ -26,17 +26,17 @@ import time
 
 import pandas as pd
 
-from orchestrateur import (CLE, COLONNES_TECHNIQUES, LOGS, SORTIES_DTA, SOURCE, configurer_logs,
-                           exporter_table, nom, part)
+from orchestrateur import (CLE, COLONNES_TECHNIQUES, K_PAUVRETE, LIBELLE_K, LOGS, SORTIES_DTA, SOURCE,
+                           configurer_logs, exporter_table, nom, part)
 
 ENTREE = SORTIES_DTA / f"{nom('matrice_privations_ponderees')}.dta"
 NOM_SORTIE = nom("matrice_privations_censuree")
 JOURNAL = LOGS / f"04_matrice_privations_censuree_{SOURCE}.log"
 
-# Seuils. k = 1/3 est le seuil de pauvreté multidimensionnelle de l'IPM ; les deux autres
-# servent aux indicateurs complémentaires publiés à côté de M0.
-K_PAUVRETE = 1 / 3
-K_VULNERABILITE = 0.2    # 0,2 <= c < 1/3 : vulnérable à la pauvreté multidimensionnelle
+# Seuils. k (K_PAUVRETE, fixé par l'orchestrateur : 1/3 par défaut, 40 % avec --k40) est le seuil de
+# pauvreté multidimensionnelle de l'IPM ; les deux autres servent aux indicateurs complémentaires
+# publiés à côté de M0.
+K_VULNERABILITE = 0.2    # 0,2 <= c < k : vulnérable à la pauvreté multidimensionnelle
 K_SEVERE = 0.5           # c >= 0,5       : pauvreté multidimensionnelle sévère
 
 # Comparaison de flottants : avec ces poids cᵢ peut valoir EXACTEMENT 1/3, et selon les erreurs
@@ -65,8 +65,8 @@ def statuts_pauvrete(score, poids_population, nb_menages):
     vulnerable = (score >= K_VULNERABILITE - TOLERANCE) & ~pauvre
     severe = score >= K_SEVERE - TOLERANCE
 
-    for libelle, statut in [("pauvres (c >= 1/3)", pauvre),
-                            ("vulnérables (0,2 <= c < 1/3)", vulnerable),
+    for libelle, statut in [(f"pauvres (c >= {LIBELLE_K})", pauvre),
+                            (f"vulnérables (0,2 <= c < {LIBELLE_K})", vulnerable),
                             ("pauvreté sévère (c >= 0,5)", severe)]:
         logger.info("  %-30s %-16s | pondéré population : %.1f %%", libelle,
                     part(int(statut.sum()), nb_menages),
@@ -140,6 +140,8 @@ def construire():
 # --------------------------------------------------------------------------- #
 def verifier():
     """Trois ménages aux scores connus, dont un exactement au seuil."""
+    global K_PAUVRETE
+    K_PAUVRETE = 1 / 3          # les cas construits à la main supposent k = 1/3, quelle que soit l'option
     configurer_logs(logger, niveau=logging.WARNING)
 
     #  A : c = 0,50 (pauvre et sévère)   B : c = 0,25 (vulnérable)   C : c = 1/3 (au seuil)

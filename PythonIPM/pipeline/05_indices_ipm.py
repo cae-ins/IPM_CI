@@ -58,8 +58,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from orchestrateur import (CLE, COLONNES_TECHNIQUES, HORS_IPM_NATIONAL, LOGS, SOCLE_COMMUN,
-                           SORTIES_CSV, SORTIES_DTA, SORTIES_XLSX, SOURCE, configurer_logs,
+from orchestrateur import (CLE, COLONNES_TECHNIQUES, HORS_IPM_NATIONAL, K_PAUVRETE, LIBELLE_K, LOGS,
+                           SOCLE_COMMUN, SORTIES_CSV, SORTIES_DTA, SORTIES_XLSX, SOURCE, configurer_logs,
                            exporter_table, nom, part)
 
 if SOURCE == "rgph":
@@ -107,10 +107,10 @@ VARIANTES_EMPLOI = {
                     None, None, ["chomage", "emploi_subsistance"])),
 }
 
-# Seuils (identiques à l'étape 04). k = 1/3 est le seuil de pauvreté multidimensionnelle ;
-# les deux autres servent aux indicateurs complémentaires publiés à côté de M0.
-K_PAUVRETE = 1 / 3
-K_VULNERABILITE = 0.2    # 0,2 <= c < 1/3 : vulnérable à la pauvreté multidimensionnelle
+# Seuils (identiques à l'étape 04). k (K_PAUVRETE, fixé par l'orchestrateur : 1/3 par défaut, 40 % avec
+# --k40) est le seuil de pauvreté multidimensionnelle ; les deux autres servent aux indicateurs
+# complémentaires publiés à côté de M0.
+K_VULNERABILITE = 0.2    # 0,2 <= c < k : vulnérable à la pauvreté multidimensionnelle
 K_SEVERE = 0.5           # c >= 0,5       : pauvreté multidimensionnelle sévère
 
 # Comparaison de flottants : avec 4 dimensions à 0,25 le score peut valoir EXACTEMENT 1/3
@@ -259,8 +259,8 @@ def matrice_censuree(g0, w):
     logger.info("score : moyenne %.4f, médiane %.4f, max %.4f | population représentée : %s",
                 score.mean(), score.median(), score.max(),
                 part(int(X.poids_population.sum()), 0))
-    for libelle, statut in [("pauvres (c >= 1/3)", pauvre),
-                            ("vulnérables (0,2 <= c < 1/3)", vulnerable),
+    for libelle, statut in [(f"pauvres (c >= {LIBELLE_K})", pauvre),
+                            (f"vulnérables (0,2 <= c < {LIBELLE_K})", vulnerable),
                             ("pauvreté sévère (c >= 0,5)", severe)]:
         logger.info("  %-30s %-16s | pondéré population : %.1f %%", libelle,
                     part(int(statut.sum()), len(X)),
@@ -571,6 +571,8 @@ def calculer_variante(g0, nom_variante, libelle, dimensions, colonnes, exclusion
 # --------------------------------------------------------------------------- #
 def verifier():
     """Quatre ménages aux indices calculables à la main, et les poids des deux variantes."""
+    global K_PAUVRETE
+    K_PAUVRETE = 1 / 3          # les cas construits à la main supposent k = 1/3, quelle que soit l'option
     configurer_logs(logger, niveau=logging.WARNING)
 
     #  A : pauvre, c = 0,50, 2 personnes      B : pauvre, c = 1,00, 8 personnes

@@ -17,7 +17,7 @@ import sys
 import pandas as pd
 from afmpi import CensusDesign, Specification, SurveyDesign, estimate
 
-from orchestrateur import HORS_IPM_NATIONAL, SORTIES_CSV, SORTIES_DTA, SOURCE, nom
+from orchestrateur import HORS_IPM_NATIONAL, K_PAUVRETE, LIBELLE_K, SORTIES_CSV, SORTIES_DTA, SOURCE, nom
 
 TOLERANCE = 1e-6
 
@@ -36,14 +36,14 @@ def main():
     else:
         design = CensusDesign(weights="ponderation_menage", household_size="taille_menage")
 
-    res = estimate(g0, spec, design, k=1 / 3, over=["milieu", "region"])
+    res = estimate(g0, spec, design, k=K_PAUVRETE, over=["milieu", "region"])
     e = res.estimates()
     afmpi = e[e.measure.isin(["H", "A", "M0"]) & e.subgroup.isna()].set_index("measure")
 
     maison = pd.read_csv(SORTIES_CSV / f"{nom('indices_ipm_ci')}.csv")
     maison = maison[maison.variable == "Ensemble"].iloc[0]
 
-    print(f"{SOURCE} — national, k = 1/3")
+    print(f"{SOURCE} — national, k = {LIBELLE_K}")
     for mesure, colonne in (("H", "H_incidence"), ("A", "A_intensite"), ("M0", "M0_ipm")):
         a, m = afmpi.est[mesure], maison[colonne]
         print(f"  {mesure:>2} : afmpi {a:.6f} | maison {m:.6f} | écart {a - m:+.2e}")

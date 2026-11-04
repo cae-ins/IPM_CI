@@ -236,6 +236,12 @@ alphabétisé » (35,0 %). Le code suit l'énoncé littéral du tableau ; la bas
 Seuil de pauvreté multidimensionnelle : **k = 1/3**. Vulnérabilité : 0,2 < score < 1/3. Pauvreté
 sévère : score ≥ 0,5.
 
+**Seuil paramétrable.** `k` est fixé par l'orchestrateur : `--k33` (1/3, défaut) ou `--k40` (40 %), pour toutes
+les sources et les étapes 04 à 07. Les sorties à k = 1/3 gardent leur nom ; celles à 40 % portent le suffixe
+`_k40` (par exemple `indices_ipm_ci_enem2025_bit_k40`) et cohabitent avec elles. Les niveaux de deux seuils
+ne se comparent pas ; l'étape 07 (`07_robustesse_seuil_k.py`) montre que le classement des zones reste
+stable quand k varie, le niveau non.
+
 ---
 
 ## 3. Écarts assumés
