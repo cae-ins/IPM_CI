@@ -108,7 +108,20 @@ CHEF_NON_IDENTIFIE = 9
 SEXE = {1: "Masculin", 2: "Féminin", CHEF_NON_IDENTIFIE: "Chef non identifié"}
 MODALITES = {"milieu": MILIEU, "sexe_cm": SEXE}
 
-# régions, départements et sous-préfectures : lus dans les value labels des fichiers ménage
+# Les 33 régions : leurs noms ne figurent pas dans les fichiers de données 2025 (aucun value label sur
+# HH2), ils viennent du questionnaire ENE-M volet ménage (ddi.xml, variable HH2), et tous les codes
+# des données 2025 y sont présents. Départements et sous-préfectures restent lus dans les fichiers.
+REGIONS = {
+    10101: "ABIDJAN", 10207: "YAMOUSSOUKRO", 10309: "SAN-PEDRO", 10325: "GBOKLE", 10331: "NAWA",
+    10405: "INDENIE-DJUABLIN", 10413: "SUD-COMOE", 10510: "KABADOUGOU", 10524: "FOLON",
+    10615: "LÔH-DJIBOUA", 10617: "GÔH", 10702: "HAUT-SASSANDRA", 10712: "MARAHOUE", 10811: "N'ZI",
+    10821: "BELIER", 10829: "IFFOU", 10833: "MORONOU", 10916: "AGNEBY-TIASSA", 10926: "GRAND-PONTS",
+    10930: "LA ME", 11006: "TONKPI", 11018: "CAVALLY", 11027: "GUEMON", 11103: "PORO", 11120: "BAGOUE",
+    11132: "TCHOLOGO", 11204: "GBEKE", 11228: "HAMBOL", 11314: "WORODOUGOU", 11319: "BAFING",
+    11322: "BERE", 11408: "GONTOUGO", 11423: "BOUNKANI",
+}
+
+# départements et sous-préfectures : lus dans les value labels des fichiers ménage
 ETIQUETTES_DTA = {"region": "HH2", "departement": "HH3", "sous_prefecture": "HH4"}
 
 
@@ -132,6 +145,8 @@ def modalites(colonne):
     """Libellés d'une variable de désagrégation, ou None si elle n'en a pas."""
     if colonne in MODALITES:
         return MODALITES[colonne]
+    if colonne == "region":
+        return REGIONS
     if colonne not in ETIQUETTES_DTA:
         return None
     return _value_labels().get(ETIQUETTES_DTA[colonne])
