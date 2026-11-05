@@ -234,6 +234,11 @@ def conditions_de_vie(men):
 def preconstruire_trimestre(t, W):
     P = lire_trimestre(t, W)
     retenus, ecartes = information_complete(P)
+    # décision : seuls les ménages à leur première interrogation (rgmen == 1) entrent dans l'IPM
+    premiere = P.loc[P.rang_interrogation == 1, "interview_key"].unique()
+    logger.info("%s : %d ménages complets, dont %d à la première interrogation (seuls retenus)", t, len(retenus),
+                retenus.isin(premiere).sum())
+    retenus = retenus[retenus.isin(premiere)]
     logger.info("%s : %d ménages retenus sur %d (écartés pour : %s)", t, len(retenus),
                 P.interview_key.nunique(),
                 ", ".join(f"{c} {n}" for c, n in ecartes.sum().items()))

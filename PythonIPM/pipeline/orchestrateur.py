@@ -91,9 +91,14 @@ ETAPES_COMMUNES = [
 ETAPES = ETAPES_PAR_SOURCE[SOURCE] + ETAPES_COMMUNES
 
 # suffixe de tous les fichiers produits : c'est lui qui fait cohabiter les deux IPM
-SUFFIXE = {"ehcvm": "ehcvm2021", "rgph": "rgph2021", "enem": f"enem2025_{EMPLOI}"}[SOURCE]
-if K_CHOIX != "k33":
-    SUFFIXE += f"_{K_CHOIX}"
+SUFFIXE_BASE = {"ehcvm": "ehcvm2021", "rgph": "rgph2021", "enem": f"enem2025_{EMPLOI}"}[SOURCE]
+SUFFIXE = SUFFIXE_BASE + ("" if K_CHOIX == "k33" else f"_{K_CHOIX}")
+
+# Les étapes 01 à 03 ne dépendent pas de k : leurs fichiers gardent le suffixe de base et sont PARTAGÉS
+# entre k = 1/3 et k = 40 % (sur le RGPH ils pèsent 1,4 Go). Seuls les fichiers des étapes 04 à 07 portent
+# le suffixe complet, avec `_k40` hors défaut.
+BASES_INDEPENDANTES_DE_K = {"preconstruction_matrice_situationnelle", "matrice_situationnelle", "vecteur_z",
+                            "vecteur_w", "matrice_privations_ponderees"}
 
 # clé d'un ménage : grappe/ménage/vague dans l'EHCVM, identifiant national dans le RGPH
 CLE = {"ehcvm": ["grappe", "menage", "vague"], "rgph": ["id_menage"],
@@ -115,8 +120,9 @@ COLONNES_TECHNIQUES = {
 
 
 def nom(base):
-    """« matrice_situationnelle » -> « matrice_situationnelle_rgph2021 »."""
-    return f"{base}_{SUFFIXE}"
+    """« matrice_situationnelle » -> « matrice_situationnelle_rgph2021 » ; les sorties qui dépendent de k
+    portent en plus `_k40` quand le seuil n'est pas 1/3 (« indices_ipm_ci_rgph2021_k40 »)."""
+    return f"{base}_{SUFFIXE_BASE if base in BASES_INDEPENDANTES_DE_K else SUFFIXE}"
 
 
 # Socle commun aux deux sources : les indicateurs que l'EHCVM ET le RGPH savent mesurer. Il
@@ -146,7 +152,8 @@ HORS_IPM_NATIONAL = ["chomage_su3", "neet_approx"]
 if SOURCE == "enem":
     # l'ENEM mesure une vraie formation en cours (`neet`, dans l'IPM) ; il écarte celui des
     # deux chômages que l'option ne retient pas
-    HORS_IPM_NATIONAL = ["chomage_su3"] if EMPLOI == "bit" else ["chomage"]
+    # l'emploi vulnérable est retiré de l'IPM (décision utilisateur) : produit, mais hors indice
+    HORS_IPM_NATIONAL = (["chomage_su3"] if EMPLOI == "bit" else ["chomage"]) + ["emploi_vulnerable"]
 
 # Options de l'étape 05 qui ajoutent une variante Emploi. Elles valent pour les DEUX sources :
 # l'EHCVM reconstruit SU3 à partir de la recherche, de la disponibilité et du désir d'emploi,
