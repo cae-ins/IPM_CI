@@ -32,6 +32,7 @@ Options : --sans-word (tables et figures seulement).
 """
 import importlib.util
 import logging
+import pickle
 import sys
 import time
 from datetime import date
@@ -41,7 +42,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from orchestrateur import (CLE, K_PAUVRETE, LIBELLE_K, LOGS, SORTIES, SORTIES_CSV, SORTIES_DTA, SOURCE,
+from orchestrateur import (CLE, HORS_IPM_NATIONAL, K_PAUVRETE, LIBELLE_K, LOGS, SORTIES, SORTIES_CSV, SORTIES_DTA, SOURCE,
                            SUFFIXE, configurer_logs, exporter_table, nom)
 
 JOURNAL = LOGS / f"07_robustesse_seuil_k_{SOURCE}.log"
@@ -56,8 +57,16 @@ GRILLE = np.unique(np.append(np.round(np.arange(0.05, 1.0001, 0.05), 4), K_REF))
 # Découpage d'analyse : les 33 régions (230 à 392 ménages chacune dans l'ENEM 2025). Les 14 directions
 # régionales, plus précises (492 à 973 ménages) mais moins fines, s'ajoutent avec
 # ("direction_regionale", "Direction régionale", "directions régionales").
-DOMAINES = [("region", "Région", "régions")]
-MIN_GRAPPES = 10        # en dessous, l'écart-type d'une zone n'est pas fiable : la zone est écartée
+DOMAINES_PAR_SOURCE = {
+    "ehcvm": [("region", "Région", "régions")],
+    "rgph": [("region", "Région", "régions"), ("sous_prefecture", "Sous-préfecture", "sous-préfectures")],
+    "enem": [("region", "Région", "régions")],
+}
+DOMAINES = DOMAINES_PAR_SOURCE[SOURCE]
+# Le RGPH est un recensement : il n'y a pas d'erreur d'échantillonnage. Les comparaisons par paires avec
+# erreurs standard n'ont donc pas de sens et ne sont pas faites ; aucune zone n'est écartée faute de grappes.
+RECENSEMENT = SOURCE == "rgph"
+MIN_GRAPPES = 1 if RECENSEMENT else 10   # enquête : en dessous de 10 grappes, l'écart-type d'une zone n'est pas fiable
 SEUIL_Z = 1.96          # test bilatéral à 5 % pour comparer deux zones
 SEUIL_STABLE = 0.8      # tau de Kendall à partir duquel le classement est dit stable
 TOLERANCE = 1e-9
@@ -82,15 +91,22 @@ m05 = _charger_etape("05_indices_ipm.py", "etape05")
 def charger():
     """Matrice g0 et poids des indicateurs de l'IPM national : score, poids de population, grappes."""
     chemin_g0 = SORTIES_DTA / f"{nom('matrice_situationnelle')}.dta"
-    chemin_w = SORTIES_CSV / f"{nom('vecteur_w')}.csv"
-    for chemin in (chemin_g0, chemin_w):
+    chemin_z = SORTIES_CSV / f"{nom('vecteur_z')}.csv"
+    for chemin in (chemin_g0, chemin_z):
         assert chemin.exists(), f"{chemin.name} absent : lancer d'abord le pipeline (source {SOURCE})"
     X = pd.read_stata(chemin_g0).set_index(CLE)
-    w = pd.read_csv(chemin_w).set_index("colonne").poids_indicateur
+    # Poids des indicateurs : ceux de l'étape 05. ENEM : l'IPM lui-même (BIT ou SU3 selon --bit / --su3).
+    # EHCVM et RGPH : l'IPM national (chômage BIT), ou, avec --su3, la variante où le SU3 remplace le BIT.
+    if SOURCE != "enem" and "--su3" in sys.argv:
+        exclusions = m05.VARIANTES_EMPLOI["--su3"][1][3]
+    else:
+        exclusions = HORS_IPM_NATIONAL
+    table_w = m05.vecteur_w(None, None, exclusions, chemin_z=chemin_z)
+    w = table_w.set_index("colonne").poids_indicateur
     score = (X[list(w.index)] * w).sum(axis=1)
     n = X.taille_menage * X.ponderation_menage
     grappes = pd.Series(np.asarray(m05.grappes_de(X)), index=X.index)
-    dimensions = pd.read_csv(chemin_w).dimension.nunique()
+    dimensions = table_w.dimension.nunique()
     logger.info("%d ménages, %d indicateurs, %d dimensions, %d grappes", len(X), len(w), dimensions,
                 grappes.nunique())
     return X, score, n, grappes, dimensions
@@ -202,9 +218,12 @@ def analyser_domaine(X, score, n, grappes, colonne):
     ecartees = X[colonne].nunique() - len(ref)
     par_k = {k: par_zone(X, score, n, grappes, colonne, k).reindex(ref.index) for k in ks}
     corr = pd.DataFrame([{"k": k, **correlations(ref.M0, par_k[k].M0)} for k in ks])
-    st_ref = statuts_paires(ref.M0, ref.se)
-    paires = pd.DataFrame([{"k": k, **robustesse_paires(
-        st_ref, statuts_paires(par_k[k].M0, par_k[k].se.fillna(0)))} for k in K_ALTERNATIFS])
+    if RECENSEMENT:
+        paires = None
+    else:
+        st_ref = statuts_paires(ref.M0, ref.se)
+        paires = pd.DataFrame([{"k": k, **robustesse_paires(
+            st_ref, statuts_paires(par_k[k].M0, par_k[k].se.fillna(0)))} for k in K_ALTERNATIFS])
     extremes = pd.DataFrame([{"k": k, "plus_pauvre": par_k[k].M0.idxmax(),
                               "moins_pauvre": par_k[k].M0.idxmin()} for k in ks])
     H_grille = pd.DataFrame({k: par_k[k].H for k in GRILLE})
@@ -334,8 +353,9 @@ def exporter_tables(res):
     exporter_table(res["courbe"], nom("robustesse_k_courbe"), logger, index=False)
     corr = pd.concat([d["corr"].assign(domaine=c) for c, d in res["domaines"].items()])
     exporter_table(corr, nom("robustesse_k_correlations"), logger, index=False)
-    paires = pd.concat([d["paires"].assign(domaine=c) for c, d in res["domaines"].items()])
-    exporter_table(paires, nom("robustesse_k_paires"), logger, index=False)
+    paires = [d["paires"].assign(domaine=c) for c, d in res["domaines"].items() if d["paires"] is not None]
+    if paires:
+        exporter_table(pd.concat(paires), nom("robustesse_k_paires"), logger, index=False)
 
 
 # --------------------------------------------------------------------------- #
@@ -578,6 +598,8 @@ def rapport_word(res, chemins):
         "Comme dans le rapport du Mali, on compare donc chaque paire de zones avec les erreurs standard, au niveau de confiance de 95 %. À k = 1/3, une paire est dite "
         "significative si l'on peut établir quelle zone est la plus pauvre ; elle est robuste à un autre k si le même ordre significatif est retrouvé.")
     for colonne, d in doms.items():
+        if d["paires"] is None:
+            continue
         p0 = d["paires"].iloc[0]
         lignes = [[_p(r.k, 0), mil(r.paires), f"{int(r.significatives)} ({_p(r.part_significatives, 0)})", _p(r.robustes_toutes, 0),
                    f"{int(r.robustes_significatives)} sur {int(r.significatives)} ({_p(r.ratio_robustesse, 0)})"]
@@ -662,6 +684,14 @@ def main(avec_word=True):
     debut = time.perf_counter()
     logger.info("=== étape 07 : robustesse au seuil k — source %s (%s) ===", SOURCE, SUFFIXE)
     res = analyser()
+    if "--dump" in sys.argv:        # analyse seule : les résultats sont enregistrés pour le rapport commun
+        chemin = sys.argv[sys.argv.index("--dump") + 1]
+        res.update({"source": SOURCE, "suffixe": SUFFIXE, "k_ref": K_REF, "libelle_k": LIBELLE_K, "recensement": RECENSEMENT})
+        with open(chemin, "wb") as f:
+            pickle.dump(res, f)
+        logger.info("résultats enregistrés : %s", chemin)
+        logger.info("=== terminé en %.1f s ===", time.perf_counter() - debut)
+        return res
     DOSSIER_PNG.mkdir(parents=True, exist_ok=True)
     chemins = {cle: DOSSIER_PNG / f"robustesse_k_{SUFFIXE}_{cle}.png" for cle in ("nationale", "zones", "correlations")}
     figure_nationale(res, chemins["nationale"])
